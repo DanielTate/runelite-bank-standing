@@ -29,6 +29,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Random;
 import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -50,12 +51,15 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import nz.tate.bankstanding.core.BankNames;
 import nz.tate.bankstanding.core.BankRecord;
 import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.Progress;
 import nz.tate.bankstanding.core.StandTracker;
+import nz.tate.bankstanding.core.StatsView;
 import nz.tate.bankstanding.core.XpRoller;
 
 /**
@@ -97,6 +101,15 @@ public class BankStandingPlugin extends Plugin
 	@Inject
 	private HitsplatOverlay hitsplatOverlay;
 
+	@Inject
+	private ClientToolbar clientToolbar;
+
+	@Inject
+	private Icons icons;
+
+	private BankStandingPanel panel;
+	private NavigationButton navButton;
+
 	private final StandTracker tracker = new StandTracker();
 	private final XpRoller roller = new XpRoller(new Random());
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
@@ -116,6 +129,15 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.add(skillTileOverlay);
 		overlayManager.add(xpDropOverlay);
 		overlayManager.add(hitsplatOverlay);
+
+		panel = new BankStandingPanel(icons);
+		navButton = NavigationButton.builder()
+			.tooltip("Bank Standing")
+			.icon(icons.small())
+			.priority(10)
+			.panel(panel)
+			.build();
+		clientToolbar.addNavigation(navButton);
 	}
 
 	@Override
@@ -125,6 +147,9 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.remove(xpDropOverlay);
 		overlayManager.remove(hitsplatOverlay);
 		dropFeed.clear();
+		clientToolbar.removeNavigation(navButton);
+		navButton = null;
+		panel = null;
 		bankLocator.clear();
 		realXp.clear();
 		progress = null;
@@ -143,6 +168,8 @@ public class BankStandingPlugin extends Plugin
 			tracker.reset();
 			realXp.clear();
 			progress = null;
+			BankStandingPanel shown = panel;
+			SwingUtilities.invokeLater(shown::showLoggedOut);
 		}
 	}
 
@@ -183,6 +210,7 @@ public class BankStandingPlugin extends Plugin
 			{
 				return;
 			}
+			refreshPanel();
 		}
 
 		WorldPoint location = player.getWorldLocation();
@@ -213,12 +241,20 @@ public class BankStandingPlugin extends Plugin
 		progress.xp = Experience.addXp(progress.xp, drop);
 		bank.xp += progress.xp - before;
 		store.save(progress);
+		refreshPanel();
 
 		int levelAfter = progress.level();
 		if (levelAfter > levelBefore)
 		{
 			announceLevel(levelAfter);
 		}
+	}
+
+	private void refreshPanel()
+	{
+		StatsView view = new StatsView(progress);
+		BankStandingPanel shown = panel;
+		SwingUtilities.invokeLater(() -> shown.show(view));
 	}
 
 	private void announceLevel(int level)
