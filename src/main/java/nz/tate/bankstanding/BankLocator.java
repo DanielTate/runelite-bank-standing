@@ -36,6 +36,7 @@ import net.runelite.api.ObjectComposition;
 import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 
 /**
@@ -50,8 +51,6 @@ import net.runelite.api.coords.WorldPoint;
 @Singleton
 class BankLocator
 {
-	static final int RANGE = 5;
-
 	private final Client client;
 	private final Set<TileObject> candidates = new HashSet<>();
 
@@ -105,11 +104,12 @@ class BankLocator
 		}
 	}
 
-	boolean isNearBank(WorldPoint player)
+	/** True if a bank is within {@code range} tiles, measured to the nearest edge of it. */
+	boolean isNearBank(WorldPoint player, int range)
 	{
 		for (TileObject object : candidates)
 		{
-			if (inRange(player, object.getWorldLocation()) && isBank(currentForm(object)))
+			if (inRange(player, area(object), range) && isBank(currentForm(object)))
 			{
 				return true;
 			}
@@ -119,7 +119,7 @@ class BankLocator
 		{
 			NPCComposition composition = npc.getTransformedComposition();
 			if (composition != null && hasAction(composition.getActions(), "Bank")
-				&& inRange(player, npc.getWorldLocation()))
+				&& inRange(player, npc.getWorldArea(), range))
 			{
 				return true;
 			}
@@ -127,9 +127,28 @@ class BankLocator
 		return false;
 	}
 
-	private static boolean inRange(WorldPoint player, WorldPoint target)
+	private static boolean inRange(WorldPoint player, WorldArea target, int range)
 	{
-		return target != null && player.getPlane() == target.getPlane() && player.distanceTo2D(target) <= RANGE;
+		return target != null && player.getPlane() == target.getPlane() && target.distanceTo2D(player) <= range;
+	}
+
+	/** The tiles an object covers, so a big bank chest counts from any side. */
+	private WorldArea area(TileObject object)
+	{
+		WorldPoint location = object.getWorldLocation();
+		if (location == null)
+		{
+			return null;
+		}
+		if (object instanceof GameObject)
+		{
+			// The location is the object's centre tile; this also works for banks on boats.
+			GameObject game = (GameObject) object;
+			int width = Math.max(1, game.sizeX());
+			int height = Math.max(1, game.sizeY());
+			return new WorldArea(location.dx(-width / 2).dy(-height / 2), width, height);
+		}
+		return new WorldArea(location, 1, 1);
 	}
 
 	private ObjectComposition currentForm(TileObject object)

@@ -31,6 +31,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.text.NumberFormat;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
 import net.runelite.client.ui.FontManager;
@@ -41,11 +42,13 @@ import net.runelite.client.ui.overlay.tooltip.Tooltip;
 import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.Progress;
+import nz.tate.bankstanding.core.Unlocks;
 
 /**
  * A skills-tab style tile: the booth icon and the level shown as "42 / 42". Hovering it shows
  * the XP the way the skills tab does.
  */
+@Singleton
 class SkillTileOverlay extends Overlay
 {
 	private static final int WIDTH = 62;
@@ -118,7 +121,12 @@ class SkillTileOverlay extends Overlay
 			text += "</br>Next level at: " + format.format(next)
 				+ "</br>Remaining XP: " + format.format(next - progress.xp);
 		}
-		return text;
+		int unlock = Unlocks.nextUnlockLevel(level);
+		if (unlock > 0)
+		{
+			text += "</br>Next unlock at level " + unlock;
+		}
+		return text + "</br>Click to see unlocks";
 	}
 
 	private static void shadowed(Graphics2D graphics, String text, int x, int y)

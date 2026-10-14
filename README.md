@@ -10,7 +10,8 @@ prove it.
 
 ## How it works
 
-- Stand within a few tiles of any bank: booths, chests, deposit boxes, bankers.
+- Stand next to any bank: booths, chests, deposit boxes, bankers. As you level up you can
+  stand further away, up to 9 tiles at 99.
 - Stay idle for 30 seconds and XP starts dropping.
 - Walk, use the bank, or gain XP in any real skill and your stand ends. The timer starts
   again from zero.
@@ -21,7 +22,8 @@ The game's own logout timer still applies, so you will need to stay at your keyb
 
 ## What you get
 
-- A Bank Standing skill tile you can place anywhere on screen
+- A Bank Standing skill tile you can place anywhere on screen. Click it to see what each
+  level unlocks.
 - XP drops and level-up messages, just like a real skill
 - A side panel with your level, XP, XP per hour, session and daily standing time, and how
   long you've spent at each bank

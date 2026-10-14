@@ -66,6 +66,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -83,6 +84,7 @@ import nz.tate.bankstanding.core.Progress;
 import nz.tate.bankstanding.core.Session;
 import nz.tate.bankstanding.core.StandContext;
 import nz.tate.bankstanding.core.StandTracker;
+import nz.tate.bankstanding.core.Unlocks;
 import nz.tate.bankstanding.core.StatsView;
 import nz.tate.bankstanding.core.XpRoller;
 
@@ -118,6 +120,12 @@ public class BankStandingPlugin extends Plugin
 
 	@Inject
 	private SkillTileOverlay skillTileOverlay;
+
+	@Inject
+	private SkillGuideOverlay skillGuideOverlay;
+
+	@Inject
+	private MouseManager mouseManager;
 
 	@Inject
 	private XpDropOverlay xpDropOverlay;
@@ -194,6 +202,8 @@ public class BankStandingPlugin extends Plugin
 	{
 		tracker.reset();
 		overlayManager.add(skillTileOverlay);
+		overlayManager.add(skillGuideOverlay);
+		mouseManager.registerMouseListener(skillGuideOverlay.mouse);
 		overlayManager.add(xpDropOverlay);
 		overlayManager.add(hitsplatOverlay);
 
@@ -238,6 +248,9 @@ public class BankStandingPlugin extends Plugin
 		int realCape = wornCape;
 		clientThread.invoke(() -> capeDisplay.restore(realCape));
 		overlayManager.remove(skillTileOverlay);
+		mouseManager.unregisterMouseListener(skillGuideOverlay.mouse);
+		overlayManager.remove(skillGuideOverlay);
+		skillGuideOverlay.close();
 		overlayManager.remove(xpDropOverlay);
 		overlayManager.remove(hitsplatOverlay);
 		dropFeed.clear();
@@ -412,7 +425,7 @@ public class BankStandingPlugin extends Plugin
 
 		WorldPoint location = player.getWorldLocation();
 		boolean roll = tracker.tick(location.getX(), location.getY(), location.getPlane(),
-			bankLocator.isNearBank(location), isUsingBank());
+			bankLocator.isNearBank(location, Unlocks.bankRange(progress.level())), isUsingBank());
 
 		// The cape is only worn while bank standing; the dev preview shows it anywhere.
 		if (dev.previewCape
