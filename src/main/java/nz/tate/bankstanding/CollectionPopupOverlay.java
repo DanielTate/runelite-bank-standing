@@ -25,6 +25,7 @@
 package nz.tate.bankstanding;
 
 import java.awt.AlphaComposite;
+import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
@@ -46,7 +47,8 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 class CollectionPopupOverlay extends Overlay
 {
 	private static final int WIDTH = 300;
-	private static final int HEIGHT = 58;
+	private static final int HEIGHT = 64;
+	private static final Color ORANGE = new Color(0xff, 0x98, 0x1f);
 	private static final int ICON = 32;
 	private static final long SLIDE_MS = 350;
 	private static final long SHOW_MS = 5000;
@@ -119,7 +121,8 @@ class CollectionPopupOverlay extends Overlay
 
 		Composite before = graphics.getComposite();
 		graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, Math.min(1f, alpha))));
-		art.parchment(graphics, x, y, WIDTH, HEIGHT);
+		art.darkBacking(graphics, x, y, WIDTH, HEIGHT);
+		art.steelBorder(graphics, x, y, WIDTH, HEIGHT);
 		int textX = x + 24;
 		if (entry.item > 0)
 		{
@@ -128,8 +131,8 @@ class CollectionPopupOverlay extends Overlay
 			textX = x + 20 + ICON + 10;
 		}
 		int centre = (textX + x + WIDTH - 20) / 2;
-		art.category.drawCentred(graphics, "Collection log", centre, y + 9);
-		art.subtitle.drawCentred(graphics, entry.text, centre, y + 13 + art.category.height());
+		art.bold.drawShadowedCentred(graphics, "Collection log", centre, y + 14, ORANGE);
+		art.plain.drawShadowedCentred(graphics, entry.text, centre, y + 18 + art.bold.height(), Color.WHITE);
 		graphics.setComposite(before);
 		return new Dimension(WIDTH, HEIGHT);
 	}

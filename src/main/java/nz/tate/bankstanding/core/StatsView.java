@@ -141,7 +141,7 @@ public final class StatsView
 	}
 
 	/** "3h 05m", or "12m" under an hour. */
-	static String duration(long ticks)
+	public static String duration(long ticks)
 	{
 		long minutes = ticks * 600 / 60_000;
 		if (minutes < 60)

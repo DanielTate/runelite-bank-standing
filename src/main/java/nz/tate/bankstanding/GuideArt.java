@@ -53,14 +53,28 @@ class GuideArt
 	static final int THUMB_BOTTOM = 797;
 	static final int TRACK = 798;
 	static final int ARROW = 16;
+	/** Scrollbar sprites: up, down, thumb top, middle, bottom, track. */
+	static final int[] PARCHMENT_SCROLLBAR = {ARROW_UP, ARROW_DOWN, THUMB_TOP, THUMB_MIDDLE, THUMB_BOTTOM, TRACK};
+	static final int[] DARK_SCROLLBAR = {773, 788, 789, 790, 791, 792};
+	/** The steel border: corners (top left, top right, bottom left, bottom right), then edges. */
+	static final int[] STEEL_CORNERS = {310, 311, 312, 313};
+	static final int STEEL_EDGE_HORIZONTAL = 314;
+	static final int STEEL_EDGE_VERTICAL = 315;
+	static final int DARK_BACKING = 897;
+	/** Split tabs, selected and not: left edge, middle, right edge. */
+	static final int[] TAB = {998, 999, 1000};
+	static final int[] TAB_DIM = {1001, 1002, 1003};
+	static final int STEEL_CLOSE = 535;
 
 	static final Color INK = new Color(0x46, 0x32, 0x0a);
 	static final Color FADED_INK = new Color(0x8c, 0x74, 0x4c);
 	static final Color SELECTED = new Color(0x80, 0x00, 0x00);
 
-	private static final int TITLE_FONT = 645;
-	private static final int SUBTITLE_FONT = 494;
-	private static final int CATEGORY_FONT = 497;
+	private static final int QUILL_FONT = 645;
+	private static final int SMALL_FONT = 494;
+	private static final int PLAIN_FONT = 495;
+	private static final int BOLD_FONT = 496;
+	private static final int LARGE_BOLD_FONT = 497;
 	private static final int COINS = 995;
 
 	private final Client client;
@@ -69,10 +83,12 @@ class GuideArt
 	private final Map<Integer, BufferedImage> sprites = new ConcurrentHashMap<>();
 	private final Map<Integer, Image> goldIcons = new ConcurrentHashMap<>();
 	private BufferedImage sideParchment;
-	GameFont title;
-	GameFont subtitle;
-	GameFont category;
-	GameFont selected;
+	/** The game's fonts: the skill guide's title, small, plain, bold and larger bold. */
+	GameFont quill;
+	GameFont small;
+	GameFont plain;
+	GameFont bold;
+	GameFont largeBold;
 
 	@Inject
 	GuideArt(Client client, SpriteManager spriteManager, ItemManager itemManager)
@@ -80,9 +96,16 @@ class GuideArt
 		this.client = client;
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
-		for (int id : new int[]{TITLE_SCROLL, CLOSE, ARROW_UP, ARROW_DOWN, THUMB_TOP, THUMB_MIDDLE, THUMB_BOTTOM, TRACK})
+		for (int id : new int[]{TITLE_SCROLL, CLOSE, STEEL_CLOSE, DARK_BACKING, STEEL_EDGE_HORIZONTAL, STEEL_EDGE_VERTICAL})
 		{
 			load(id);
+		}
+		for (int[] set : new int[][]{PARCHMENT_SCROLLBAR, DARK_SCROLLBAR, STEEL_CORNERS, TAB, TAB_DIM})
+		{
+			for (int id : set)
+			{
+				load(id);
+			}
 		}
 	}
 
@@ -103,15 +126,16 @@ class GuideArt
 	/** Loads the fonts the first time; false until everything needed to draw is ready. Client thread. */
 	boolean ready()
 	{
-		if (title == null)
+		if (quill == null)
 		{
-			title = GameFont.load(client, TITLE_FONT, INK);
-			subtitle = GameFont.load(client, SUBTITLE_FONT, INK);
-			category = GameFont.load(client, CATEGORY_FONT, INK);
-			selected = GameFont.load(client, CATEGORY_FONT, SELECTED);
+			quill = GameFont.load(client, QUILL_FONT);
+			small = GameFont.load(client, SMALL_FONT);
+			plain = GameFont.load(client, PLAIN_FONT);
+			bold = GameFont.load(client, BOLD_FONT);
+			largeBold = GameFont.load(client, LARGE_BOLD_FONT);
 		}
-		return title != null && subtitle != null && category != null && selected != null
-			&& sprites.containsKey(TITLE_SCROLL);
+		return quill != null && small != null && plain != null && bold != null && largeBold != null
+			&& sprites.containsKey(TITLE_SCROLL) && sprites.containsKey(DARK_BACKING);
 	}
 
 	/** A parchment scroll with its rolled ends left and right. */
@@ -148,12 +172,12 @@ class GuideArt
 		}
 	}
 
-	/** The parchment scrollbar: arrows, a tiled track and a stretched thumb. */
-	void scrollbar(Graphics2D graphics, int x, int y, int height, int total, int visible, int first)
+	/** A scrollbar from one of the sprite sets: arrows, a tiled track and a stretched thumb. */
+	void scrollbar(Graphics2D graphics, int[] set, int x, int y, int height, int total, int visible, int first)
 	{
-		draw(graphics, ARROW_UP, x, y);
-		draw(graphics, ARROW_DOWN, x, y + height - ARROW);
-		BufferedImage track = sprites.get(TRACK);
+		draw(graphics, set[0], x, y);
+		draw(graphics, set[1], x, y + height - ARROW);
+		BufferedImage track = sprites.get(set[5]);
 		if (track != null)
 		{
 			for (int ty = y + ARROW; ty < y + height - ARROW; ty += track.getHeight())
@@ -165,9 +189,9 @@ class GuideArt
 		int trackHeight = height - 2 * ARROW;
 		int thumbHeight = Math.max(12, trackHeight * visible / total);
 		int thumbY = y + ARROW + (trackHeight - thumbHeight) * first / Math.max(1, total - visible);
-		BufferedImage top = sprites.get(THUMB_TOP);
-		BufferedImage middle = sprites.get(THUMB_MIDDLE);
-		BufferedImage bottom = sprites.get(THUMB_BOTTOM);
+		BufferedImage top = sprites.get(set[2]);
+		BufferedImage middle = sprites.get(set[3]);
+		BufferedImage bottom = sprites.get(set[4]);
 		if (top != null && middle != null && bottom != null)
 		{
 			graphics.drawImage(middle, x, thumbY + top.getHeight(), middle.getWidth(),
@@ -175,6 +199,75 @@ class GuideArt
 			graphics.drawImage(top, x, thumbY, null);
 			graphics.drawImage(bottom, x, thumbY + thumbHeight - bottom.getHeight(), null);
 		}
+	}
+
+	/** The game's dark stone backing, tiled over an area. */
+	void darkBacking(Graphics2D graphics, int x, int y, int width, int height)
+	{
+		BufferedImage tile = sprites.get(DARK_BACKING);
+		if (tile == null)
+		{
+			return;
+		}
+		java.awt.Shape clip = graphics.getClip();
+		graphics.clipRect(x, y, width, height);
+		for (int ty = y; ty < y + height; ty += tile.getHeight())
+		{
+			for (int tx = x; tx < x + width; tx += tile.getWidth())
+			{
+				graphics.drawImage(tile, tx, ty, null);
+			}
+		}
+		graphics.setClip(clip);
+	}
+
+	/** The steel border used around the game's windows. */
+	void steelBorder(Graphics2D graphics, int x, int y, int width, int height)
+	{
+		BufferedImage horizontal = sprites.get(STEEL_EDGE_HORIZONTAL);
+		BufferedImage vertical = sprites.get(STEEL_EDGE_VERTICAL);
+		BufferedImage topLeft = sprites.get(STEEL_CORNERS[0]);
+		if (horizontal == null || vertical == null || topLeft == null)
+		{
+			return;
+		}
+		int cw = topLeft.getWidth();
+		int ch = topLeft.getHeight();
+		java.awt.Shape clip = graphics.getClip();
+		graphics.clipRect(x + cw, y, width - 2 * cw, height);
+		for (int tx = x + cw; tx < x + width - cw; tx += horizontal.getWidth())
+		{
+			graphics.drawImage(horizontal, tx, y, null);
+			graphics.drawImage(horizontal, tx, y + height - horizontal.getHeight(), null);
+		}
+		graphics.setClip(clip);
+		graphics.clipRect(x, y + ch, width, height - 2 * ch);
+		for (int ty = y + ch; ty < y + height - ch; ty += vertical.getHeight())
+		{
+			graphics.drawImage(vertical, x, ty, null);
+			graphics.drawImage(vertical, x + width - vertical.getWidth(), ty, null);
+		}
+		graphics.setClip(clip);
+		draw(graphics, STEEL_CORNERS[0], x, y);
+		draw(graphics, STEEL_CORNERS[1], x + width - cw, y);
+		draw(graphics, STEEL_CORNERS[2], x, y + height - ch);
+		draw(graphics, STEEL_CORNERS[3], x + width - cw, y + height - ch);
+	}
+
+	/** One split tab, {@code width} wide: lighter when selected. */
+	void tab(Graphics2D graphics, int x, int y, int width, boolean selected)
+	{
+		int[] set = selected ? TAB : TAB_DIM;
+		BufferedImage left = sprites.get(set[0]);
+		BufferedImage middle = sprites.get(set[1]);
+		BufferedImage right = sprites.get(set[2]);
+		if (left == null || middle == null || right == null)
+		{
+			return;
+		}
+		graphics.drawImage(middle, x + left.getWidth(), y, width - left.getWidth() - right.getWidth(), middle.getHeight(), null);
+		graphics.drawImage(left, x, y, null);
+		graphics.drawImage(right, x + width - right.getWidth(), y, null);
 	}
 
 	/** An item's icon (coins as a big stack, without the number), optionally turned gold. */

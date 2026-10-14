@@ -26,22 +26,15 @@ package nz.tate.bankstanding;
 
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.event.MouseEvent;
 import net.runelite.api.Client;
-import net.runelite.client.input.MouseAdapter;
-import net.runelite.client.input.MouseWheelListener;
-import net.runelite.client.ui.overlay.Overlay;
-import net.runelite.client.ui.overlay.OverlayLayer;
-import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
  * A window drawn like the game's skill guide: a parchment scroll with a title and a scrolling
  * list, a second scroll at the side with tabs, and the close button. Subclasses supply the
- * tabs and draw the rows. Clicks inside are kept from the game; a click outside closes it.
+ * tabs and draw the rows.
  */
-abstract class ParchmentWindow extends Overlay
+abstract class ParchmentWindow extends GameWindow
 {
 	static final int WIDTH = 500;
 	static final int HEIGHT = 320;
@@ -57,91 +50,14 @@ abstract class ParchmentWindow extends Overlay
 	private static final int TAB_TOP = 36;
 	private static final int TAB_ROW = 24;
 
-	protected final Client client;
-	protected final GuideArt art;
-
-	private volatile boolean open;
 	protected volatile int tab;
 	/** The first row shown. */
 	protected volatile int scroll;
 	private volatile int visibleRows = 1;
-	/** Where the window was last drawn, in canvas coordinates. */
-	private volatile Rectangle drawn = new Rectangle();
-	/** Set when a press was ours, so the release and click don't reach the game either. */
-	private boolean swallowing;
-	/** Run whenever this window opens, so the plugin can close the others. */
-	private volatile Runnable onOpen;
-
-	final MouseAdapter mouse = new MouseAdapter()
-	{
-		@Override
-		public MouseEvent mousePressed(MouseEvent event)
-		{
-			swallowing = false;
-			if (event.isAltDown())
-			{
-				return event;
-			}
-			Point point = event.getPoint();
-			Rectangle window = drawn;
-			if (claimPress(event))
-			{
-				swallowing = true;
-			}
-			else if (open && window.contains(point))
-			{
-				click(point.x - window.x, point.y - window.y);
-				swallowing = true;
-			}
-			else
-			{
-				open = false;
-			}
-			if (swallowing)
-			{
-				event.consume();
-			}
-			return event;
-		}
-
-		@Override
-		public MouseEvent mouseReleased(MouseEvent event)
-		{
-			return swallow(event);
-		}
-
-		@Override
-		public MouseEvent mouseClicked(MouseEvent event)
-		{
-			return swallow(event);
-		}
-
-		private MouseEvent swallow(MouseEvent event)
-		{
-			if (swallowing)
-			{
-				event.consume();
-			}
-			return event;
-		}
-	};
-
-	final MouseWheelListener wheel = event ->
-	{
-		if (open && drawn.contains(event.getPoint()))
-		{
-			scrollBy(event.getWheelRotation());
-			event.consume();
-		}
-		return event;
-	};
 
 	ParchmentWindow(Client client, GuideArt art)
 	{
-		this.client = client;
-		this.art = art;
-		setPosition(OverlayPosition.DYNAMIC);
-		setLayer(OverlayLayer.ABOVE_WIDGETS);
+		super(client, art);
 	}
 
 	abstract String title();
@@ -156,43 +72,6 @@ abstract class ParchmentWindow extends Overlay
 
 	/** Draws one row with its top left corner at (x, y), at most {@link #LIST_WIDTH} wide. */
 	abstract void drawRow(Graphics2D graphics, int row, int x, int y);
-
-	/** Whether there's anything to show, such as being logged in. */
-	boolean available()
-	{
-		return true;
-	}
-
-	/** A press before the window's own handling, such as on the button that opens it; true if used. */
-	boolean claimPress(MouseEvent event)
-	{
-		return false;
-	}
-
-	void setOnOpen(Runnable onOpen)
-	{
-		this.onOpen = onOpen;
-	}
-
-	void open()
-	{
-		open = true;
-		Runnable callback = onOpen;
-		if (callback != null)
-		{
-			callback.run();
-		}
-	}
-
-	void close()
-	{
-		open = false;
-	}
-
-	boolean isOpen()
-	{
-		return open;
-	}
 
 	void showTab(int index)
 	{
@@ -212,11 +91,18 @@ abstract class ParchmentWindow extends Overlay
 		scroll = Math.max(0, Math.min(max, scroll + rows));
 	}
 
-	private void click(int x, int y)
+	@Override
+	void wheel(int x, int y, int rotation)
+	{
+		scrollBy(rotation);
+	}
+
+	@Override
+	void click(int x, int y)
 	{
 		if (CLOSE_BUTTON.contains(x, y))
 		{
-			open = false;
+			close();
 			return;
 		}
 		if (SIDEBAR.contains(x, y))
@@ -245,27 +131,27 @@ abstract class ParchmentWindow extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!open || !available() || !art.ready())
+		if (!showing())
 		{
 			return null;
 		}
-		int x = client.getViewportXOffset() + Math.max(0, (client.getViewportWidth() - WIDTH) / 2);
-		int y = client.getViewportYOffset() + Math.max(0, (client.getViewportHeight() - HEIGHT) / 2);
-		drawn = new Rectangle(x, y, WIDTH, HEIGHT);
+		Rectangle window = place(WIDTH, HEIGHT);
+		int x = window.x;
+		int y = window.y;
 
 		art.parchment(graphics, x, y, MAIN_WIDTH, HEIGHT);
 		art.sideParchment(graphics, x + SIDEBAR.x, y + SIDEBAR.y, SIDEBAR.width, SIDEBAR.height);
 		art.draw(graphics, GuideArt.CLOSE, x + CLOSE_BUTTON.x, y + CLOSE_BUTTON.y);
 
-		art.title.drawCentred(graphics, title(), x + MAIN_WIDTH / 2, y + 8);
-		art.subtitle.drawCentred(graphics, subtitle(), x + MAIN_WIDTH / 2, y + 8 + art.title.height());
+		art.quill.drawCentred(graphics, title(), x + MAIN_WIDTH / 2, y + 8, GuideArt.INK);
+		art.small.drawCentred(graphics, subtitle(), x + MAIN_WIDTH / 2, y + 8 + art.quill.height(), GuideArt.INK);
 
 		String[] tabs = tabs();
 		int tabY = y + SIDEBAR.y + TAB_TOP;
 		for (int i = 0; i < tabs.length; i++)
 		{
-			(i == tab ? art.selected : art.category).draw(graphics, tabs[i], x + SIDEBAR.x + 22,
-				tabY - art.category.height() + 4);
+			art.largeBold.draw(graphics, tabs[i], x + SIDEBAR.x + 22, tabY - art.largeBold.height() + 4,
+				i == tab ? GuideArt.SELECTED : GuideArt.INK);
 			tabY += TAB_ROW;
 		}
 
@@ -279,7 +165,7 @@ abstract class ParchmentWindow extends Overlay
 		}
 		if (rows > visibleRows)
 		{
-			art.scrollbar(graphics, x + SCROLLBAR_X, y + LIST_TOP, visibleRows * rowHeight(), rows, visibleRows, first);
+			art.scrollbar(graphics, GuideArt.PARCHMENT_SCROLLBAR, x + SCROLLBAR_X, y + LIST_TOP, visibleRows * rowHeight(), rows, visibleRows, first);
 		}
 		return new Dimension(WIDTH, HEIGHT);
 	}

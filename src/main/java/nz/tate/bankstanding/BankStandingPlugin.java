@@ -225,7 +225,7 @@ public class BankStandingPlugin extends Plugin
 		}
 		tracker.reset();
 		overlayManager.add(skillTileOverlay);
-		for (ParchmentWindow window : windows())
+		for (GameWindow window : windows())
 		{
 			overlayManager.add(window);
 			mouseManager.registerMouseListener(window.mouse);
@@ -283,7 +283,7 @@ public class BankStandingPlugin extends Plugin
 			cosmetics.clear();
 		});
 		overlayManager.remove(skillTileOverlay);
-		for (ParchmentWindow window : windows())
+		for (GameWindow window : windows())
 		{
 			mouseManager.unregisterMouseListener(window.mouse);
 			mouseManager.unregisterMouseWheelListener(window.wheel);
@@ -333,7 +333,7 @@ public class BankStandingPlugin extends Plugin
 			cosmetics.clear();
 			BankStandingPanel shown = panel;
 			SwingUtilities.invokeLater(shown::showLoggedOut);
-			for (ParchmentWindow window : windows())
+			for (GameWindow window : windows())
 			{
 				window.close();
 			}
@@ -536,9 +536,9 @@ public class BankStandingPlugin extends Plugin
 		}
 	}
 
-	private ParchmentWindow[] windows()
+	private GameWindow[] windows()
 	{
-		return new ParchmentWindow[]{skillGuideOverlay, collectionLogOverlay};
+		return new GameWindow[]{skillGuideOverlay, collectionLogOverlay};
 	}
 
 	/** Opens the collection log, from the side panel or the skill tile's menu. */
