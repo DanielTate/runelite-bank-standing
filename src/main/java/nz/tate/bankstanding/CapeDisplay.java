@@ -31,7 +31,6 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.ColorTextureOverride;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ModelData;
 import net.runelite.api.Player;
@@ -44,10 +43,9 @@ import nz.tate.bankstanding.core.CapePalette;
  * Shows the 99 Bank Standing cape on your own character, on your own client only.
  *
  * <p>It swaps the cape slot of the local player's appearance to a base cape and turns it
- * gold. A cape built with recolour slots is recoloured through the appearance's colour
- * override. One without them (the cape of skulls) is given slots on this client's copy of
- * its item definition, taken from its model's colours, so on this client every cape of
- * skulls shows gold. The game rebuilds the appearance whenever equipment changes, so this
+ * gold by changing this client's copy of the cape's item definition: its own recolour
+ * slots if it has them, otherwise slots taken from its model's colours. So on this client
+ * every copy of the base cape shows gold while the 99 cape is on; restoring undoes it. The game rebuilds the appearance whenever equipment changes, so this
  * is re-applied each tick; nothing is sent to the server.
  */
 @Slf4j
@@ -60,11 +58,12 @@ class CapeDisplay
 	private int capeItem = BASE_CAPE;
 	private boolean applied;
 
-	/** Gold colours for the override path, or null when the definition is recoloured instead. */
-	private short[] overrideColours;
-	/** The definition recolour, kept so it can be re-applied if the game reloads the item. */
+	/** The gold recolour, kept so it can be re-applied if the game reloads the item. */
 	private short[] definitionFrom;
 	private short[] definitionTo;
+	/** The definition's own recolour, put back on restore. */
+	private short[] originalFrom;
+	private short[] originalTo;
 	private boolean prepared;
 	private boolean warned;
 
@@ -89,25 +88,12 @@ class CapeDisplay
 		boolean changed = equipment[slot] != wanted;
 		equipment[slot] = wanted;
 
-		if (overrideColours != null)
+		ItemComposition cape = client.getItemDefinition(capeItem);
+		if (!Arrays.equals(cape.getColorToReplaceWith(), definitionTo))
 		{
-			ColorTextureOverride current = appearance.getColorTextureOverride(KitType.CAPE);
-			if (current == null || !Arrays.equals(current.getColorToReplaceWith(), overrideColours))
-			{
-				ColorTextureOverride override = appearance.createColorTextureOverride(KitType.CAPE, overrideColours.length);
-				System.arraycopy(overrideColours, 0, override.getColorToReplaceWith(), 0, overrideColours.length);
-				changed = true;
-			}
-		}
-		else if (definitionTo != null)
-		{
-			ItemComposition cape = client.getItemDefinition(capeItem);
-			if (!Arrays.equals(cape.getColorToReplaceWith(), definitionTo))
-			{
-				cape.setColorToReplace(definitionFrom);
-				cape.setColorToReplaceWith(definitionTo);
-				changed = true;
-			}
+			cape.setColorToReplace(definitionFrom);
+			cape.setColorToReplaceWith(definitionTo);
+			changed = true;
 		}
 
 		if (changed)
@@ -135,7 +121,6 @@ class CapeDisplay
 		}
 		appearance.getEquipmentIds()[KitType.CAPE.getIndex()] =
 			wornCapeId > 0 ? wornCapeId + PlayerComposition.ITEM_OFFSET : 0;
-		appearance.removeColorTextureOverride(KitType.CAPE);
 		appearance.setHash();
 	}
 
@@ -164,15 +149,14 @@ class CapeDisplay
 		{
 			return true;
 		}
-		overrideColours = null;
-		definitionFrom = null;
-		definitionTo = null;
-
 		ItemComposition cape = client.getItemDefinition(capeItem);
-		short[] slots = cape.getColorToReplaceWith();
-		if (slots != null && slots.length > 0)
+		originalFrom = cape.getColorToReplace();
+		originalTo = cape.getColorToReplaceWith();
+		if (originalFrom != null && originalTo != null && originalTo.length > 0)
 		{
-			overrideColours = gold(slots);
+			definitionFrom = originalFrom;
+			definitionTo = gold(originalTo);
+			log.debug("Cape {} recoloured through its own slots ({} colours)", capeItem, definitionTo.length);
 			prepared = true;
 			return true;
 		}
@@ -211,8 +195,8 @@ class CapeDisplay
 			ItemComposition cape = client.getItemDefinition(capeItem);
 			if (Arrays.equals(cape.getColorToReplaceWith(), definitionTo))
 			{
-				cape.setColorToReplace(null);
-				cape.setColorToReplaceWith(null);
+				cape.setColorToReplace(originalFrom);
+				cape.setColorToReplaceWith(originalTo);
 			}
 		}
 	}
