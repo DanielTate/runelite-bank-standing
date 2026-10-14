@@ -48,9 +48,9 @@ public class BankNamesTest
 	{
 		assertEquals("region-" + ((1000 >> 6) << 8 | (1000 >> 6)), BankNames.keyFor(1000, 1000));
 		BankRecord record = new BankRecord();
-		record.x = 1000;
-		record.y = 1000;
-		assertEquals("Unknown bank (1000, 1000)", BankNames.displayName("region-3855", record));
+		record.x = 2800;
+		record.y = 3460;
+		assertEquals("Bank near Catherby", BankNames.displayName("region-3855", record));
 	}
 
 	@Test
