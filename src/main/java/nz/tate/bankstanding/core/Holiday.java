@@ -38,7 +38,9 @@ public enum Holiday
 	/** Easter Sunday, three days either side. */
 	EASTER,
 	/** RuneScape's birthday week, 20 to 24 February. */
-	BIRTHDAY;
+	BIRTHDAY,
+	/** 6 June, the anniversary of the Falador Massacre. */
+	FALADOR_MASSACRE;
 
 	public boolean isOn(LocalDate d)
 	{
@@ -56,6 +58,8 @@ public enum Holiday
 				return within(d, easter.minusDays(3), easter.plusDays(3));
 			case BIRTHDAY:
 				return within(d, LocalDate.of(year, 2, 20), LocalDate.of(year, 2, 24));
+			case FALADOR_MASSACRE:
+				return d.equals(LocalDate.of(year, 6, 6));
 			default:
 				return false;
 		}

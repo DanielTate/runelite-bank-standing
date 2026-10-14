@@ -105,7 +105,7 @@ public class KeywordsTest
 		{
 			assertTrue(hashes.add(phrase.hash));
 		}
-		assertEquals(37, hashes.size());
+		assertEquals(64, hashes.size());
 	}
 
 	@Test

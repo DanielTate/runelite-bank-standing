@@ -51,14 +51,14 @@ public final class Keywords
 
 	/**
 	 * One phrase: its hash, the holiday it needs (or null), the banks it works at (or any) and
-	 * an item that must be worn (or 0).
+	 * items one of which must be worn (or none).
 	 */
 	public static final class Phrase
 	{
 		final String hash;
 		final Holiday holiday;
 		final Set<String> banks;
-		int item;
+		Set<Integer> items = Collections.emptySet();
 
 		Phrase(String hash, Holiday holiday, String... banks)
 		{
@@ -69,7 +69,13 @@ public final class Keywords
 
 		Phrase wearing(int itemId)
 		{
-			item = itemId;
+			return wearing(Collections.singleton(itemId));
+		}
+
+		/** Works while wearing any one of these. */
+		Phrase wearing(Set<Integer> itemIds)
+		{
+			items = itemIds;
 			return this;
 		}
 
@@ -77,7 +83,7 @@ public final class Keywords
 		{
 			return (holiday == null || holiday.isOn(today))
 				&& (banks.isEmpty() || banks.contains(bankKey))
-				&& (item == 0 || worn.contains(item));
+				&& (items.isEmpty() || items.stream().anyMatch(worn::contains));
 		}
 	}
 
@@ -118,7 +124,34 @@ public final class Keywords
 		phrase("6df044d1db7a19d6be624522a9d1fe5f64b30fab753653c638239eb6e7d74a5f", null).wearing(20226),
 		phrase("ea83ea768ce98829e7b63f0ed5fa943e33fd817edb6e1edb0d1c70cc1f2747dd", null).wearing(20229),
 		phrase("9960b6e4a7f69bf19af8696187d742730fb623654f2de72d52544661764a15d5", null).wearing(20232),
-		phrase("8bcda4597a0c3eb5ce3d68398e5efd6ba0947202827c02a2d55f5acec33169f0", null).wearing(20235)
+		phrase("8bcda4597a0c3eb5ce3d68398e5efd6ba0947202827c02a2d55f5acec33169f0", null).wearing(20235),
+		phrase("179c7af78a9f76e8e88bb78bceee38b97f09638af3aac4ee7153f13542f7ca17", null, "emirs-arena"),
+		phrase("8ec5fe51a033ee4d54485176fae4127eb4fc529cefd6cd3ef02c8e51567f418a", null, "varrock-west"),
+		phrase("a2e2b8d40cff52ff850240516883a9c54b96f43db6dde9b348de8f3b4519db0b", null, "al-kharid"),
+		phrase("96ecfbb4e884f6dddf4bf99ac9ad5b5594f2c4a3baa884642772079976d278b9", null, "barbarian-outpost"),
+		phrase("f8ddc232597a0ebdff26558479b02ca3228333188b34af736f17709ad7780831", null, "motherlode"),
+		phrase("5a9f55a99b6eb91e923325fdb1c72d9c2262259214a09a30e822c74a14845662", null, "warriors-guild"),
+		phrase("779c14e0107a88268492094728daeb4ed2775ef1719c7438907c260f543511f8", null, "ge"),
+		phrase("19e87ac01e491238d2016f222af2aa6f9db27ed66ed7644a116bedda25caa3a1", null, "chambers-of-xeric", "quidamortem"),
+		phrase("dc46e45ff7ccb2ad7714c4f915eb9d955022df684c7f1ee4e9fe89ac4bfc82bf", null, "chambers-of-xeric", "quidamortem"),
+		phrase("ddb98e95e5a47eb9b1d41d14ea91b9ae7dc0e932e5692be9f1edffb2b6b664cd", null, "ver-sinhaza"),
+		phrase("6ce941d72f8e833e2079369d6600b9fff05833f816290423c3e48d3bbfec7809", null, "ver-sinhaza"),
+		phrase("850e714a3448c52c59a8bdb45bd179037693d9986520235797c494c10991daa7", null, "tombs-of-amascut"),
+		phrase("f13ae54eea13e0e253f5f348da9a5664bab1a44dd06b838aa219f4d94e1b044b", null, "tombs-of-amascut"),
+		phrase("ca904fb5586f1ddc8d04fff3af828406901c012a67db2570fc28521e55c435f1", null, "nex"),
+		phrase("b26b0db49a4aa305caccede90cf130d0f9b7f2a0cfa8a3a55d1a6e3365c49fc5", null, "mor-ul-rek"),
+		phrase("a663942136c915e44f6124caeb456b4ab962a95c44f306f9f58ade4e073c1ef1", null, "colosseum"),
+		phrase("99e3a9deff78b72552ef595147e906cedfb776227da22e0e1684ec72653b98d5", null, "mount-karuulm"),
+		phrase("e3e02e2377cc3955ac2c849cf5929fbafdd70de00c9a8f0d53d30230a7529e36", null, "gauntlet"),
+		phrase("06a68e00656bf8952ff8bc8b6f4126405597f82bfc51990a38add85449908529", null, "zul-andra"),
+		phrase("0d953af17326894f280fa5eb38d18646e163a676a45327c0d8a00b7d20a4b1e7", null).wearing(Items.PARTYHATS),
+		phrase("db2fa77eecd113939abf4fc8dcadeabe7dfd3832b7ac26ab09d5f72983f4a1fc", null).wearing(Items.RING_OF_WEALTH),
+		phrase("7592dd9d37397223258aaa0f39dc4e438b8842507cccfc35d7d5d9e3d64e73c2", null, "draynor").wearing(Items.FAKE_BEARD),
+		phrase("66ca12f2ac9b12bb0efd21c07567aedd8b2d044b39a159f51c79c5f1e5977955", null).wearing(Items.CABBAGE),
+		phrase("82f0f54adfac04445a83131e1264c0069d421852669c747642741d8b118c52a6", Holiday.CHRISTMAS),
+		phrase("fbe48d6dbdbf043b98c23d3e75a8e6aa34499d5a6aabaef155a308637a9a01c9", Holiday.HALLOWEEN),
+		phrase("760a6b0373e1cf4cc69ebc8f1f638db9e7077f40311c2672f5ee18db7d86f59a", Holiday.NEW_YEAR),
+		phrase("3204353185e09be163269cd65f3cef13a5639663e7db3f9c5d08e020ea731d47", Holiday.FALADOR_MASSACRE, "falador-east", "falador-west")
 	));
 
 	private final List<Phrase> phrases;
