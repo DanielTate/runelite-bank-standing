@@ -28,7 +28,7 @@ package nz.tate.bankstanding.core;
  * Decides, tick by tick, whether the player is bank standing and when to roll a drop.
  *
  * <p>A stand begins once the player has been within range of a bank, without moving or
- * using the bank, for {@link #START_DELAY_TICKS}. From then on a drop is rolled every
+ * using the bank, for the start delay ({@link #START_DELAY_TICKS} until levels shorten it). From then on a drop is rolled every
  * {@link XpRoller#ROLL_INTERVAL_TICKS}. Walking, using the bank, leaving range or gaining
  * real XP ends the stand and the delay starts again from zero. Chatting, emotes, camera and
  * tab use never reach this class, so they never interrupt a stand.
@@ -38,7 +38,10 @@ public final class StandTracker
 	/** 30 seconds of standing still before the first drop. */
 	public static final int START_DELAY_TICKS = 50;
 
+	private int startDelayTicks = START_DELAY_TICKS;
+	private int peekTicks;
 	private int idleTicks;
+	private int bankTicks;
 	private boolean hasPosition;
 	private int lastX;
 	private int lastY;
@@ -62,14 +65,25 @@ public final class StandTracker
 		lastY = y;
 		lastPlane = plane;
 
-		if (moved || !nearBank || usingBank)
+		if (moved || !nearBank)
 		{
 			idleTicks = 0;
+			bankTicks = 0;
 			return false;
 		}
+		if (usingBank)
+		{
+			// Quick peek: a short look in the bank pauses the stand instead of ending it.
+			if (++bankTicks > peekTicks)
+			{
+				idleTicks = 0;
+			}
+			return false;
+		}
+		bankTicks = 0;
 
 		idleTicks++;
-		int standing = idleTicks - START_DELAY_TICKS;
+		int standing = idleTicks - startDelayTicks;
 		return standing > 0 && standing % XpRoller.ROLL_INTERVAL_TICKS == 0;
 	}
 
@@ -79,16 +93,24 @@ public final class StandTracker
 		idleTicks = 0;
 	}
 
+	/** Sets the level unlocks: the start delay and how long the bank may be open. */
+	public void setUnlocks(int startDelayTicks, int peekTicks)
+	{
+		this.startDelayTicks = startDelayTicks;
+		this.peekTicks = peekTicks;
+	}
+
 	/** Logging out, hopping or loading a new area ends the stand and forgets the position. */
 	public void reset()
 	{
 		idleTicks = 0;
+		bankTicks = 0;
 		hasPosition = false;
 	}
 
 	/** True once the start delay has passed and drops are being rolled. */
 	public boolean isStanding()
 	{
-		return idleTicks > START_DELAY_TICKS;
+		return idleTicks > startDelayTicks;
 	}
 }

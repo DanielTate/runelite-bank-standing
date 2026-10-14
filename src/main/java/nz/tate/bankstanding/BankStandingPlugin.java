@@ -125,6 +125,9 @@ public class BankStandingPlugin extends Plugin
 	private SkillGuideOverlay skillGuideOverlay;
 
 	@Inject
+	private StandCosmetics cosmetics;
+
+	@Inject
 	private MouseManager mouseManager;
 
 	@Inject
@@ -204,10 +207,11 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.add(skillTileOverlay);
 		overlayManager.add(skillGuideOverlay);
 		mouseManager.registerMouseListener(skillGuideOverlay.mouse);
+		mouseManager.registerMouseWheelListener(skillGuideOverlay.wheel);
 		overlayManager.add(xpDropOverlay);
 		overlayManager.add(hitsplatOverlay);
 
-		panel = new BankStandingPanel(icons);
+		panel = new BankStandingPanel(icons, this::capeEmote);
 		navButton = NavigationButton.builder()
 			.tooltip("Bank Standing")
 			.icon(icons.small())
@@ -246,9 +250,14 @@ public class BankStandingPlugin extends Plugin
 	{
 		save();
 		int realCape = wornCape;
-		clientThread.invoke(() -> capeDisplay.restore(realCape));
+		clientThread.invoke(() ->
+		{
+			capeDisplay.restore(realCape);
+			cosmetics.clear();
+		});
 		overlayManager.remove(skillTileOverlay);
 		mouseManager.unregisterMouseListener(skillGuideOverlay.mouse);
+		mouseManager.unregisterMouseWheelListener(skillGuideOverlay.wheel);
 		overlayManager.remove(skillGuideOverlay);
 		skillGuideOverlay.close();
 		overlayManager.remove(xpDropOverlay);
@@ -279,6 +288,7 @@ public class BankStandingPlugin extends Plugin
 		if (state == GameState.LOADING)
 		{
 			bankLocator.clear();
+			cosmetics.clear();
 		}
 		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING)
 		{
@@ -287,6 +297,7 @@ public class BankStandingPlugin extends Plugin
 			realXp.clear();
 			progress = null;
 			capeDisplay.forget();
+			cosmetics.clear();
 			BankStandingPanel shown = panel;
 			SwingUtilities.invokeLater(shown::showLoggedOut);
 		}
@@ -358,7 +369,12 @@ public class BankStandingPlugin extends Plugin
 		{
 			return;
 		}
-		Emote started = Emote.fromAnimation(event.getActor().getAnimation());
+		int animation = event.getActor().getAnimation();
+		if (cosmetics.isOwnAnimation(animation))
+		{
+			return;
+		}
+		Emote started = Emote.fromAnimation(animation);
 		if (started != Emote.NONE)
 		{
 			emote = started;
@@ -424,12 +440,17 @@ public class BankStandingPlugin extends Plugin
 		}
 
 		WorldPoint location = player.getWorldLocation();
+		int currentLevel = progress.level();
+		tracker.setUnlocks(Unlocks.startDelayTicks(currentLevel), Unlocks.peekTicks(currentLevel));
 		boolean roll = tracker.tick(location.getX(), location.getY(), location.getPlane(),
-			bankLocator.isNearBank(location, Unlocks.bankRange(progress.level())), isUsingBank());
+			bankLocator.isNearBank(location, Unlocks.bankRange(currentLevel)), isUsingBank());
 
-		// The cape is only worn while bank standing; the dev preview shows it anywhere.
+		// The cape and the other unlocks only show while bank standing; the dev options show
+		// them anywhere.
+		boolean standing = tracker.isStanding() || dev.pretendStanding;
+		cosmetics.tick(standing, currentLevel, config);
 		if (dev.previewCape
-			|| config.showCape() && progress.level() >= Experience.MAX_LEVEL && tracker.isStanding())
+			|| config.showCape() && currentLevel >= Experience.MAX_LEVEL && standing)
 		{
 			capeDisplay.apply();
 		}
@@ -543,6 +564,18 @@ public class BankStandingPlugin extends Plugin
 			store.save(progress);
 			dirty = false;
 		}
+	}
+
+	/** The 99 cape emote, from the side panel. Called on the Swing thread. */
+	void capeEmote()
+	{
+		clientThread.invoke(() ->
+		{
+			if (progress != null && (progress.level() >= Experience.MAX_LEVEL || dev.developerMode))
+			{
+				cosmetics.capeEmote();
+			}
+		});
 	}
 
 	// Dev panel actions. Called on the Swing thread; game work is moved to the client thread.

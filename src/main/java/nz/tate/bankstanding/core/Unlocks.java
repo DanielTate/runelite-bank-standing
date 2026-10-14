@@ -29,19 +29,133 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * What each level unlocks, for the skill guide. The main unlock is reach: how far from a bank
- * you can stand and still be bank standing.
+ * Everything a level unlocks, and the skill guide that lists it. Unlocks only change Bank
+ * Standing itself and how it looks to you; none of them touch the hidden bonuses.
  */
 public final class Unlocks
 {
-	/** One tile at level 1, then one more every ten levels from 20 to 80, and 9 at 99. */
+	public static final int MAX = Experience.MAX_LEVEL;
+	public static final int FIDGETS = 25;
+	public static final int BANKERS = 30;
+	public static final int QUICK_PEEK = 65;
+	/** How long the bank can stay open without ending a stand, once Quick peek is unlocked. */
+	public static final int PEEK_TICKS = 17;
+
+	/** The rug laid out under you while you stand. */
+	public enum Rug
+	{
+		NONE(0, ""),
+		WORN(10, "A worn rug to stand on"),
+		BLUE(40, "A blue rug"),
+		RED(70, "A red carpet"),
+		GOLD(MAX, "A gold carpet");
+
+		public final int level;
+		public final String text;
+
+		Rug(int level, String text)
+		{
+			this.level = level;
+			this.text = text;
+		}
+	}
+
+	/** What you sit on while you stand. */
+	public enum Seat
+	{
+		NONE(0, ""),
+		STOOL(60, "A stool to sit on"),
+		THRONE(MAX, "A gilded throne");
+
+		public final int level;
+		public final String text;
+
+		Seat(int level, String text)
+		{
+			this.level = level;
+			this.text = text;
+		}
+	}
+
+	private static final int[][] START_DELAY = {{1, 50}, {15, 42}, {45, 33}, {75, 25}, {MAX, 17}};
+	private static final String[][] TITLES = {
+		{"1", "Loiterer"}, {"15", "Regular"}, {"35", "Fixture"}, {"55", "Furniture"},
+		{"75", "Part of the Bank"}, {"99", "Bank Standing Master"},
+	};
+
+	private Unlocks()
+	{
+	}
+
+	/** Tiles from a bank: 1 at level 1, then one more every ten levels from 20 to 80, and 9 at 99. */
 	public static int bankRange(int level)
 	{
-		if (level >= Experience.MAX_LEVEL)
+		if (level >= MAX)
 		{
 			return 9;
 		}
 		return Math.max(1, Math.min(8, level / 10));
+	}
+
+	/** Ticks of standing still before the first drop: 30 seconds, down to 10 at 99. */
+	public static int startDelayTicks(int level)
+	{
+		int ticks = START_DELAY[0][1];
+		for (int[] step : START_DELAY)
+		{
+			if (level >= step[0])
+			{
+				ticks = step[1];
+			}
+		}
+		return ticks;
+	}
+
+	/** Ticks the bank can be open without ending a stand; 0 before Quick peek. */
+	public static int peekTicks(int level)
+	{
+		return level >= QUICK_PEEK ? PEEK_TICKS : 0;
+	}
+
+	public static Rug rug(int level)
+	{
+		Rug best = Rug.NONE;
+		for (Rug rug : Rug.values())
+		{
+			if (level >= rug.level)
+			{
+				best = rug;
+			}
+		}
+		return best;
+	}
+
+	public static Seat seat(int level)
+	{
+		return level >= MAX ? Seat.THRONE : level >= Seat.STOOL.level ? Seat.STOOL : Seat.NONE;
+	}
+
+	public static boolean fidgets(int level)
+	{
+		return level >= FIDGETS;
+	}
+
+	public static boolean bankersNotice(int level)
+	{
+		return level >= BANKERS;
+	}
+
+	public static String title(int level)
+	{
+		String title = TITLES[0][1];
+		for (String[] step : TITLES)
+		{
+			if (level >= Integer.parseInt(step[0]))
+			{
+				title = step[1];
+			}
+		}
+		return title;
 	}
 
 	/** One line of the skill guide. */
@@ -57,23 +171,56 @@ public final class Unlocks
 		}
 	}
 
+	/** The skill guide, in level order. */
 	public static final List<Unlock> ALL;
 
 	static
 	{
 		List<Unlock> all = new ArrayList<>();
-		all.add(new Unlock(1, "Bank stand within 1 tile of a bank"));
-		for (int level = 20; level <= 80; level += 10)
+		for (int level = 1; level <= MAX; level++)
 		{
-			all.add(new Unlock(level, "Bank stand within " + bankRange(level) + " tiles"));
+			if (level == 1 || bankRange(level) > bankRange(level - 1))
+			{
+				all.add(new Unlock(level, "Bank stand within " + bankRange(level) + (level == 1 ? " tile" : " tiles")));
+			}
+			if (level > 1 && startDelayTicks(level) < startDelayTicks(level - 1))
+			{
+				all.add(new Unlock(level, "XP starts after " + Math.round(startDelayTicks(level) * 0.6) + " seconds"));
+			}
+			for (Rug rug : Rug.values())
+			{
+				if (rug != Rug.NONE && rug.level == level)
+				{
+					all.add(new Unlock(level, rug.text));
+				}
+			}
+			for (Seat seat : Seat.values())
+			{
+				if (seat != Seat.NONE && seat.level == level)
+				{
+					all.add(new Unlock(level, seat.text));
+				}
+			}
+			if (level == FIDGETS)
+			{
+				all.add(new Unlock(level, "You fidget while you wait"));
+			}
+			if (level == BANKERS)
+			{
+				all.add(new Unlock(level, "Bankers notice you"));
+			}
+			if (level == QUICK_PEEK)
+			{
+				all.add(new Unlock(level, "Quick peek: open the bank for 10 seconds"));
+			}
+			if (level > 1 && !title(level).equals(title(level - 1)))
+			{
+				all.add(new Unlock(level, "Title: " + title(level)));
+			}
 		}
-		all.add(new Unlock(Experience.MAX_LEVEL, "Bank stand within " + bankRange(Experience.MAX_LEVEL) + " tiles"));
-		all.add(new Unlock(Experience.MAX_LEVEL, "Bank Standing cape, worn while you stand"));
+		all.add(new Unlock(MAX, "Bank Standing cape, worn while you stand"));
+		all.add(new Unlock(MAX, "Cape emote"));
 		ALL = Collections.unmodifiableList(all);
-	}
-
-	private Unlocks()
-	{
 	}
 
 	/** The next level that unlocks something, or -1 at 99. */

@@ -12,7 +12,7 @@ prove it.
 
 - Stand next to any bank: booths, chests, deposit boxes, bankers. As you level up you can
   stand further away, up to 9 tiles at 99.
-- Stay idle for 30 seconds and XP starts dropping.
+- Stay idle for 30 seconds and XP starts dropping. Higher levels start sooner.
 - Walk, use the bank, or gain XP in any real skill and your stand ends. The timer starts
   again from zero.
 - Chatting, looking around and checking your tabs are all fine. Bank standing is a social
@@ -27,8 +27,10 @@ The game's own logout timer still applies, so you will need to stay at your keyb
 - XP drops and level-up messages, just like a real skill
 - A side panel with your level, XP, XP per hour, session and daily standing time, and how
   long you've spent at each bank
-- A cape at 99 that you wear while bank standing, and XP that keeps counting past it all
-  the way to 200m
+- Unlocks as you level: a rug to stand on, a seat, titles, idle fidgets, bankers who
+  notice you, a quick look in the bank that doesn't end your stand, and at 99 a cape and a
+  cape emote. They're only visible to you, and each one can be turned off in the settings.
+- XP that keeps counting past 99, all the way to 200m
 
 Progress is saved separately for each of your accounts.
 
@@ -39,7 +41,7 @@ Progress is saved separately for each of your accounts.
 ```
 
 `./gradlew run` starts a development client. It adds a **Bank Standing (dev)** sidebar
-panel for previewing hitsplats, effects and the cape and for setting your level, and takes a
+panel for previewing hitsplats, effects, the cape and the standing unlocks, and for setting your level, and takes a
 few testing options. None of this works outside developer mode:
 
 | Option | Effect |

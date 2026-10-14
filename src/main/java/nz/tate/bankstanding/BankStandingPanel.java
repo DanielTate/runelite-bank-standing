@@ -29,6 +29,7 @@ import java.awt.Color;
 import java.awt.GridLayout;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
@@ -36,6 +37,7 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.ProgressBar;
+import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.StatsView;
 
 /**
@@ -46,7 +48,11 @@ class BankStandingPanel extends PluginPanel
 {
 	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor and Zerek.";
 
+	private static final Color GOLD = new Color(214, 176, 48);
+
 	private final JLabel status = new JLabel();
+	private final JLabel title = new JLabel();
+	private final JButton capeEmote = new JButton("Cape emote");
 	private final JPanel stats = new JPanel(new GridLayout(0, 2, 0, 4));
 	private final JLabel level = value();
 	private final JLabel totalXp = value();
@@ -59,7 +65,7 @@ class BankStandingPanel extends PluginPanel
 	private final ProgressBar progressBar = new ProgressBar();
 	private final JPanel bankRows = new JPanel();
 
-	BankStandingPanel(Icons icons)
+	BankStandingPanel(Icons icons, Runnable onCapeEmote)
 	{
 		setLayout(new BorderLayout(0, 10));
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -70,11 +76,19 @@ class BankStandingPanel extends PluginPanel
 		JPanel top = new JPanel(new BorderLayout(0, 8));
 		top.setOpaque(false);
 
-		JLabel title = new JLabel("Bank Standing", new ImageIcon(icons.full()), JLabel.LEFT);
-		title.setFont(FontManager.getRunescapeBoldFont());
-		title.setForeground(Color.WHITE);
-		title.setIconTextGap(6);
-		top.add(title, BorderLayout.NORTH);
+		JLabel name = new JLabel("Bank Standing", new ImageIcon(icons.full()), JLabel.LEFT);
+		name.setFont(FontManager.getRunescapeBoldFont());
+		name.setForeground(Color.WHITE);
+		name.setIconTextGap(6);
+		title.setForeground(GOLD);
+		capeEmote.setFocusPainted(false);
+		capeEmote.addActionListener(e -> onCapeEmote.run());
+		JPanel heading = new JPanel(new BorderLayout(0, 2));
+		heading.setOpaque(false);
+		heading.add(name, BorderLayout.NORTH);
+		heading.add(title, BorderLayout.CENTER);
+		heading.add(capeEmote, BorderLayout.SOUTH);
+		top.add(heading, BorderLayout.NORTH);
 
 		stats.setOpaque(false);
 		stats.add(name("Level"));
@@ -90,7 +104,7 @@ class BankStandingPanel extends PluginPanel
 		middle.add(status, BorderLayout.SOUTH);
 		top.add(middle, BorderLayout.CENTER);
 
-		progressBar.setForeground(new Color(214, 176, 48));
+		progressBar.setForeground(GOLD);
 		top.add(progressBar, BorderLayout.SOUTH);
 
 		JPanel sessionStats = new JPanel(new GridLayout(0, 2, 0, 4));
@@ -133,6 +147,8 @@ class BankStandingPanel extends PluginPanel
 	{
 		status.setText("Log in to see your progress.");
 		status.setVisible(true);
+		title.setVisible(false);
+		capeEmote.setVisible(false);
 		stats.setVisible(false);
 		sessionSection.setVisible(false);
 		progressBar.setValue(0);
@@ -146,6 +162,9 @@ class BankStandingPanel extends PluginPanel
 	void show(StatsView view)
 	{
 		status.setVisible(false);
+		title.setText(view.title);
+		title.setVisible(true);
+		capeEmote.setVisible(view.level >= Experience.MAX_LEVEL);
 		stats.setVisible(true);
 		sessionSection.setVisible(true);
 		sessionXp.setText(view.sessionXp);

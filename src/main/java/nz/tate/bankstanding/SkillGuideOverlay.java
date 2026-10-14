@@ -36,6 +36,7 @@ import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
 import net.runelite.client.input.MouseAdapter;
+import net.runelite.client.input.MouseWheelListener;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -45,7 +46,7 @@ import nz.tate.bankstanding.core.Unlocks;
 
 /**
  * The skill guide: click the Bank Standing tile to see what each level unlocks, like clicking
- * a skill in the skills tab. A click anywhere closes it again.
+ * a skill in the skills tab. The mouse wheel scrolls it; a click anywhere closes it again.
  */
 @Singleton
 class SkillGuideOverlay extends Overlay
@@ -62,12 +63,19 @@ class SkillGuideOverlay extends Overlay
 	private static final Color REACHED = new Color(255, 255, 0);
 	private static final Color REACHED_TEXT = new Color(255, 152, 31);
 	private static final Color LOCKED = new Color(140, 128, 110);
+	private static final Color SCROLL_TRACK = new Color(40, 34, 26);
+	private static final Color SCROLL_THUMB = new Color(120, 104, 80);
+	/** Space left above and below the guide inside the game view. */
+	private static final int MARGIN = 8;
 
 	private final BankStandingPlugin plugin;
 	private final Client client;
 	private final SkillTileOverlay tile;
 	private final BufferedImage icon;
 	private volatile boolean open;
+	/** The first row shown. */
+	private volatile int scroll;
+	private volatile int visibleRows = Unlocks.ALL.size();
 	private volatile Rectangle drawn = new Rectangle();
 	/** Set when a press was ours, so the release and click don't reach the game either. */
 	private boolean swallowing;
@@ -87,6 +95,10 @@ class SkillGuideOverlay extends Overlay
 			if (onTile)
 			{
 				open = !open;
+				if (open)
+				{
+					scrollToNext(plugin.getProgress().level());
+				}
 			}
 			else if (open)
 			{
@@ -122,6 +134,16 @@ class SkillGuideOverlay extends Overlay
 		}
 	};
 
+	final MouseWheelListener wheel = event ->
+	{
+		if (open && drawn.contains(event.getPoint()))
+		{
+			scrollBy(event.getWheelRotation());
+			event.consume();
+		}
+		return event;
+	};
+
 	@Inject
 	SkillGuideOverlay(BankStandingPlugin plugin, Client client, SkillTileOverlay tile, Icons icons)
 	{
@@ -138,6 +160,24 @@ class SkillGuideOverlay extends Overlay
 		open = false;
 	}
 
+	/** Opens a couple of rows above the next thing to unlock. */
+	private void scrollToNext(int level)
+	{
+		int row = 0;
+		while (row < Unlocks.ALL.size() && Unlocks.ALL.get(row).level <= level)
+		{
+			row++;
+		}
+		scroll = 0;
+		scrollBy(row - 2);
+	}
+
+	private void scrollBy(int rows)
+	{
+		int max = Math.max(0, Unlocks.ALL.size() - visibleRows);
+		scroll = Math.max(0, Math.min(max, scroll + rows));
+	}
+
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
@@ -148,7 +188,11 @@ class SkillGuideOverlay extends Overlay
 		}
 		int level = progress.level();
 
-		int height = TOP + Unlocks.ALL.size() * ROW + PAD;
+		int fit = (client.getViewportHeight() - 2 * MARGIN - TOP - PAD) / ROW;
+		visibleRows = Math.max(1, Math.min(Unlocks.ALL.size(), fit));
+		scrollBy(0);
+		int first = scroll;
+		int height = TOP + visibleRows * ROW + PAD;
 		int x = client.getViewportXOffset() + (client.getViewportWidth() - WIDTH) / 2;
 		int y = client.getViewportYOffset() + Math.max(0, (client.getViewportHeight() - height) / 2);
 		drawn = new Rectangle(x, y, WIDTH, height);
@@ -173,13 +217,13 @@ class SkillGuideOverlay extends Overlay
 		graphics.setFont(FontManager.getRunescapeFont());
 		metrics = graphics.getFontMetrics();
 		int rowY = y + TOP;
-		for (int i = 0; i < Unlocks.ALL.size(); i++)
+		for (int i = first; i < first + visibleRows; i++)
 		{
 			Unlocks.Unlock unlock = Unlocks.ALL.get(i);
 			if (i % 2 == 0)
 			{
 				graphics.setColor(ROW_FACE);
-				graphics.fillRect(x + PAD - 4, rowY, WIDTH - 2 * (PAD - 4), ROW);
+				graphics.fillRect(x + PAD - 4, rowY, WIDTH - 2 * (PAD - 4) - 6, ROW);
 			}
 			boolean reached = level >= unlock.level;
 			int baseline = rowY + (ROW + metrics.getAscent() - metrics.getDescent()) / 2;
@@ -187,6 +231,19 @@ class SkillGuideOverlay extends Overlay
 			shadowed(graphics, number, x + PAD + 22 - metrics.stringWidth(number), baseline, reached ? REACHED : LOCKED);
 			shadowed(graphics, unlock.text, x + PAD + 34, baseline, reached ? REACHED_TEXT : LOCKED);
 			rowY += ROW;
+		}
+
+		if (visibleRows < Unlocks.ALL.size())
+		{
+			int trackX = x + WIDTH - 7;
+			int trackY = y + TOP;
+			int trackHeight = visibleRows * ROW;
+			int thumbHeight = Math.max(12, trackHeight * visibleRows / Unlocks.ALL.size());
+			int thumbY = trackY + (trackHeight - thumbHeight) * first / (Unlocks.ALL.size() - visibleRows);
+			graphics.setColor(SCROLL_TRACK);
+			graphics.fillRect(trackX, trackY, 4, trackHeight);
+			graphics.setColor(SCROLL_THUMB);
+			graphics.fillRect(trackX, thumbY, 4, thumbHeight);
 		}
 		return new Dimension(WIDTH, height);
 	}

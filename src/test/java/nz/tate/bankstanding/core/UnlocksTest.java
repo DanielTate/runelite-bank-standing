@@ -25,6 +25,7 @@
 package nz.tate.bankstanding.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class UnlocksTest
@@ -56,9 +57,44 @@ public class UnlocksTest
 	@Test
 	public void nextUnlock()
 	{
-		assertEquals(20, Unlocks.nextUnlockLevel(1));
-		assertEquals(30, Unlocks.nextUnlockLevel(20));
+		assertEquals(10, Unlocks.nextUnlockLevel(1));
+		assertEquals(15, Unlocks.nextUnlockLevel(10));
 		assertEquals(99, Unlocks.nextUnlockLevel(80));
 		assertEquals(-1, Unlocks.nextUnlockLevel(99));
+	}
+
+	@Test
+	public void startDelayShortens()
+	{
+		assertEquals(StandTracker.START_DELAY_TICKS, Unlocks.startDelayTicks(1));
+		assertEquals(42, Unlocks.startDelayTicks(15));
+		assertEquals(17, Unlocks.startDelayTicks(99));
+	}
+
+	@Test
+	public void cosmeticsByLevel()
+	{
+		assertEquals(Unlocks.Rug.NONE, Unlocks.rug(9));
+		assertEquals(Unlocks.Rug.WORN, Unlocks.rug(10));
+		assertEquals(Unlocks.Rug.RED, Unlocks.rug(98));
+		assertEquals(Unlocks.Rug.GOLD, Unlocks.rug(99));
+		assertEquals(Unlocks.Seat.NONE, Unlocks.seat(59));
+		assertEquals(Unlocks.Seat.STOOL, Unlocks.seat(60));
+		assertEquals(Unlocks.Seat.THRONE, Unlocks.seat(99));
+		assertEquals("Loiterer", Unlocks.title(1));
+		assertEquals("Bank Standing Master", Unlocks.title(99));
+		assertEquals(0, Unlocks.peekTicks(64));
+		assertEquals(Unlocks.PEEK_TICKS, Unlocks.peekTicks(65));
+	}
+
+	@Test
+	public void guideIsInLevelOrder()
+	{
+		int last = 0;
+		for (Unlocks.Unlock unlock : Unlocks.ALL)
+		{
+			assertTrue(unlock.level >= last);
+			last = unlock.level;
+		}
 	}
 }

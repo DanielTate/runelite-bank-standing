@@ -76,6 +76,34 @@ public class StandTrackerTest
 	}
 
 	@Test
+	public void quickPeekPausesTheStand()
+	{
+		tracker.setUnlocks(StandTracker.START_DELAY_TICKS, Unlocks.PEEK_TICKS);
+		stand(60);
+		for (int i = 0; i < Unlocks.PEEK_TICKS; i++)
+		{
+			assertFalse(tracker.tick(3185, 3436, 0, true, true));
+			assertTrue(tracker.isStanding());
+		}
+		stand(1);
+		assertTrue(tracker.isStanding());
+
+		for (int i = 0; i <= Unlocks.PEEK_TICKS; i++)
+		{
+			tracker.tick(3185, 3436, 0, true, true);
+		}
+		assertFalse(tracker.isStanding());
+	}
+
+	@Test
+	public void higherLevelsStartSooner()
+	{
+		tracker.setUnlocks(Unlocks.startDelayTicks(99), 0);
+		assertEquals(0, stand(Unlocks.startDelayTicks(99)));
+		assertTrue(stand(XpRoller.ROLL_INTERVAL_TICKS) == 1);
+	}
+
+	@Test
 	public void leavingRangeRestartsTheDelay()
 	{
 		stand(60);

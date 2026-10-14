@@ -42,4 +42,44 @@ public interface BankStandingConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+		keyName = "showRug",
+		name = "Show rug",
+		description = "From level 10, stand on a rug while you bank stand. Only you can see it."
+	)
+	default boolean showRug()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showSeat",
+		name = "Show seat",
+		description = "From level 60, sit while you bank stand. Only you can see it."
+	)
+	default boolean showSeat()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "fidgets",
+		name = "Fidget",
+		description = "From level 25, your character fidgets now and then while you bank stand."
+	)
+	default boolean fidgets()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "bankerChat",
+		name = "Bankers talk",
+		description = "From level 30, nearby bankers say something now and then while you bank stand."
+	)
+	default boolean bankerChat()
+	{
+		return true;
+	}
 }

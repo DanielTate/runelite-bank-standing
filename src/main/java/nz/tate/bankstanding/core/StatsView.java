@@ -51,6 +51,8 @@ public final class StatsView
 	}
 
 	public final int level;
+	/** The title for this level, like "Regular". */
+	public final String title;
 	public final String totalXp;
 	public final String toNextLevel;
 	/** Percent through the current level, 0 to 100. */
@@ -70,6 +72,7 @@ public final class StatsView
 		todayTime = duration(today.equals(progress.todayDate) ? progress.todayTicks : 0);
 
 		level = progress.level();
+		title = Unlocks.title(level);
 		totalXp = number(progress.xp);
 		if (level >= Experience.MAX_LEVEL)
 		{

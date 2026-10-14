@@ -77,13 +77,20 @@ class DevPanel extends PluginPanel
 		body.add(heading("Effects"));
 		body.add(buttons(
 			button("Level-up fireworks", plugin::devFireworks),
-			button("99 celebration", plugin::devCelebrate)));
+			button("99 celebration", plugin::devCelebrate),
+			button("Cape emote", plugin::capeEmote)));
 
 		body.add(heading("Cape"));
 		JCheckBox cape = new JCheckBox("Show the 99 cape at any level", dev.previewCape);
 		cape.setOpaque(false);
 		cape.addActionListener(e -> plugin.devPreviewCape(cape.isSelected()));
 		body.add(cape);
+
+		body.add(heading("Standing unlocks"));
+		JCheckBox pretend = new JCheckBox("Act as if standing (rug, seat, fidgets, bankers)", dev.pretendStanding);
+		pretend.setOpaque(false);
+		pretend.addActionListener(e -> dev.pretendStanding = pretend.isSelected());
+		body.add(pretend);
 
 		body.add(heading("Progress (changes your save)"));
 		JSpinner level = new JSpinner(new SpinnerNumberModel(99, 1, Experience.MAX_LEVEL, 1));
