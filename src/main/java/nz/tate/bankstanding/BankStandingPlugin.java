@@ -154,8 +154,11 @@ public class BankStandingPlugin extends Plugin
 
 	private static final int DEV_XP_MULTIPLIER = Math.max(1, Integer.getInteger("bankstanding.xpMultiplier", 1));
 
-	/** Development only: `./gradlew run -PsetXp=N` overwrites the saved XP on login. Unset for players. */
+	/** Development only: `./gradlew run -PsetXp=N` overwrites the saved XP on the first login. */
 	private static final Integer DEV_SET_XP = Integer.getInteger("bankstanding.setXp");
+	/** Development only: `./gradlew run -PresetProgress` wipes the save on the first login. */
+	private static final boolean DEV_RESET = Boolean.getBoolean("bankstanding.resetProgress");
+	private static boolean devOverridesApplied;
 
 	/**
 	 * Development only: `./gradlew run -PpreviewEffects=3047,1414` plays each spot animation on
@@ -376,11 +379,7 @@ public class BankStandingPlugin extends Plugin
 				return;
 			}
 			progress.renameBanks();
-			if (DEV_SET_XP != null)
-			{
-				progress.xp = Math.max(0, Math.min(Experience.MAX_XP, DEV_SET_XP));
-				store.save(progress);
-			}
+			applyDevOverrides();
 			refreshPanel();
 		}
 
@@ -463,6 +462,24 @@ public class BankStandingPlugin extends Plugin
 		StatsView view = new StatsView(progress);
 		BankStandingPanel shown = panel;
 		SwingUtilities.invokeLater(() -> shown.show(view));
+	}
+
+	private void applyDevOverrides()
+	{
+		if (devOverridesApplied || (!DEV_RESET && DEV_SET_XP == null))
+		{
+			return;
+		}
+		devOverridesApplied = true;
+		if (DEV_RESET)
+		{
+			progress = new Progress();
+		}
+		if (DEV_SET_XP != null)
+		{
+			progress.xp = Math.max(0, Math.min(Experience.MAX_XP, DEV_SET_XP));
+		}
+		store.save(progress);
 	}
 
 	private void previewEffect(Player player)
