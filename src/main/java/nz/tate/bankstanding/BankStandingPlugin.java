@@ -25,11 +25,43 @@
 package nz.tate.bankstanding;
 
 import com.google.inject.Provides;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Random;
+import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.Player;
+import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameObjectDespawned;
+import net.runelite.api.events.GameObjectSpawned;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.client.chat.ChatMessageBuilder;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
+import nz.tate.bankstanding.core.BankNames;
+import nz.tate.bankstanding.core.BankRecord;
+import nz.tate.bankstanding.core.Experience;
+import nz.tate.bankstanding.core.Progress;
+import nz.tate.bankstanding.core.StandTracker;
+import nz.tate.bankstanding.core.XpRoller;
 
+/**
+ * Wires the plugin together: each game tick it asks the stand tracker whether a drop is
+ * due, rolls it, and saves the result against the account and the bank.
+ */
 @Slf4j
 @PluginDescriptor(
 	name = "Bank Standing",
@@ -38,9 +70,181 @@ import net.runelite.client.plugins.PluginDescriptor;
 )
 public class BankStandingPlugin extends Plugin
 {
+	@Inject
+	private Client client;
+
+	@Inject
+	private ChatMessageManager chatMessageManager;
+
+	@Inject
+	private BankLocator bankLocator;
+
+	@Inject
+	private ProgressStore store;
+
+	@Inject
+	private OverlayManager overlayManager;
+
+	@Inject
+	private DropFeed dropFeed;
+
+	@Inject
+	private SkillTileOverlay skillTileOverlay;
+
+	@Inject
+	private XpDropOverlay xpDropOverlay;
+
+	@Inject
+	private HitsplatOverlay hitsplatOverlay;
+
+	private final StandTracker tracker = new StandTracker();
+	private final XpRoller roller = new XpRoller(new Random());
+	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
+
+	private Progress progress;
+
 	@Provides
 	BankStandingConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(BankStandingConfig.class);
+	}
+
+	@Override
+	protected void startUp()
+	{
+		tracker.reset();
+		overlayManager.add(skillTileOverlay);
+		overlayManager.add(xpDropOverlay);
+		overlayManager.add(hitsplatOverlay);
+	}
+
+	@Override
+	protected void shutDown()
+	{
+		overlayManager.remove(skillTileOverlay);
+		overlayManager.remove(xpDropOverlay);
+		overlayManager.remove(hitsplatOverlay);
+		dropFeed.clear();
+		bankLocator.clear();
+		realXp.clear();
+		progress = null;
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		GameState state = event.getGameState();
+		if (state == GameState.LOADING)
+		{
+			bankLocator.clear();
+		}
+		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING)
+		{
+			tracker.reset();
+			realXp.clear();
+			progress = null;
+		}
+	}
+
+	@Subscribe
+	public void onGameObjectSpawned(GameObjectSpawned event)
+	{
+		bankLocator.objectSpawned(event.getGameObject());
+	}
+
+	@Subscribe
+	public void onGameObjectDespawned(GameObjectDespawned event)
+	{
+		bankLocator.objectDespawned(event.getGameObject());
+	}
+
+	@Subscribe
+	public void onStatChanged(StatChanged event)
+	{
+		Integer previous = realXp.put(event.getSkill(), event.getXp());
+		if (previous != null && event.getXp() > previous)
+		{
+			tracker.realXpGained();
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		Player player = client.getLocalPlayer();
+		if (player == null)
+		{
+			return;
+		}
+		if (progress == null)
+		{
+			progress = store.load();
+			if (progress == null)
+			{
+				return;
+			}
+		}
+
+		WorldPoint location = player.getWorldLocation();
+		boolean roll = tracker.tick(location.getX(), location.getY(), location.getPlane(),
+			bankLocator.isNearBank(location), isUsingBank());
+
+		if (!tracker.isStanding())
+		{
+			return;
+		}
+
+		BankRecord bank = progress.bank(BankNames.keyFor(location.getX(), location.getY()),
+			location.getX(), location.getY());
+		bank.ticks++;
+
+		if (roll)
+		{
+			int level = progress.level();
+			int drop = roller.roll(level, 0, 0);
+			award(drop, bank, level);
+			dropFeed.add(drop, drop == XpRoller.maxHit(level, 0));
+		}
+	}
+
+	private void award(int drop, BankRecord bank, int levelBefore)
+	{
+		int before = progress.xp;
+		progress.xp = Experience.addXp(progress.xp, drop);
+		bank.xp += progress.xp - before;
+		store.save(progress);
+
+		int levelAfter = progress.level();
+		if (levelAfter > levelBefore)
+		{
+			announceLevel(levelAfter);
+		}
+	}
+
+	private void announceLevel(int level)
+	{
+		String message = new ChatMessageBuilder()
+			.append("Congratulations, you've just advanced your Bank Standing level. You are now level " + level + ".")
+			.build();
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.GAMEMESSAGE)
+			.runeLiteFormattedMessage(message)
+			.build());
+	}
+
+	private boolean isUsingBank()
+	{
+		return isOpen(InterfaceID.BANKMAIN) || isOpen(InterfaceID.BANK_DEPOSITBOX);
+	}
+
+	private boolean isOpen(int group)
+	{
+		Widget root = client.getWidget(group, 0);
+		return root != null && !root.isHidden();
+	}
+
+	Progress getProgress()
+	{
+		return progress;
 	}
 }
