@@ -48,6 +48,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
@@ -141,6 +142,9 @@ public class BankStandingPlugin extends Plugin
 	private CapeDisplay capeDisplay;
 
 	@Inject
+	private Celebration celebration;
+
+	@Inject
 	private ClientThread clientThread;
 
 	private BankStandingPanel panel;
@@ -178,6 +182,10 @@ public class BankStandingPlugin extends Plugin
 	/** Development only: `./gradlew run -PrareEvery=N` shows every Nth drop with the special splat. */
 	private static final int DEV_RARE_EVERY = Integer.getInteger("bankstanding.rareEvery", 0);
 	private int devDrops;
+
+	/** Development only: `./gradlew run -PcelebrateEvery=N` replays the 99 celebration every N seconds. */
+	private static final int DEV_CELEBRATE_EVERY = Integer.getInteger("bankstanding.celebrateEvery", 0);
+	private long devNextCelebration;
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.HASHES);
 
@@ -238,6 +246,7 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.remove(xpDropOverlay);
 		overlayManager.remove(hitsplatOverlay);
 		dropFeed.clear();
+		celebration.stop();
 		clientToolbar.removeNavigation(navButton);
 		navButton = null;
 		panel = null;
@@ -363,6 +372,18 @@ public class BankStandingPlugin extends Plugin
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
 			drop(roller.keywordRoll(level, effect.bonusHit), bank, level, effect);
 		}
+	}
+
+	@Subscribe
+	public void onClientTick(ClientTick event)
+	{
+		if (DEV_CELEBRATE_EVERY > 0 && !celebration.isRunning() && client.getLocalPlayer() != null
+			&& System.currentTimeMillis() >= devNextCelebration)
+		{
+			devNextCelebration = System.currentTimeMillis() + DEV_CELEBRATE_EVERY * 1000L;
+			celebration.start();
+		}
+		celebration.tick();
 	}
 
 	@Subscribe
@@ -535,10 +556,13 @@ public class BankStandingPlugin extends Plugin
 			.build());
 
 		Player player = client.getLocalPlayer();
-		if (player != null)
+		if (level >= Experience.MAX_LEVEL)
 		{
-			int fireworks = level >= Experience.MAX_LEVEL ? SpotanimID.LEVELUP_99_ANIM : SpotanimID.LEVELUP_ANIM;
-			player.createSpotAnim(FIREWORKS_KEY, fireworks, 0, 0);
+			celebration.start();
+		}
+		else if (player != null)
+		{
+			player.createSpotAnim(FIREWORKS_KEY, SpotanimID.LEVELUP_ANIM, 0, 0);
 		}
 	}
 

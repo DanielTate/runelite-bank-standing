@@ -39,6 +39,9 @@ tasks.register('run', JavaExec) {
 	mainClass = pluginMainClass
 
 	jvmArgs "-ea", "-Dbankstanding.xpMultiplier=${findProperty('xpMultiplier') ?: 1}"
+	if (findProperty('celebrateEvery')) {
+		jvmArgs "-Dbankstanding.celebrateEvery=${findProperty('celebrateEvery')}"
+	}
 	if (findProperty('rareEvery')) {
 		jvmArgs "-Dbankstanding.rareEvery=${findProperty('rareEvery')}"
 	}
