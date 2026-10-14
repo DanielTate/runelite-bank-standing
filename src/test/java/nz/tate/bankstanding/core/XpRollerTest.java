@@ -34,11 +34,14 @@ public class XpRollerTest
 	private final XpRoller roller = new XpRoller(new Random(1));
 
 	@Test
-	public void maxHitRisesFromOneToTwelve()
+	public void maxHitRisesEveryTwoLevelsToFifty()
 	{
 		assertEquals(1, XpRoller.baseMaxHit(1));
-		assertEquals(12, XpRoller.baseMaxHit(99));
-		assertEquals(15, XpRoller.maxHit(99, 7));
+		assertEquals(1, XpRoller.baseMaxHit(2));
+		assertEquals(2, XpRoller.baseMaxHit(3));
+		assertEquals(25, XpRoller.baseMaxHit(50));
+		assertEquals(50, XpRoller.baseMaxHit(99));
+		assertEquals(62, XpRoller.maxHit(99, 7));
 	}
 
 	@Test
@@ -48,10 +51,10 @@ public class XpRollerTest
 		for (int i = 0; i < 200_000; i++)
 		{
 			int xp = roller.roll(99, 0, 0);
-			assertTrue(xp >= 1 && xp <= 12);
+			assertTrue(xp >= 1 && xp <= 50);
 			highest = Math.max(highest, xp);
 		}
-		assertEquals(12, highest);
+		assertEquals(50, highest);
 	}
 
 	@Test
@@ -66,16 +69,16 @@ public class XpRollerTest
 				ones++;
 			}
 		}
-		assertEquals(0.38, ones / (double) n, 0.01);
+		assertEquals(0.072, ones / (double) n, 0.005);
 	}
 
 	@Test
 	public void boostRaisesTheAverageByThatFraction()
 	{
 		double base = average(0);
-		assertEquals(base * 1.05, average(0.05), 0.02);
-		assertEquals(base * 1.10, average(0.10), 0.02);
-		assertEquals("boost is capped", average(0.10), average(0.5), 0.02);
+		assertEquals(base * 1.10, average(0.10), 0.1);
+		assertEquals(base * 1.22, average(0.22), 0.1);
+		assertEquals("boost is capped", average(0.22), average(0.5), 0.1);
 	}
 
 	private double average(double boost)

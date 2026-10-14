@@ -31,16 +31,17 @@ import java.util.Set;
 /**
  * Works out the hidden bonuses for one roll. Nothing here is ever shown to the player.
  *
- * <p>Every modifier is small. "Gear" ones add +1 to the max hit and lift the average a
- * little; the rest only lift the average. All of it together is capped at
- * {@link XpRoller#MAX_BOOST}, so a fully kitted player is only about 10% faster.
+ * <p>Every modifier is small. "Gear" ones raise the max hit and lift the average a little;
+ * the rest only lift the average. All of it together is capped at
+ * {@link XpRoller#MAX_BOOST}, so a fully kitted player is about 22% faster (99 in about 180
+ * days instead of 220).
  */
 public final class Modifiers
 {
-	static final double TINY = 0.005;
-	static final double SMALL = 0.01;
-	static final double MEDIUM = 0.02;
-	static final double GEAR = 0.015;
+	static final double TINY = 0.01;
+	static final double SMALL = 0.02;
+	static final double MEDIUM = 0.045;
+	static final double GEAR = 0.035;
 
 	static final double NEW_SPOT_HOURS = 10;
 	static final int STREAK_CAP_DAYS = 5;

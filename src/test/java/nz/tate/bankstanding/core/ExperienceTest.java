@@ -30,21 +30,21 @@ import org.junit.Test;
 public class ExperienceTest
 {
 	@Test
-	public void matchesTheOsrsTable()
+	public void isTheOsrsTableTimesFive()
 	{
 		assertEquals(0, Experience.xpForLevel(1));
-		assertEquals(83, Experience.xpForLevel(2));
-		assertEquals(101_333, Experience.xpForLevel(50));
-		assertEquals(13_034_431, Experience.xpForLevel(99));
+		assertEquals(83 * 5, Experience.xpForLevel(2));
+		assertEquals(101_333 * 5, Experience.xpForLevel(50));
+		assertEquals(13_034_431 * 5, Experience.xpForLevel(99));
 	}
 
 	@Test
 	public void levelForXpRoundsDown()
 	{
-		assertEquals(1, Experience.levelForXp(82));
-		assertEquals(2, Experience.levelForXp(83));
-		assertEquals(98, Experience.levelForXp(13_034_430));
-		assertEquals(99, Experience.levelForXp(13_034_431));
+		assertEquals(1, Experience.levelForXp(414));
+		assertEquals(2, Experience.levelForXp(415));
+		assertEquals(98, Experience.levelForXp(65_172_154));
+		assertEquals(99, Experience.levelForXp(65_172_155));
 	}
 
 	@Test

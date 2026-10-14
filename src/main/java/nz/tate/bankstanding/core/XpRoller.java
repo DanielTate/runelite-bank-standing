@@ -29,26 +29,29 @@ import java.util.Random;
 /**
  * Rolls one Bank Standing XP drop.
  *
- * <p>Drops run from 1 to the max hit on a geometric curve: each value is {@link #BASE_RATIO}
- * times as likely as the one below it, so 1 XP is the most common drop and a max hit comes
- * up about twice an hour at 99. With one roll every 6 ticks this lands 99 at about 210
- * days of idle time, which {@code BalanceTest} pins.
+ * <p>Drops run from 1 to the max hit, which rises by one every two levels (50 at 99), on a
+ * geometric curve: each value is {@link #BASE_RATIO} times as likely as the one below it, so
+ * small drops are the most common and a max hit comes up a couple of times an hour at 99.
+ * With one roll every 6 ticks and the 5x XP table this lands 99 at about 220 days of idle
+ * time, or about 180 with every bonus, which {@code BalanceTest} pins.
  *
  * <p>Modifiers come in as a {@code boost}: a fraction (capped at {@link #MAX_BOOST}) by which
  * the average roll should rise. The roller solves for the ratio that gives exactly that
  * average, so the curve tilts upward without ever producing a number a normal roll
- * couldn't. Gear modifiers can also raise the max hit, up to {@link #MAX_BONUS_HIT}.
+ * couldn't. Each gear modifier also raises the max hit by {@link #HIT_PER_BONUS}, counting
+ * at most {@link #MAX_BONUS_HIT} of them.
  */
 public final class XpRoller
 {
 	public static final int ROLL_INTERVAL_TICKS = 6;
-	public static final double BASE_RATIO = 0.62;
-	public static final double MAX_BOOST = 0.10;
+	public static final double BASE_RATIO = 0.93;
+	public static final double MAX_BOOST = 0.22;
 	public static final int MAX_BONUS_HIT = 3;
-	public static final int TOP_MAX_HIT = 12;
+	public static final int HIT_PER_BONUS = 4;
+	public static final int TOP_MAX_HIT = 50;
 
 	/** Ratio used for the chat keyword bonus roll, which leans toward the high end. */
-	public static final double KEYWORD_RATIO = 0.75;
+	public static final double KEYWORD_RATIO = 0.98;
 
 	private final Random random;
 
@@ -57,16 +60,17 @@ public final class XpRoller
 		this.random = random;
 	}
 
-	/** 1 at level 1, rising evenly to {@link #TOP_MAX_HIT} at 99. */
+	/** 1 at level 1, rising by one every two levels to {@link #TOP_MAX_HIT} at 99. */
 	public static int baseMaxHit(int level)
 	{
 		int clamped = Math.max(1, Math.min(Experience.MAX_LEVEL, level));
-		return (int) Math.round(1 + (TOP_MAX_HIT - 1) * (clamped - 1) / (double) (Experience.MAX_LEVEL - 1));
+		return 1 + (clamped - 1) / 2;
 	}
 
+	/** {@code bonusHit} counts gear bonuses; each adds {@link #HIT_PER_BONUS}. */
 	public static int maxHit(int level, int bonusHit)
 	{
-		return baseMaxHit(level) + Math.max(0, Math.min(MAX_BONUS_HIT, bonusHit));
+		return baseMaxHit(level) + Math.max(0, Math.min(MAX_BONUS_HIT, bonusHit)) * HIT_PER_BONUS;
 	}
 
 	public int roll(int level, double boost, int bonusHit)

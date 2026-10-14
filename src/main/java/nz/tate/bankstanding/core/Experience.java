@@ -25,13 +25,15 @@
 package nz.tate.bankstanding.core;
 
 /**
- * The real OSRS experience table. Bank Standing levels exactly like a real skill: 99 at
- * 13,034,431 XP, and XP keeps counting past 99 up to the 200m cap.
+ * The OSRS experience table scaled by {@link #XP_SCALE}: the same curve as a real skill, but
+ * every level costs five times the XP (99 at 65,172,155), because drops run larger. XP keeps
+ * counting past 99 up to the 200m cap.
  */
 public final class Experience
 {
 	public static final int MAX_LEVEL = 99;
 	public static final int MAX_XP = 200_000_000;
+	public static final int XP_SCALE = 5;
 
 	/** XP_FOR_LEVEL[n] is the XP needed to reach level n; index 0 is unused. */
 	private static final int[] XP_FOR_LEVEL = new int[MAX_LEVEL + 1];
@@ -43,7 +45,7 @@ public final class Experience
 		for (int level = 1; level < MAX_LEVEL; level++)
 		{
 			points += (int) Math.floor(level + 300 * Math.pow(2, level / 7.0));
-			XP_FOR_LEVEL[level + 1] = points / 4;
+			XP_FOR_LEVEL[level + 1] = points / 4 * XP_SCALE;
 		}
 	}
 

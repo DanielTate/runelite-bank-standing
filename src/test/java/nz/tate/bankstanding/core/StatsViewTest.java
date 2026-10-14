@@ -33,12 +33,12 @@ public class StatsViewTest
 	public void showsLevelProgressAndRemainingXp()
 	{
 		Progress progress = new Progress();
-		progress.xp = 83 + 46;
+		progress.xp = 415 + 230;
 		StatsView view = view(progress);
 
 		assertEquals(2, view.level);
-		assertEquals("129", view.totalXp);
-		assertEquals("45", view.toNextLevel);
+		assertEquals("645", view.totalXp);
+		assertEquals("225", view.toNextLevel);
 		assertEquals(50, view.percent);
 	}
 
@@ -46,11 +46,11 @@ public class StatsViewTest
 	public void level99IsMaxedButXpStillShows()
 	{
 		Progress progress = new Progress();
-		progress.xp = 20_000_000;
+		progress.xp = 70_000_000;
 		StatsView view = view(progress);
 
 		assertEquals("Maxed", view.toNextLevel);
-		assertEquals("20,000,000", view.totalXp);
+		assertEquals("70,000,000", view.totalXp);
 	}
 
 	@Test
