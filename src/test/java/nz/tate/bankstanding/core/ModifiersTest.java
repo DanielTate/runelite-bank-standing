@@ -54,6 +54,21 @@ public class ModifiersTest
 	}
 
 	@Test
+	public void hardToReachBanksGiveALittleMore()
+	{
+		assertEquals(Modifiers.MEDIUM, Modifiers.evaluate(at("lunar-isle", 4151)).boost, EPS);
+		assertEquals(0, Modifiers.evaluate(at("ge", 4151)).boost, EPS);
+	}
+
+	@Test
+	public void fullZaryteAtNex()
+	{
+		assertEquals(1, Modifiers.evaluate(at("nex", 26235, 26374)).bonusHit);
+		assertEquals(0, Modifiers.evaluate(at("nex", 26235)).bonusHit);
+		assertEquals(0, Modifiers.evaluate(at("ge", 26235, 26374)).bonusHit);
+	}
+
+	@Test
 	public void bossItemOnlyCountsAtItsBank()
 	{
 		assertEquals(1, Modifiers.evaluate(at("canifis", 4151)).bonusHit);

@@ -92,7 +92,8 @@ final class Items
 			.piece(8842, 24182, 26467, 27002),
 		new Outfit("barbarian-outpost").piece(10551, 24175, 28067, 28069).piece(10555, 24176).piece(10553, 10554),
 		new Outfit("castle-wars").piece(4071, 4506, 4511).piece(4069, 4504, 4509).piece(4070, 4505, 4510),
-		new Outfit("nardah").piece(1833).piece(1835).piece(1837)
+		new Outfit("nardah").piece(1833).piece(1835).piece(1837),
+		new Outfit("nex").piece(26235).piece(26374)
 	));
 
 	/** 99 skillcapes (trimmed and untrimmed), keyed by the bank that is home to that skill. */

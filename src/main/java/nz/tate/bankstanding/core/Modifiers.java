@@ -127,6 +127,10 @@ public final class Modifiers
 		}
 
 		e.boost += newSpot(c.hoursAtBank);
+		if (BankNames.isRemote(c.bankKey))
+		{
+			e.boost += MEDIUM;
+		}
 		e.boost += SMALL * Math.min(c.streakDays, STREAK_CAP_DAYS) / STREAK_CAP_DAYS;
 
 		switch (c.emote)
