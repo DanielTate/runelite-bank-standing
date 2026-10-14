@@ -56,14 +56,14 @@ import nz.tate.bankstanding.core.Keywords;
 class HitsplatOverlay extends Overlay
 {
 	private static final int DAMAGE_SPRITE = 1359;
-	/** The yellow disease splat, for boosted hits. Unconfirmed: falls back to red. */
-	private static final int BOOSTED_SPRITE = 1361;
+	/** The disease splat (hitsplat type 4 in the game cache), for boosted hits. */
+	private static final int BOOSTED_SPRITE = 1633;
 	/** Cache key for the bordered max-hit splat, which is drawn from the red one. */
 	private static final int MAX_HIT_KEY = -1;
 	private static final Color MAX_HIT_BORDER = new Color(240, 196, 80);
 	private static final float MAX_HIT_BRIGHTEN = 1.2f;
-	/** The sanity splat, for chat phrase drops. Unconfirmed: falls back to red. */
-	private static final int SANITY_SPRITE = 6829;
+	/** The sanity drain splat (hitsplat type 71 in the game cache), for chat phrase drops. */
+	private static final int SANITY_SPRITE = 4764;
 	private static final float BLUE_HUE = 0.6f;
 	private static final float GREEN_HUE = 0.33f;
 	private static final float GOLD_HUE = 0.125f;
