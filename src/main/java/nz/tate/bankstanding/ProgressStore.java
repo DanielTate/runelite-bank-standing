@@ -32,7 +32,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 import nz.tate.bankstanding.core.Progress;
 
-/** Saves progress per OSRS account, in RuneLite's profile config. */
+/**
+ * Saves progress per OSRS account, in RuneLite's profile config. Saves go to the account the
+ * progress was loaded from, so a save made while logging out can't land on another account.
+ */
 @Slf4j
 @Singleton
 class ProgressStore
@@ -41,6 +44,7 @@ class ProgressStore
 
 	private final ConfigManager configManager;
 	private final Gson gson;
+	private String profileKey;
 
 	@Inject
 	ProgressStore(ConfigManager configManager, Gson gson)
@@ -52,12 +56,13 @@ class ProgressStore
 	/** Null until the game has told RuneLite which account is logged in. */
 	Progress load()
 	{
-		if (configManager.getRSProfileKey() == null)
+		profileKey = configManager.getRSProfileKey();
+		if (profileKey == null)
 		{
 			return null;
 		}
 
-		String json = configManager.getRSProfileConfiguration(BankStandingConfig.GROUP, KEY);
+		String json = configManager.getConfiguration(BankStandingConfig.GROUP, profile(), KEY);
 		if (json == null)
 		{
 			return new Progress();
@@ -76,6 +81,14 @@ class ProgressStore
 
 	void save(Progress progress)
 	{
-		configManager.setRSProfileConfiguration(BankStandingConfig.GROUP, KEY, gson.toJson(progress));
+		if (profileKey != null)
+		{
+			configManager.setConfiguration(BankStandingConfig.GROUP, profile(), KEY, gson.toJson(progress));
+		}
+	}
+
+	private String profile()
+	{
+		return ConfigManager.RSPROFILE_GROUP + "." + profileKey;
 	}
 }

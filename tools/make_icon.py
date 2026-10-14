@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Draws the 25x25 Bank Standing skill icon from the pixel grid below.
-#   python3 tools/make_icon.py src/main/resources/nz/tate/bankstanding/icon.png [preview.png]
+#   python3 tools/make_icon.py src/main/resources/nz/tate/bankstanding/icon.png [icon.png]
+# The optional second path gets the 48x48 Plugin Hub icon.
 # Edit the grid or palette, then re-run. Needs Pillow.
 import sys
 from PIL import Image
@@ -42,5 +43,10 @@ for y,row in enumerate(rows):
         if c in P: im.putpixel((x,y),P[c]+(255,))
 im.save(sys.argv[1])
 if len(sys.argv) > 2:
-    im.resize((200,200),Image.NEAREST).save(sys.argv[2])
+    # Plugin Hub icon: the drawn area at 2x, centred on 48x48.
+    art = im.crop(im.getchannel('A').getbbox())
+    art = art.resize((art.width * 2, art.height * 2), Image.NEAREST)
+    hub = Image.new('RGBA', (48, 48), (0, 0, 0, 0))
+    hub.paste(art, ((48 - art.width) // 2, (48 - art.height) // 2))
+    hub.save(sys.argv[2])
 

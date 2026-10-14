@@ -27,7 +27,6 @@ package nz.tate.bankstanding;
 import com.google.inject.Provides;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -145,6 +144,9 @@ public class BankStandingPlugin extends Plugin
 	private Celebration celebration;
 
 	@Inject
+	private DevOptions dev;
+
+	@Inject
 	private ClientThread clientThread;
 
 	private BankStandingPanel panel;
@@ -154,38 +156,18 @@ public class BankStandingPlugin extends Plugin
 	private Session session = new Session();
 	private final XpRoller roller = new XpRoller(new Random());
 
-	/** Development only: `./gradlew run -PxpMultiplier=N` scales every drop. Always 1 for players. */
 	/** Our own slot in the player's spot animations, so the fireworks never replace the game's. */
 	private static final int FIREWORKS_KEY = 0x42414E4B;
 
-	private static final int DEV_XP_MULTIPLIER = Math.max(1, Integer.getInteger("bankstanding.xpMultiplier", 1));
+	/** Unsaved changes are written at most this often (a minute), and on logout. */
+	private static final int SAVE_EVERY_TICKS = 100;
+	private boolean dirty;
+	private int ticksSinceSave;
 
-	/** Development only: `./gradlew run -PsetXp=N` overwrites the saved XP on the first login. */
-	private static final Integer DEV_SET_XP = Integer.getInteger("bankstanding.setXp");
-	/** Development only: `./gradlew run -PresetProgress` wipes the save on the first login. */
-	private static final boolean DEV_RESET = Boolean.getBoolean("bankstanding.resetProgress");
-	private static boolean devOverridesApplied;
-
-	/**
-	 * Development only: `./gradlew run -PpreviewEffects=3047,1414` plays each spot animation on
-	 * the player in turn, naming it in chat, to choose the 99 effect. Empty for players.
-	 */
-	private static final int[] DEV_PREVIEW_EFFECTS = parseIds(System.getProperty("bankstanding.previewEffects", ""));
-	private static final int DEV_PREVIEW_TICKS = 8;
-	private static final int DEV_PREVIEW_KEY = 0x42414E4C;
-	private int devPreviewTick;
-
-	/** Development only: `./gradlew run -PpreviewCapes=9748,9769` cycles the 99 cape's base item. */
-	private static final int[] DEV_PREVIEW_CAPES = parseIds(System.getProperty("bankstanding.previewCapes", ""));
-	private int devCapeTick;
-
-	/** Development only: `./gradlew run -PrareEvery=N` shows every Nth drop with the special splat. */
-	private static final int DEV_RARE_EVERY = Integer.getInteger("bankstanding.rareEvery", 0);
+	private boolean devOverridesApplied;
 	private int devDrops;
-
-	/** Development only: `./gradlew run -PcelebrateEvery=N` replays the 99 celebration every N seconds. */
-	private static final int DEV_CELEBRATE_EVERY = Integer.getInteger("bankstanding.celebrateEvery", 0);
 	private long devNextCelebration;
+
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.HASHES);
 
@@ -240,6 +222,7 @@ public class BankStandingPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		save();
 		int realCape = wornCape;
 		clientThread.invoke(() -> capeDisplay.restore(realCape));
 		overlayManager.remove(skillTileOverlay);
@@ -269,6 +252,7 @@ public class BankStandingPlugin extends Plugin
 		}
 		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING)
 		{
+			save();
 			tracker.reset();
 			realXp.clear();
 			progress = null;
@@ -377,10 +361,10 @@ public class BankStandingPlugin extends Plugin
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
-		if (DEV_CELEBRATE_EVERY > 0 && !celebration.isRunning() && client.getLocalPlayer() != null
+		if (dev.celebrateEvery > 0 && !celebration.isRunning() && client.getLocalPlayer() != null
 			&& System.currentTimeMillis() >= devNextCelebration)
 		{
-			devNextCelebration = System.currentTimeMillis() + DEV_CELEBRATE_EVERY * 1000L;
+			devNextCelebration = System.currentTimeMillis() + dev.celebrateEvery * 1000L;
 			celebration.start();
 		}
 		celebration.tick();
@@ -407,11 +391,8 @@ public class BankStandingPlugin extends Plugin
 			refreshPanel();
 		}
 
-		previewEffect(player);
-
 		if (config.showCape() && progress.level() >= Experience.MAX_LEVEL)
 		{
-			previewCape();
 			capeDisplay.apply();
 		}
 
@@ -428,6 +409,11 @@ public class BankStandingPlugin extends Plugin
 			location.getX(), location.getY());
 		bank.ticks++;
 		session.ticks++;
+		dirty = true;
+		if (++ticksSinceSave >= SAVE_EVERY_TICKS)
+		{
+			save();
+		}
 		DailyStreak.standingTick(progress, today());
 
 		if (roll)
@@ -461,9 +447,9 @@ public class BankStandingPlugin extends Plugin
 	/** Awards one rolled hit and shows it. A hit above the normal max for the level is boosted. */
 	private void drop(int hit, BankRecord bank, int level, Modifiers.Effect effect)
 	{
-		int xp = hit * DEV_XP_MULTIPLIER;
+		int xp = hit * dev.xpMultiplier;
 		award(xp, bank, level);
-		boolean showRare = DEV_RARE_EVERY > 0 && ++devDrops % DEV_RARE_EVERY == 0;
+		boolean showRare = dev.rareEvery > 0 && ++devDrops % dev.rareEvery == 0;
 		dropFeed.add(xp, hit == XpRoller.maxHit(level, effect.bonusHit), showRare || hit > XpRoller.baseMaxHit(level));
 	}
 
@@ -473,12 +459,12 @@ public class BankStandingPlugin extends Plugin
 		progress.xp = Experience.addXp(progress.xp, drop);
 		bank.xp += progress.xp - before;
 		session.xp += progress.xp - before;
-		store.save(progress);
 		refreshPanel();
 
 		int levelAfter = progress.level();
 		if (levelAfter > levelBefore)
 		{
+			save();
 			announceLevel(levelAfter);
 		}
 	}
@@ -490,59 +476,33 @@ public class BankStandingPlugin extends Plugin
 		SwingUtilities.invokeLater(() -> shown.show(view));
 	}
 
+	/** Writes progress if anything changed since the last save. */
+	private void save()
+	{
+		ticksSinceSave = 0;
+		if (dirty && progress != null)
+		{
+			store.save(progress);
+			dirty = false;
+		}
+	}
+
 	private void applyDevOverrides()
 	{
-		if (devOverridesApplied || (!DEV_RESET && DEV_SET_XP == null))
+		if (devOverridesApplied || (!dev.resetProgress && dev.setXp == null))
 		{
 			return;
 		}
 		devOverridesApplied = true;
-		if (DEV_RESET)
+		if (dev.resetProgress)
 		{
 			progress = new Progress();
 		}
-		if (DEV_SET_XP != null)
+		if (dev.setXp != null)
 		{
-			progress.xp = Math.max(0, Math.min(Experience.MAX_XP, DEV_SET_XP));
+			progress.xp = Math.max(0, Math.min(Experience.MAX_XP, dev.setXp));
 		}
 		store.save(progress);
-	}
-
-	private void previewEffect(Player player)
-	{
-		if (DEV_PREVIEW_EFFECTS.length == 0 || devPreviewTick++ % DEV_PREVIEW_TICKS != 0)
-		{
-			return;
-		}
-		int effect = DEV_PREVIEW_EFFECTS[(devPreviewTick / DEV_PREVIEW_TICKS) % DEV_PREVIEW_EFFECTS.length];
-		player.createSpotAnim(DEV_PREVIEW_KEY, effect, 0, 0);
-		chatMessageManager.queue(QueuedMessage.builder()
-			.type(ChatMessageType.GAMEMESSAGE)
-			.runeLiteFormattedMessage("Effect preview: " + effect)
-			.build());
-	}
-
-	private void previewCape()
-	{
-		if (DEV_PREVIEW_CAPES.length == 0 || devCapeTick++ % DEV_PREVIEW_TICKS != 0)
-		{
-			return;
-		}
-		int cape = DEV_PREVIEW_CAPES[(devCapeTick / DEV_PREVIEW_TICKS) % DEV_PREVIEW_CAPES.length];
-		capeDisplay.setCapeItem(cape);
-		chatMessageManager.queue(QueuedMessage.builder()
-			.type(ChatMessageType.GAMEMESSAGE)
-			.runeLiteFormattedMessage("Cape preview: " + itemManager.getItemComposition(cape).getName() + " (" + cape + ")")
-			.build());
-	}
-
-	private static int[] parseIds(String list)
-	{
-		return Arrays.stream(list.split(","))
-			.map(String::trim)
-			.filter(id -> !id.isEmpty())
-			.mapToInt(Integer::parseInt)
-			.toArray();
 	}
 
 	private void announceLevel(int level)

@@ -45,15 +45,6 @@ tasks.register('run', JavaExec) {
 	if (findProperty('rareEvery')) {
 		jvmArgs "-Dbankstanding.rareEvery=${findProperty('rareEvery')}"
 	}
-	if (findProperty('rareSplat')) {
-		jvmArgs "-Dbankstanding.rareSplat=${findProperty('rareSplat')}"
-	}
-	if (findProperty('previewCapes')) {
-		jvmArgs "-Dbankstanding.previewCapes=${findProperty('previewCapes')}"
-	}
-	if (findProperty('previewEffects')) {
-		jvmArgs "-Dbankstanding.previewEffects=${findProperty('previewEffects')}"
-	}
 	if (findProperty('resetProgress') != null) {
 		jvmArgs "-Dbankstanding.resetProgress=true"
 	}

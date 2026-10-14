@@ -55,7 +55,7 @@ class CapeDisplay
 	static final int BASE_CAPE = ItemID.CAPE_OF_SKULLS;
 
 	private final Client client;
-	private int capeItem = BASE_CAPE;
+	private final int capeItem = BASE_CAPE;
 	private boolean applied;
 
 	/** The gold recolour, kept so it can be re-applied if the game reloads the item. */
@@ -128,18 +128,6 @@ class CapeDisplay
 	void forget()
 	{
 		applied = false;
-	}
-
-	/** Which cape item the gold cape is built on. */
-	void setCapeItem(int itemId)
-	{
-		if (itemId != capeItem)
-		{
-			undoDefinition();
-			capeItem = itemId;
-			prepared = false;
-			warned = false;
-		}
 	}
 
 	/** Works out the gold colours for the base cape. False until its model has loaded. */

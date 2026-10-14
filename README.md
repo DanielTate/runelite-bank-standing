@@ -35,6 +35,17 @@ Progress is saved separately for each of your accounts.
 ./gradlew build      # requires JDK 17; the plugin targets Java 11
 ```
 
+`./gradlew run` starts a development client. It takes a few testing options, which only
+work there:
+
+| Option | Effect |
+|---|---|
+| `-PxpMultiplier=N` | Every drop is worth N times as much |
+| `-PsetXp=N` | Sets your saved XP to N on the first login |
+| `-PresetProgress` | Wipes your saved progress on the first login |
+| `-PcelebrateEvery=N` | Replays the 99 celebration every N seconds |
+| `-PrareEvery=N` | Every Nth drop uses the special hitsplat |
+
 ## Credits
 
 Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor and Zerek.

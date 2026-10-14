@@ -50,7 +50,7 @@ class HitsplatOverlay extends Overlay
 {
 	private static final int DAMAGE_SPRITE = 1359;
 	/** The yellow disease splat, for max hits and boosted hits. Unconfirmed: falls back to red. */
-	private static final int RARE_SPRITE = Integer.getInteger("bankstanding.rareSplat", 1361);
+	private static final int RARE_SPRITE = 1361;
 	private static final float SCALE = 1.5f;
 	/** How far above the top of the player's model the splat sits, in local units. */
 	private static final int ABOVE_HEAD = 40;
