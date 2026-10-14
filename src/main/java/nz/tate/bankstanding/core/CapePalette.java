@@ -25,18 +25,19 @@
 package nz.tate.bankstanding.core;
 
 /**
- * Turns max cape colours into Bank Standing cape colours: bank-booth brown with gold trim.
+ * Turns the base cape's colours into Bank Standing gold.
  *
  * <p>Colours are the game's packed HSL shorts: 6 bits hue, 3 bits saturation, 7 bits
- * lightness. Lightness is always kept so the cape's shading survives; only hue and
- * saturation change. Near-grey colours (detail lines, highlights) are left alone.
+ * lightness. Every colour becomes gold; lightness is squeezed into a range that still
+ * reads as gold, keeping its order so the cape's shading and pattern survive (dark cloth
+ * becomes deep gold, light details become pale gold).
  */
 public final class CapePalette
 {
-	static final int BROWN_HUE = 6;
-	static final int BROWN_SAT = 3;
-	static final int GOLD_HUE = 9;
+	static final int GOLD_HUE = 8;
 	static final int GOLD_SAT = 6;
+	static final int MIN_LIGHT = 30;
+	static final int MAX_LIGHT = 100;
 
 	private CapePalette()
 	{
@@ -44,19 +45,8 @@ public final class CapePalette
 
 	public static short recolour(short original)
 	{
-		int hue = (original >> 10) & 0x3F;
-		int sat = (original >> 7) & 0x7;
 		int light = original & 0x7F;
-
-		if (sat <= 1)
-		{
-			return original;
-		}
-		if (hue >= 7 && hue <= 12)
-		{
-			return pack(GOLD_HUE, GOLD_SAT, light);
-		}
-		return pack(BROWN_HUE, BROWN_SAT, Math.max(8, light - 10));
+		return pack(GOLD_HUE, GOLD_SAT, MIN_LIGHT + light * (MAX_LIGHT - MIN_LIGHT) / 127);
 	}
 
 	static short pack(int hue, int sat, int light)

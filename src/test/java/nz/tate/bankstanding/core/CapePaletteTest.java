@@ -25,28 +25,27 @@
 package nz.tate.bankstanding.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class CapePaletteTest
 {
 	@Test
-	public void redBecomesBrownKeepingShade()
+	public void everythingTurnsGold()
 	{
 		short red = CapePalette.pack(0, 7, 60);
-		assertEquals(CapePalette.pack(CapePalette.BROWN_HUE, CapePalette.BROWN_SAT, 50), CapePalette.recolour(red));
+		short grey = CapePalette.pack(20, 0, 60);
+		assertEquals(CapePalette.recolour(red), CapePalette.recolour(grey));
+		assertEquals(CapePalette.GOLD_HUE, (CapePalette.recolour(red) >> 10) & 0x3F);
 	}
 
 	@Test
-	public void goldStaysGold()
+	public void blackAndWhiteStayInGoldRangeAndKeepTheirOrder()
 	{
-		short yellow = CapePalette.pack(10, 5, 90);
-		assertEquals(CapePalette.pack(CapePalette.GOLD_HUE, CapePalette.GOLD_SAT, 90), CapePalette.recolour(yellow));
-	}
-
-	@Test
-	public void greysAreUntouched()
-	{
-		short grey = CapePalette.pack(20, 1, 100);
-		assertEquals(grey, CapePalette.recolour(grey));
+		int black = CapePalette.recolour(CapePalette.pack(0, 0, 0)) & 0x7F;
+		int white = CapePalette.recolour(CapePalette.pack(0, 0, 127)) & 0x7F;
+		assertEquals(CapePalette.MIN_LIGHT, black);
+		assertEquals(CapePalette.MAX_LIGHT, white);
+		assertTrue(black < white);
 	}
 }

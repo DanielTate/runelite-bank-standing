@@ -169,6 +169,10 @@ public class BankStandingPlugin extends Plugin
 	/** Development only: `./gradlew run -PpreviewCapes=9748,9769` cycles the 99 cape's base item. */
 	private static final int[] DEV_PREVIEW_CAPES = parseIds(System.getProperty("bankstanding.previewCapes", ""));
 	private int devCapeTick;
+
+	/** Development only: `./gradlew run -PrareEvery=N` shows every Nth drop with the special splat. */
+	private static final int DEV_RARE_EVERY = Integer.getInteger("bankstanding.rareEvery", 0);
+	private int devDrops;
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.HASHES);
 
@@ -435,7 +439,8 @@ public class BankStandingPlugin extends Plugin
 	{
 		int xp = hit * DEV_XP_MULTIPLIER;
 		award(xp, bank, level);
-		dropFeed.add(xp, hit == XpRoller.maxHit(level, effect.bonusHit), hit > XpRoller.baseMaxHit(level));
+		boolean showRare = DEV_RARE_EVERY > 0 && ++devDrops % DEV_RARE_EVERY == 0;
+		dropFeed.add(xp, hit == XpRoller.maxHit(level, effect.bonusHit), showRare || hit > XpRoller.baseMaxHit(level));
 	}
 
 	private void award(int drop, BankRecord bank, int levelBefore)
