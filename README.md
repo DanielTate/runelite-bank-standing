@@ -23,7 +23,8 @@ The game's own logout timer still applies, so you will need to stay at your keyb
 
 - A Bank Standing skill tile you can place anywhere on screen
 - XP drops and level-up messages, just like a real skill
-- A side panel with your level, XP, and how long you've spent at each bank
+- A side panel with your level, XP, XP per hour, session and daily standing time, and how
+  long you've spent at each bank
 - A cape at 99, and XP that keeps counting past it all the way to 200m
 
 Progress is saved separately for each of your accounts.

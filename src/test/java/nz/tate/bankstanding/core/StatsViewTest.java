@@ -34,7 +34,7 @@ public class StatsViewTest
 	{
 		Progress progress = new Progress();
 		progress.xp = 83 + 46;
-		StatsView view = new StatsView(progress);
+		StatsView view = view(progress);
 
 		assertEquals(2, view.level);
 		assertEquals("129", view.totalXp);
@@ -47,7 +47,7 @@ public class StatsViewTest
 	{
 		Progress progress = new Progress();
 		progress.xp = 20_000_000;
-		StatsView view = new StatsView(progress);
+		StatsView view = view(progress);
 
 		assertEquals("Maxed", view.toNextLevel);
 		assertEquals("20,000,000", view.totalXp);
@@ -60,10 +60,47 @@ public class StatsViewTest
 		progress.bank("edgeville", 0, 0).ticks = 100;
 		progress.bank("ge", 0, 0).ticks = 6000 * 3 + 500;
 
-		StatsView view = new StatsView(progress);
+		StatsView view = view(progress);
 
 		assertEquals("Grand Exchange", view.banks.get(0).name);
 		assertEquals("3h 05m", view.banks.get(0).time);
 		assertEquals("1m", view.banks.get(1).time);
+	}
+
+	@Test
+	public void sessionStatsAndXpPerHour()
+	{
+		Session session = new Session();
+		session.ticks = 3000;
+		session.xp = 450;
+		StatsView view = new StatsView(new Progress(), session, "2026-10-14");
+
+		assertEquals("450", view.sessionXp);
+		assertEquals("30m", view.sessionTime);
+		assertEquals("900", view.xpPerHour);
+	}
+
+	@Test
+	public void xpPerHourWaitsForTheFirstMinute()
+	{
+		Session session = new Session();
+		session.ticks = 6;
+		session.xp = 5;
+		assertEquals(0, session.xpPerHour());
+	}
+
+	@Test
+	public void todaysTimeOnlyCountsToday()
+	{
+		Progress progress = new Progress();
+		progress.todayDate = "2026-10-13";
+		progress.todayTicks = 600;
+		assertEquals("0m", new StatsView(progress, new Session(), "2026-10-14").todayTime);
+		assertEquals("6m", new StatsView(progress, new Session(), "2026-10-13").todayTime);
+	}
+
+	private static StatsView view(Progress progress)
+	{
+		return new StatsView(progress, new Session(), "2026-10-14");
 	}
 }

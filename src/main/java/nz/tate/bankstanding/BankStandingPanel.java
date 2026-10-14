@@ -51,6 +51,11 @@ class BankStandingPanel extends PluginPanel
 	private final JLabel level = value();
 	private final JLabel totalXp = value();
 	private final JLabel toNext = value();
+	private final JPanel sessionSection = new JPanel(new BorderLayout(0, 6));
+	private final JLabel sessionXp = value();
+	private final JLabel sessionTime = value();
+	private final JLabel xpPerHour = value();
+	private final JLabel todayTime = value();
 	private final ProgressBar progressBar = new ProgressBar();
 	private final JPanel bankRows = new JPanel();
 
@@ -87,16 +92,32 @@ class BankStandingPanel extends PluginPanel
 
 		progressBar.setForeground(new Color(214, 176, 48));
 		top.add(progressBar, BorderLayout.SOUTH);
-		add(top, BorderLayout.NORTH);
+
+		JPanel sessionStats = new JPanel(new GridLayout(0, 2, 0, 4));
+		sessionStats.setOpaque(false);
+		sessionStats.add(name("XP"));
+		sessionStats.add(sessionXp);
+		sessionStats.add(name("Time"));
+		sessionStats.add(sessionTime);
+		sessionStats.add(name("XP per hour"));
+		sessionStats.add(xpPerHour);
+		sessionStats.add(name("Standing today"));
+		sessionStats.add(todayTime);
+		sessionSection.setOpaque(false);
+		sessionSection.add(heading("This session"), BorderLayout.NORTH);
+		sessionSection.add(sessionStats, BorderLayout.CENTER);
+
+		JPanel north = new JPanel(new BorderLayout(0, 12));
+		north.setOpaque(false);
+		north.add(top, BorderLayout.NORTH);
+		north.add(sessionSection, BorderLayout.SOUTH);
+		add(north, BorderLayout.NORTH);
 
 		bankRows.setLayout(new GridLayout(0, 1, 0, 4));
 		bankRows.setOpaque(false);
 		JPanel banks = new JPanel(new BorderLayout(0, 6));
 		banks.setOpaque(false);
-		JLabel heading = new JLabel("Banks");
-		heading.setFont(FontManager.getRunescapeBoldFont());
-		heading.setForeground(Color.WHITE);
-		banks.add(heading, BorderLayout.NORTH);
+		banks.add(heading("Banks"), BorderLayout.NORTH);
 		banks.add(bankRows, BorderLayout.CENTER);
 		add(banks, BorderLayout.CENTER);
 
@@ -113,6 +134,7 @@ class BankStandingPanel extends PluginPanel
 		status.setText("Log in to see your progress.");
 		status.setVisible(true);
 		stats.setVisible(false);
+		sessionSection.setVisible(false);
 		progressBar.setValue(0);
 		progressBar.setMaximumValue(100);
 		progressBar.setCenterLabel("");
@@ -125,6 +147,11 @@ class BankStandingPanel extends PluginPanel
 	{
 		status.setVisible(false);
 		stats.setVisible(true);
+		sessionSection.setVisible(true);
+		sessionXp.setText(view.sessionXp);
+		sessionTime.setText(view.sessionTime);
+		xpPerHour.setText(view.xpPerHour);
+		todayTime.setText(view.todayTime);
 		level.setText(String.valueOf(view.level));
 		totalXp.setText(view.totalXp);
 		toNext.setText(view.toNextLevel);
@@ -163,6 +190,14 @@ class BankStandingPanel extends PluginPanel
 		detail.add(xp, BorderLayout.EAST);
 		panel.add(detail, BorderLayout.SOUTH);
 		return panel;
+	}
+
+	private static JLabel heading(String text)
+	{
+		JLabel label = new JLabel(text);
+		label.setFont(FontManager.getRunescapeBoldFont());
+		label.setForeground(Color.WHITE);
+		return label;
 	}
 
 	private static JLabel name(String text)

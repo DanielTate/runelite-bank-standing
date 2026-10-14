@@ -80,6 +80,7 @@ import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.Keywords;
 import nz.tate.bankstanding.core.Modifiers;
 import nz.tate.bankstanding.core.Progress;
+import nz.tate.bankstanding.core.Session;
 import nz.tate.bankstanding.core.StandContext;
 import nz.tate.bankstanding.core.StandTracker;
 import nz.tate.bankstanding.core.StatsView;
@@ -146,6 +147,7 @@ public class BankStandingPlugin extends Plugin
 	private NavigationButton navButton;
 
 	private final StandTracker tracker = new StandTracker();
+	private Session session = new Session();
 	private final XpRoller roller = new XpRoller(new Random());
 
 	/** Development only: `./gradlew run -PxpMultiplier=N` scales every drop. Always 1 for players. */
@@ -380,6 +382,7 @@ public class BankStandingPlugin extends Plugin
 			}
 			progress.renameBanks();
 			applyDevOverrides();
+			session = new Session();
 			refreshPanel();
 		}
 
@@ -403,6 +406,7 @@ public class BankStandingPlugin extends Plugin
 		BankRecord bank = progress.bank(BankNames.keyFor(location.getX(), location.getY()),
 			location.getX(), location.getY());
 		bank.ticks++;
+		session.ticks++;
 		DailyStreak.standingTick(progress, today());
 
 		if (roll)
@@ -447,6 +451,7 @@ public class BankStandingPlugin extends Plugin
 		int before = progress.xp;
 		progress.xp = Experience.addXp(progress.xp, drop);
 		bank.xp += progress.xp - before;
+		session.xp += progress.xp - before;
 		store.save(progress);
 		refreshPanel();
 
@@ -459,7 +464,7 @@ public class BankStandingPlugin extends Plugin
 
 	private void refreshPanel()
 	{
-		StatsView view = new StatsView(progress);
+		StatsView view = new StatsView(progress, session, today().toString());
 		BankStandingPanel shown = panel;
 		SwingUtilities.invokeLater(() -> shown.show(view));
 	}

@@ -57,8 +57,18 @@ public final class StatsView
 	public final int percent;
 	public final List<BankRow> banks;
 
-	public StatsView(Progress progress)
+	public final String sessionXp;
+	public final String sessionTime;
+	public final String xpPerHour;
+	public final String todayTime;
+
+	public StatsView(Progress progress, Session session, String today)
 	{
+		sessionXp = number(session.xp);
+		sessionTime = duration(session.ticks);
+		xpPerHour = number(session.xpPerHour());
+		todayTime = duration(today.equals(progress.todayDate) ? progress.todayTicks : 0);
+
 		level = progress.level();
 		totalXp = number(progress.xp);
 		if (level >= Experience.MAX_LEVEL)
