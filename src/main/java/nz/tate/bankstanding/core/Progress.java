@@ -62,4 +62,29 @@ public final class Progress
 		}
 		return record;
 	}
+
+	/**
+	 * Moves records saved under a map region onto a bank name that now covers them, so
+	 * adding a name later keeps the time already spent there.
+	 */
+	public void renameBanks()
+	{
+		Map<String, BankRecord> renamed = new LinkedHashMap<>();
+		for (Map.Entry<String, BankRecord> entry : banks.entrySet())
+		{
+			BankRecord record = entry.getValue();
+			String key = entry.getKey().startsWith("region-") ? BankNames.keyFor(record.x, record.y) : entry.getKey();
+			BankRecord existing = renamed.get(key);
+			if (existing == null)
+			{
+				renamed.put(key, record);
+			}
+			else
+			{
+				existing.ticks += record.ticks;
+				existing.xp += record.xp;
+			}
+		}
+		banks = renamed;
+	}
 }

@@ -52,4 +52,19 @@ public class BankNamesTest
 		record.y = 1000;
 		assertEquals("Unknown bank (1000, 1000)", BankNames.displayName("region-3855", record));
 	}
+
+	@Test
+	public void regionRecordsMoveOntoANameThatNowCoversThem()
+	{
+		Progress progress = new Progress();
+		progress.bank("region-11601", 2904, 5204).ticks = 40;
+		progress.bank("nex", 2903, 5205).ticks = 10;
+		progress.bank("region-3855", 1000, 1000).ticks = 5;
+
+		progress.renameBanks();
+
+		assertEquals(50, progress.banks.get("nex").ticks);
+		assertEquals(5, progress.banks.get("region-3855").ticks);
+		assertEquals(2, progress.banks.size());
+	}
 }

@@ -349,6 +349,7 @@ public class BankStandingPlugin extends Plugin
 			{
 				return;
 			}
+			progress.renameBanks();
 			refreshPanel();
 		}
 
