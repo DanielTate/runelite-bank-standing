@@ -27,6 +27,7 @@ package nz.tate.bankstanding;
 import com.google.inject.Provides;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -155,6 +156,15 @@ public class BankStandingPlugin extends Plugin
 
 	/** Development only: `./gradlew run -PsetXp=N` overwrites the saved XP on login. Unset for players. */
 	private static final Integer DEV_SET_XP = Integer.getInteger("bankstanding.setXp");
+
+	/**
+	 * Development only: `./gradlew run -PpreviewEffects=3047,1414` plays each spot animation on
+	 * the player in turn, naming it in chat, to choose the 99 effect. Empty for players.
+	 */
+	private static final int[] DEV_PREVIEW_EFFECTS = parseIds(System.getProperty("bankstanding.previewEffects", ""));
+	private static final int DEV_PREVIEW_TICKS = 8;
+	private static final int DEV_PREVIEW_KEY = 0x42414E4C;
+	private int devPreviewTick;
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.HASHES);
 
@@ -368,6 +378,8 @@ public class BankStandingPlugin extends Plugin
 			refreshPanel();
 		}
 
+		previewEffect(player);
+
 		if (config.showCape() && progress.level() >= Experience.MAX_LEVEL)
 		{
 			capeDisplay.apply();
@@ -437,6 +449,29 @@ public class BankStandingPlugin extends Plugin
 		StatsView view = new StatsView(progress);
 		BankStandingPanel shown = panel;
 		SwingUtilities.invokeLater(() -> shown.show(view));
+	}
+
+	private void previewEffect(Player player)
+	{
+		if (DEV_PREVIEW_EFFECTS.length == 0 || devPreviewTick++ % DEV_PREVIEW_TICKS != 0)
+		{
+			return;
+		}
+		int effect = DEV_PREVIEW_EFFECTS[(devPreviewTick / DEV_PREVIEW_TICKS) % DEV_PREVIEW_EFFECTS.length];
+		player.createSpotAnim(DEV_PREVIEW_KEY, effect, 0, 0);
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.GAMEMESSAGE)
+			.runeLiteFormattedMessage("Effect preview: " + effect)
+			.build());
+	}
+
+	private static int[] parseIds(String list)
+	{
+		return Arrays.stream(list.split(","))
+			.map(String::trim)
+			.filter(id -> !id.isEmpty())
+			.mapToInt(Integer::parseInt)
+			.toArray();
 	}
 
 	private void announceLevel(int level)

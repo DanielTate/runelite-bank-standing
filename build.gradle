@@ -39,6 +39,9 @@ tasks.register('run', JavaExec) {
 	mainClass = pluginMainClass
 
 	jvmArgs "-ea", "-Dbankstanding.xpMultiplier=${findProperty('xpMultiplier') ?: 10}"
+	if (findProperty('previewEffects')) {
+		jvmArgs "-Dbankstanding.previewEffects=${findProperty('previewEffects')}"
+	}
 	if (findProperty('setXp')) {
 		jvmArgs "-Dbankstanding.setXp=${findProperty('setXp')}"
 	}
