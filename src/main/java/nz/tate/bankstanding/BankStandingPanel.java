@@ -71,8 +71,13 @@ class BankStandingPanel extends PluginPanel
 		top.add(spaced(totalXp));
 		top.add(spaced(toNext));
 		progressBar.setForeground(new Color(214, 176, 48));
-		progressBar.setBorder(new EmptyBorder(6, 0, 0, 0));
-		top.add(progressBar);
+		// The bar fills its whole box but centres its label inside the insets, so the gap
+		// above it goes on a wrapper, not on the bar itself.
+		JPanel barRow = new JPanel(new BorderLayout());
+		barRow.setOpaque(false);
+		barRow.setBorder(new EmptyBorder(6, 0, 0, 0));
+		barRow.add(progressBar);
+		top.add(barRow);
 		add(top, BorderLayout.NORTH);
 
 		bankRows.setLayout(new GridLayout(0, 1, 0, 4));

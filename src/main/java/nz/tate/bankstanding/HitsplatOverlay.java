@@ -28,7 +28,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.HashMap;
+import java.util.Map;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
@@ -48,10 +51,14 @@ class HitsplatOverlay extends Overlay
 	private static final int DAMAGE_SPRITE = 1359;
 	/** The yellow disease splat, for max hits and boosted hits. Unconfirmed: falls back to red. */
 	private static final int RARE_SPRITE = Integer.getInteger("bankstanding.rareSplat", 1361);
+	private static final float SCALE = 1.5f;
+	/** How far above the top of the player's model the splat sits, in local units. */
+	private static final int ABOVE_HEAD = 40;
 
 	private final Client client;
 	private final SpriteManager spriteManager;
 	private final DropFeed feed;
+	private final Map<Integer, BufferedImage> scaledSprites = new HashMap<>();
 
 	@Inject
 	HitsplatOverlay(Client client, SpriteManager spriteManager, DropFeed feed)
@@ -80,14 +87,14 @@ class HitsplatOverlay extends Overlay
 			return null;
 		}
 
-		Point at = player.getCanvasImageLocation(splat, player.getLogicalHeight() / 2);
+		Point at = player.getCanvasImageLocation(splat, player.getLogicalHeight() + ABOVE_HEAD);
 		if (at == null)
 		{
 			return null;
 		}
 		graphics.drawImage(splat, at.getX(), at.getY(), null);
 
-		graphics.setFont(FontManager.getRunescapeSmallFont());
+		graphics.setFont(FontManager.getRunescapeBoldFont());
 		FontMetrics metrics = graphics.getFontMetrics();
 		String text = String.valueOf(drop.getAmount());
 		int x = at.getX() + (splat.getWidth() - metrics.stringWidth(text)) / 2;
@@ -101,7 +108,31 @@ class HitsplatOverlay extends Overlay
 
 	private BufferedImage splat(DropFeed.Drop drop)
 	{
-		BufferedImage splat = drop.isMaxHit() || drop.isBoosted() ? spriteManager.getSprite(RARE_SPRITE, 0) : null;
-		return splat != null ? splat : spriteManager.getSprite(DAMAGE_SPRITE, 0);
+		int id = drop.isMaxHit() || drop.isBoosted() ? RARE_SPRITE : DAMAGE_SPRITE;
+		BufferedImage splat = scaled(id);
+		return splat != null ? splat : scaled(DAMAGE_SPRITE);
+	}
+
+	/** The sprite enlarged by {@link #SCALE}, pixel for pixel so it stays crisp. */
+	private BufferedImage scaled(int id)
+	{
+		BufferedImage cached = scaledSprites.get(id);
+		if (cached != null)
+		{
+			return cached;
+		}
+		BufferedImage sprite = spriteManager.getSprite(id, 0);
+		if (sprite == null)
+		{
+			return null;
+		}
+		BufferedImage big = new BufferedImage(Math.round(sprite.getWidth() * SCALE),
+			Math.round(sprite.getHeight() * SCALE), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = big.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+		g.drawImage(sprite, 0, 0, big.getWidth(), big.getHeight(), null);
+		g.dispose();
+		scaledSprites.put(id, big);
+		return big;
 	}
 }
