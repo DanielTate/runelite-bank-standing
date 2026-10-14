@@ -42,14 +42,16 @@ class DropFeed
 	{
 		int amount;
 		boolean maxHit;
+		/** Above the normal max hit for the level, which only a gear bonus allows. */
+		boolean boosted;
 		long createdMillis;
 	}
 
 	private final Deque<Drop> drops = new ArrayDeque<>();
 
-	synchronized void add(int amount, boolean maxHit)
+	synchronized void add(int amount, boolean maxHit, boolean boosted)
 	{
-		drops.addLast(new Drop(amount, maxHit, System.currentTimeMillis()));
+		drops.addLast(new Drop(amount, maxHit, boosted, System.currentTimeMillis()));
 	}
 
 	/** Drops younger than {@code millis}, oldest first. */

@@ -39,6 +39,12 @@ tasks.register('run', JavaExec) {
 	mainClass = pluginMainClass
 
 	jvmArgs "-ea", "-Dbankstanding.xpMultiplier=${findProperty('xpMultiplier') ?: 10}"
+	if (findProperty('rareSplat')) {
+		jvmArgs "-Dbankstanding.rareSplat=${findProperty('rareSplat')}"
+	}
+	if (findProperty('previewCapes')) {
+		jvmArgs "-Dbankstanding.previewCapes=${findProperty('previewCapes')}"
+	}
 	if (findProperty('previewEffects')) {
 		jvmArgs "-Dbankstanding.previewEffects=${findProperty('previewEffects')}"
 	}

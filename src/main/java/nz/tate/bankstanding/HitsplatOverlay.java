@@ -46,8 +46,8 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 class HitsplatOverlay extends Overlay
 {
 	private static final int DAMAGE_SPRITE = 1359;
-	/** The red max-hit splat. Unconfirmed: falls back to the normal splat if it won't load. */
-	private static final int MAX_HIT_SPRITE = 3571;
+	/** The yellow disease splat, for max hits and boosted hits. Unconfirmed: falls back to red. */
+	private static final int RARE_SPRITE = Integer.getInteger("bankstanding.rareSplat", 1361);
 
 	private final Client client;
 	private final SpriteManager spriteManager;
@@ -74,11 +74,7 @@ class HitsplatOverlay extends Overlay
 		}
 
 		DropFeed.Drop drop = drops[drops.length - 1];
-		BufferedImage splat = drop.isMaxHit() ? spriteManager.getSprite(MAX_HIT_SPRITE, 0) : null;
-		if (splat == null)
-		{
-			splat = spriteManager.getSprite(DAMAGE_SPRITE, 0);
-		}
+		BufferedImage splat = splat(drop);
 		if (splat == null)
 		{
 			return null;
@@ -101,5 +97,11 @@ class HitsplatOverlay extends Overlay
 		graphics.setColor(Color.WHITE);
 		graphics.drawString(text, x, y);
 		return null;
+	}
+
+	private BufferedImage splat(DropFeed.Drop drop)
+	{
+		BufferedImage splat = drop.isMaxHit() || drop.isBoosted() ? spriteManager.getSprite(RARE_SPRITE, 0) : null;
+		return splat != null ? splat : spriteManager.getSprite(DAMAGE_SPRITE, 0);
 	}
 }

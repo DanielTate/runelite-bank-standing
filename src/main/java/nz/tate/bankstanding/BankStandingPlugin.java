@@ -165,6 +165,10 @@ public class BankStandingPlugin extends Plugin
 	private static final int DEV_PREVIEW_TICKS = 8;
 	private static final int DEV_PREVIEW_KEY = 0x42414E4C;
 	private int devPreviewTick;
+
+	/** Development only: `./gradlew run -PpreviewCapes=9748,9769` cycles the 99 cape's base item. */
+	private static final int[] DEV_PREVIEW_CAPES = parseIds(System.getProperty("bankstanding.previewCapes", ""));
+	private int devCapeTick;
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.HASHES);
 
@@ -348,9 +352,7 @@ public class BankStandingPlugin extends Plugin
 				location.getX(), location.getY());
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
-			int drop = roller.keywordRoll(level, effect.bonusHit) * DEV_XP_MULTIPLIER;
-			award(drop, bank, level);
-			dropFeed.add(drop, drop == XpRoller.maxHit(level, effect.bonusHit));
+			drop(roller.keywordRoll(level, effect.bonusHit), bank, level, effect);
 		}
 	}
 
@@ -382,6 +384,7 @@ public class BankStandingPlugin extends Plugin
 
 		if (config.showCape() && progress.level() >= Experience.MAX_LEVEL)
 		{
+			previewCape();
 			capeDisplay.apply();
 		}
 
@@ -403,9 +406,7 @@ public class BankStandingPlugin extends Plugin
 		{
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
-			int drop = roller.roll(level, effect.boost, effect.bonusHit) * DEV_XP_MULTIPLIER;
-			award(drop, bank, level);
-			dropFeed.add(drop, drop == XpRoller.maxHit(level, effect.bonusHit));
+			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level, effect);
 		}
 	}
 
@@ -427,6 +428,14 @@ public class BankStandingPlugin extends Plugin
 	private static LocalDate today()
 	{
 		return LocalDate.now(ZoneOffset.UTC);
+	}
+
+	/** Awards one rolled hit and shows it. A hit above the normal max for the level is boosted. */
+	private void drop(int hit, BankRecord bank, int level, Modifiers.Effect effect)
+	{
+		int xp = hit * DEV_XP_MULTIPLIER;
+		award(xp, bank, level);
+		dropFeed.add(xp, hit == XpRoller.maxHit(level, effect.bonusHit), hit > XpRoller.baseMaxHit(level));
 	}
 
 	private void award(int drop, BankRecord bank, int levelBefore)
@@ -462,6 +471,20 @@ public class BankStandingPlugin extends Plugin
 		chatMessageManager.queue(QueuedMessage.builder()
 			.type(ChatMessageType.GAMEMESSAGE)
 			.runeLiteFormattedMessage("Effect preview: " + effect)
+			.build());
+	}
+
+	private void previewCape()
+	{
+		if (DEV_PREVIEW_CAPES.length == 0 || devCapeTick++ % DEV_PREVIEW_TICKS != 0)
+		{
+			return;
+		}
+		int cape = DEV_PREVIEW_CAPES[(devCapeTick / DEV_PREVIEW_TICKS) % DEV_PREVIEW_CAPES.length];
+		capeDisplay.setCapeItem(cape);
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.GAMEMESSAGE)
+			.runeLiteFormattedMessage("Cape preview: " + itemManager.getItemComposition(cape).getName() + " (" + cape + ")")
 			.build());
 	}
 

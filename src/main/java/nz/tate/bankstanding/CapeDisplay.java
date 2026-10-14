@@ -39,7 +39,7 @@ import nz.tate.bankstanding.core.CapePalette;
 /**
  * Shows the 99 Bank Standing cape on your own character, on your own client only.
  *
- * <p>It swaps the cape slot of the local player's appearance to a max cape and recolours
+ * <p>It swaps the cape slot of the local player's appearance to a base cape and recolours
  * it through the appearance's colour overrides. The game rebuilds the appearance whenever
  * equipment changes, so this is re-applied each tick; nothing is sent to the server.
  */
@@ -50,6 +50,7 @@ class CapeDisplay
 	static final int MAX_CAPE = 13280;
 
 	private final Client client;
+	private int capeItem = MAX_CAPE;
 	private short[] colours;
 	private boolean warned;
 	private boolean applied;
@@ -71,7 +72,7 @@ class CapeDisplay
 
 		int[] equipment = appearance.getEquipmentIds();
 		int slot = KitType.CAPE.getIndex();
-		int wanted = MAX_CAPE + PlayerComposition.ITEM_OFFSET;
+		int wanted = capeItem + PlayerComposition.ITEM_OFFSET;
 		boolean changed = equipment[slot] != wanted;
 		equipment[slot] = wanted;
 
@@ -121,20 +122,31 @@ class CapeDisplay
 		applied = false;
 	}
 
-	/** The recoloured max cape colours, or null if the cape has no recolour slots. */
+	/** Which cape item the recolour is built on. */
+	void setCapeItem(int itemId)
+	{
+		if (itemId != capeItem)
+		{
+			capeItem = itemId;
+			colours = null;
+			warned = false;
+		}
+	}
+
+	/** The recoloured base cape colours, or null if the cape has no recolour slots. */
 	private short[] palette()
 	{
 		if (colours != null)
 		{
 			return colours;
 		}
-		ItemComposition cape = client.getItemDefinition(MAX_CAPE);
+		ItemComposition cape = client.getItemDefinition(capeItem);
 		short[] from = cape.getColorToReplaceWith();
 		if (from == null || from.length == 0)
 		{
 			if (!warned)
 			{
-				log.debug("Max cape has no recolour slots; showing it unrecoloured");
+				log.debug("Cape {} has no recolour slots; showing it unrecoloured", capeItem);
 				warned = true;
 			}
 			return null;
