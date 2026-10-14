@@ -41,6 +41,7 @@ class DropFeed
 	static class Drop
 	{
 		int amount;
+		/** Exactly the normal max hit for the level (from level 3, where the max is above 1). */
 		boolean maxHit;
 		/** Above the normal max hit for the level, which only a gear bonus allows. */
 		boolean boosted;

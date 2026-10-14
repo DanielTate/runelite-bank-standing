@@ -354,7 +354,7 @@ public class BankStandingPlugin extends Plugin
 				location.getX(), location.getY());
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
-			drop(roller.keywordRoll(level, effect.bonusHit), bank, level, effect);
+			drop(roller.keywordRoll(level, effect.bonusHit), bank, level);
 		}
 	}
 
@@ -420,7 +420,7 @@ public class BankStandingPlugin extends Plugin
 		{
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
-			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level, effect);
+			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level);
 		}
 	}
 
@@ -444,13 +444,17 @@ public class BankStandingPlugin extends Plugin
 		return LocalDate.now(ZoneOffset.UTC);
 	}
 
-	/** Awards one rolled hit and shows it. A hit above the normal max for the level is boosted. */
-	private void drop(int hit, BankRecord bank, int level, Modifiers.Effect effect)
+	/**
+	 * Awards one rolled hit and shows it: a max hit is exactly the normal max for the level,
+	 * and anything above that (only reachable with a gear bonus) is boosted.
+	 */
+	private void drop(int hit, BankRecord bank, int level)
 	{
 		int xp = hit * dev.xpMultiplier;
 		award(xp, bank, level);
 		boolean showRare = dev.rareEvery > 0 && ++devDrops % dev.rareEvery == 0;
-		dropFeed.add(xp, hit == XpRoller.maxHit(level, effect.bonusHit), showRare || hit > XpRoller.baseMaxHit(level));
+		int normalMax = XpRoller.baseMaxHit(level);
+		dropFeed.add(xp, normalMax > 1 && hit == normalMax, showRare || hit > normalMax);
 	}
 
 	private void award(int drop, BankRecord bank, int levelBefore)
