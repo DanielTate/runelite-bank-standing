@@ -28,7 +28,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.GridLayout;
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -47,9 +46,11 @@ class BankStandingPanel extends PluginPanel
 {
 	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor and Zerek.";
 
-	private final JLabel level = new JLabel();
-	private final JLabel totalXp = new JLabel();
-	private final JLabel toNext = new JLabel();
+	private final JLabel status = new JLabel();
+	private final JPanel stats = new JPanel(new GridLayout(0, 2, 0, 4));
+	private final JLabel level = value();
+	private final JLabel totalXp = value();
+	private final JLabel toNext = value();
 	private final ProgressBar progressBar = new ProgressBar();
 	private final JPanel bankRows = new JPanel();
 
@@ -59,25 +60,33 @@ class BankStandingPanel extends PluginPanel
 		setBorder(new EmptyBorder(10, 10, 10, 10));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-		JPanel top = new JPanel();
-		top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+		// Every row of the top block shares one left edge: title, a two-column stats grid
+		// (names left, values right), then the bar.
+		JPanel top = new JPanel(new BorderLayout(0, 8));
 		top.setOpaque(false);
 
 		JLabel title = new JLabel("Bank Standing", new ImageIcon(icons.full()), JLabel.LEFT);
 		title.setFont(FontManager.getRunescapeBoldFont());
 		title.setForeground(Color.WHITE);
-		top.add(title);
-		top.add(spaced(level));
-		top.add(spaced(totalXp));
-		top.add(spaced(toNext));
+		title.setIconTextGap(6);
+		top.add(title, BorderLayout.NORTH);
+
+		stats.setOpaque(false);
+		stats.add(name("Level"));
+		stats.add(level);
+		stats.add(name("XP"));
+		stats.add(totalXp);
+		stats.add(name("To next level"));
+		stats.add(toNext);
+		status.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		JPanel middle = new JPanel(new BorderLayout());
+		middle.setOpaque(false);
+		middle.add(stats, BorderLayout.NORTH);
+		middle.add(status, BorderLayout.SOUTH);
+		top.add(middle, BorderLayout.CENTER);
+
 		progressBar.setForeground(new Color(214, 176, 48));
-		// The bar fills its whole box but centres its label inside the insets, so the gap
-		// above it goes on a wrapper, not on the bar itself.
-		JPanel barRow = new JPanel(new BorderLayout());
-		barRow.setOpaque(false);
-		barRow.setBorder(new EmptyBorder(6, 0, 0, 0));
-		barRow.add(progressBar);
-		top.add(barRow);
+		top.add(progressBar, BorderLayout.SOUTH);
 		add(top, BorderLayout.NORTH);
 
 		bankRows.setLayout(new GridLayout(0, 1, 0, 4));
@@ -101,9 +110,9 @@ class BankStandingPanel extends PluginPanel
 
 	void showLoggedOut()
 	{
-		level.setText("Log in to see your progress.");
-		totalXp.setText(" ");
-		toNext.setText(" ");
+		status.setText("Log in to see your progress.");
+		status.setVisible(true);
+		stats.setVisible(false);
 		progressBar.setValue(0);
 		progressBar.setMaximumValue(100);
 		progressBar.setCenterLabel("");
@@ -114,9 +123,11 @@ class BankStandingPanel extends PluginPanel
 
 	void show(StatsView view)
 	{
-		level.setText("Level " + view.level);
-		totalXp.setText("XP: " + view.totalXp);
-		toNext.setText("To next level: " + view.toNextLevel);
+		status.setVisible(false);
+		stats.setVisible(true);
+		level.setText(String.valueOf(view.level));
+		totalXp.setText(view.totalXp);
+		toNext.setText(view.toNextLevel);
 		progressBar.setMaximumValue(100);
 		progressBar.setValue(view.percent);
 		progressBar.setCenterLabel(view.percent + "%");
@@ -144,15 +155,28 @@ class BankStandingPanel extends PluginPanel
 		name.setForeground(Color.WHITE);
 		panel.add(name, BorderLayout.NORTH);
 
-		JLabel detail = muted(row.time + "   " + row.xp + " xp");
+		JPanel detail = new JPanel(new BorderLayout());
+		detail.setOpaque(false);
+		detail.add(muted(row.time), BorderLayout.WEST);
+		JLabel xp = muted(row.xp + " xp");
+		xp.setHorizontalAlignment(JLabel.RIGHT);
+		detail.add(xp, BorderLayout.EAST);
 		panel.add(detail, BorderLayout.SOUTH);
 		return panel;
 	}
 
-	private static JLabel spaced(JLabel label)
+	private static JLabel name(String text)
 	{
+		JLabel label = new JLabel(text);
 		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		label.setBorder(new EmptyBorder(4, 0, 0, 0));
+		return label;
+	}
+
+	private static JLabel value()
+	{
+		JLabel label = new JLabel();
+		label.setForeground(Color.WHITE);
+		label.setHorizontalAlignment(JLabel.RIGHT);
 		return label;
 	}
 
