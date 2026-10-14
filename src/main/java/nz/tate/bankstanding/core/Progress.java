@@ -33,6 +33,18 @@ public final class Progress
 	public int xp;
 	public Map<String, BankRecord> banks = new LinkedHashMap<>();
 
+	/** The last UTC day (ISO date) that counted toward the streak, and how long the streak is. */
+	public String streakDate;
+	public int streakDays;
+	/** Standing ticks so far on {@link #todayDate}. */
+	public String todayDate;
+	public long todayTicks;
+
+	/** When each keyword last paid out, and how many paid out on {@link #keywordDate}. */
+	public Map<String, Long> keywordPaid = new LinkedHashMap<>();
+	public String keywordDate;
+	public int keywordCount;
+
 	public int level()
 	{
 		return Experience.levelForXp(xp);

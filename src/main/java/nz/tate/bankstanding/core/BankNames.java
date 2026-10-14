@@ -77,7 +77,9 @@ public final class BankNames
 		area("ver-sinhaza", "Ver Sinhaza", 3650, 3208),
 		area("mor-ul-rek", "Mor Ul Rek", 2540, 5140),
 		area("shayzien", "Shayzien", 1504, 3615),
-		area("quidamortem", "Mount Quidamortem", 1255, 3570)
+		area("quidamortem", "Mount Quidamortem", 1255, 3570),
+		area("fortis", "Civitas illa Fortis", 1780, 3100),
+		area("hunters-guild", "Hunters' Guild", 1558, 3047)
 	));
 
 	private BankNames()

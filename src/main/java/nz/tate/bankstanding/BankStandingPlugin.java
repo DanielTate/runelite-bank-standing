@@ -25,39 +25,57 @@
 package nz.tate.bankstanding;
 
 import com.google.inject.Provides;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.Text;
 import nz.tate.bankstanding.core.BankNames;
 import nz.tate.bankstanding.core.BankRecord;
+import nz.tate.bankstanding.core.DailyStreak;
+import nz.tate.bankstanding.core.Emote;
 import nz.tate.bankstanding.core.Experience;
+import nz.tate.bankstanding.core.Keywords;
+import nz.tate.bankstanding.core.Modifiers;
 import nz.tate.bankstanding.core.Progress;
+import nz.tate.bankstanding.core.StandContext;
 import nz.tate.bankstanding.core.StandTracker;
 import nz.tate.bankstanding.core.StatsView;
 import nz.tate.bankstanding.core.XpRoller;
@@ -107,12 +125,24 @@ public class BankStandingPlugin extends Plugin
 	@Inject
 	private Icons icons;
 
+	@Inject
+	private ItemManager itemManager;
+
 	private BankStandingPanel panel;
 	private NavigationButton navButton;
 
 	private final StandTracker tracker = new StandTracker();
 	private final XpRoller roller = new XpRoller(new Random());
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
+	private final Keywords keywords = new Keywords(Keywords.HASHES);
+
+	/** An emote's effect lasts this long after it starts. */
+	private static final int EMOTE_TICKS = 100;
+
+	private Set<Integer> worn = Collections.emptySet();
+	private long wornValue;
+	private Emote emote = Emote.NONE;
+	private int emoteUntilTick;
 
 	private Progress progress;
 
@@ -153,6 +183,9 @@ public class BankStandingPlugin extends Plugin
 		bankLocator.clear();
 		realXp.clear();
 		progress = null;
+		worn = Collections.emptySet();
+		wornValue = 0;
+		emote = Emote.NONE;
 	}
 
 	@Subscribe
@@ -196,6 +229,67 @@ public class BankStandingPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onItemContainerChanged(ItemContainerChanged event)
+	{
+		if (event.getContainerId() != InventoryID.WORN)
+		{
+			return;
+		}
+		ItemContainer container = event.getItemContainer();
+		Set<Integer> ids = new HashSet<>();
+		long value = 0;
+		for (Item item : container.getItems())
+		{
+			if (item.getId() > 0)
+			{
+				ids.add(item.getId());
+				value += (long) itemManager.getItemPrice(item.getId()) * item.getQuantity();
+			}
+		}
+		worn = ids;
+		wornValue = value;
+	}
+
+	@Subscribe
+	public void onAnimationChanged(AnimationChanged event)
+	{
+		if (event.getActor() != client.getLocalPlayer())
+		{
+			return;
+		}
+		Emote started = Emote.fromAnimation(event.getActor().getAnimation());
+		if (started != Emote.NONE)
+		{
+			emote = started;
+			emoteUntilTick = client.getTickCount() + EMOTE_TICKS;
+		}
+	}
+
+	@Subscribe
+	public void onChatMessage(ChatMessage event)
+	{
+		Player player = client.getLocalPlayer();
+		if (event.getType() != ChatMessageType.PUBLICCHAT || player == null || progress == null
+			|| !tracker.isStanding() || player.getName() == null
+			|| !Text.sanitize(event.getName()).equals(Text.sanitize(player.getName())))
+		{
+			return;
+		}
+
+		if (keywords.claim(progress, Text.removeTags(event.getMessage()), System.currentTimeMillis(), today()))
+		{
+			WorldPoint location = player.getWorldLocation();
+			BankRecord bank = progress.bank(BankNames.keyFor(location.getX(), location.getY()),
+				location.getX(), location.getY());
+			int level = progress.level();
+			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
+			int drop = roller.keywordRoll(level, effect.bonusHit);
+			award(drop, bank, level);
+			dropFeed.add(drop, drop == XpRoller.maxHit(level, effect.bonusHit));
+		}
+	}
+
+	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		Player player = client.getLocalPlayer();
@@ -225,14 +319,36 @@ public class BankStandingPlugin extends Plugin
 		BankRecord bank = progress.bank(BankNames.keyFor(location.getX(), location.getY()),
 			location.getX(), location.getY());
 		bank.ticks++;
+		DailyStreak.standingTick(progress, today());
 
 		if (roll)
 		{
 			int level = progress.level();
-			int drop = roller.roll(level, 0, 0);
+			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
+			int drop = roller.roll(level, effect.boost, effect.bonusHit);
 			award(drop, bank, level);
-			dropFeed.add(drop, drop == XpRoller.maxHit(level, 0));
+			dropFeed.add(drop, drop == XpRoller.maxHit(level, effect.bonusHit));
 		}
+	}
+
+	private StandContext context(BankRecord bank, WorldPoint location)
+	{
+		StandContext context = new StandContext();
+		context.worn = worn;
+		context.wornValue = wornValue;
+		context.hitpoints = client.getBoostedSkillLevel(Skill.HITPOINTS);
+		context.bankKey = BankNames.keyFor(location.getX(), location.getY());
+		context.today = today();
+		context.emote = client.getTickCount() < emoteUntilTick ? emote : Emote.NONE;
+		context.follower = client.getFollower() != null;
+		context.streakDays = DailyStreak.current(progress, context.today);
+		context.hoursAtBank = bank.hours();
+		return context;
+	}
+
+	private static LocalDate today()
+	{
+		return LocalDate.now(ZoneOffset.UTC);
 	}
 
 	private void award(int drop, BankRecord bank, int levelBefore)
