@@ -29,6 +29,7 @@ import java.util.Deque;
 import java.util.Iterator;
 import javax.inject.Singleton;
 import lombok.Value;
+import nz.tate.bankstanding.core.Keywords;
 
 /** Recent drops, shared by the XP drop and hitsplat overlays. */
 @Singleton
@@ -45,14 +46,18 @@ class DropFeed
 		boolean maxHit;
 		/** Above the normal max hit for the level, which only a gear bonus allows. */
 		boolean boosted;
+		/** The kind of chat phrase that paid this drop, or null for a normal roll. */
+		Keywords.Kind phrase;
+		/** Development only: show this splat sprite instead. 0 normally. */
+		int previewSprite;
 		long createdMillis;
 	}
 
 	private final Deque<Drop> drops = new ArrayDeque<>();
 
-	synchronized void add(int amount, boolean maxHit, boolean boosted)
+	synchronized void add(int amount, boolean maxHit, boolean boosted, Keywords.Kind phrase, int previewSprite)
 	{
-		drops.addLast(new Drop(amount, maxHit, boosted, System.currentTimeMillis()));
+		drops.addLast(new Drop(amount, maxHit, boosted, phrase, previewSprite, System.currentTimeMillis()));
 	}
 
 	/** Drops younger than {@code millis}, oldest first. */

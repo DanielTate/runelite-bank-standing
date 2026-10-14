@@ -41,6 +41,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
+import nz.tate.bankstanding.core.Keywords;
 
 /**
  * Draws each drop as a hitsplat on the player, using the game's own splat sprites. The API
@@ -48,7 +49,9 @@ import net.runelite.client.ui.overlay.OverlayPosition;
  *
  * <p>Normal drops are red. Hitting the normal max for your level gives a brighter red splat
  * with a gold border. Anything above the normal max (only possible with a gear bonus) gives
- * the yellow disease splat.
+ * the yellow disease splat. A drop paid by a chat phrase gets the sanity splat, tinted by
+ * what the phrase is tied to: plain for anywhere, blue for a bank, green for a date, gold for
+ * both.
  */
 class HitsplatOverlay extends Overlay
 {
@@ -59,6 +62,11 @@ class HitsplatOverlay extends Overlay
 	private static final int MAX_HIT_KEY = -1;
 	private static final Color MAX_HIT_BORDER = new Color(240, 196, 80);
 	private static final float MAX_HIT_BRIGHTEN = 1.2f;
+	/** The sanity splat, for chat phrase drops. Unconfirmed: falls back to red. */
+	private static final int SANITY_SPRITE = 6829;
+	private static final float BLUE_HUE = 0.6f;
+	private static final float GREEN_HUE = 0.33f;
+	private static final float GOLD_HUE = 0.125f;
 	private static final float SCALE = 1.5f;
 	/** How far above the top of the player's model the splat sits, in local units. */
 	private static final int ABOVE_HEAD = 40;
@@ -117,7 +125,15 @@ class HitsplatOverlay extends Overlay
 	private BufferedImage splat(DropFeed.Drop drop)
 	{
 		BufferedImage splat = null;
-		if (drop.isBoosted())
+		if (drop.getPreviewSprite() > 0)
+		{
+			splat = scaled(drop.getPreviewSprite());
+		}
+		else if (drop.getPhrase() != null)
+		{
+			splat = sanitySplat(drop.getPhrase());
+		}
+		else if (drop.isBoosted())
 		{
 			splat = scaled(BOOSTED_SPRITE);
 		}
@@ -126,6 +142,59 @@ class HitsplatOverlay extends Overlay
 			splat = maxHitSplat();
 		}
 		return splat != null ? splat : scaled(DAMAGE_SPRITE);
+	}
+
+	private BufferedImage sanitySplat(Keywords.Kind kind)
+	{
+		int key = -10 - kind.ordinal();
+		BufferedImage cached = scaledSprites.get(key);
+		if (cached == null)
+		{
+			BufferedImage sanity = scaled(SANITY_SPRITE);
+			if (sanity == null)
+			{
+				return null;
+			}
+			switch (kind)
+			{
+				case LOCATION:
+					cached = tinted(sanity, BLUE_HUE);
+					break;
+				case DATE:
+					cached = tinted(sanity, GREEN_HUE);
+					break;
+				case DATE_AND_LOCATION:
+					cached = tinted(sanity, GOLD_HUE);
+					break;
+				default:
+					cached = sanity;
+					break;
+			}
+			scaledSprites.put(key, cached);
+		}
+		return cached;
+	}
+
+	/** Coloured pixels take this hue; greys, outline and shading are kept. */
+	static BufferedImage tinted(BufferedImage splat, float hue)
+	{
+		BufferedImage out = new BufferedImage(splat.getWidth(), splat.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		float[] hsb = new float[3];
+		for (int y = 0; y < splat.getHeight(); y++)
+		{
+			for (int x = 0; x < splat.getWidth(); x++)
+			{
+				int argb = splat.getRGB(x, y);
+				Color.RGBtoHSB((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, hsb);
+				if (hsb[1] > 0.2f)
+				{
+					int rgb = Color.HSBtoRGB(hue, Math.max(hsb[1], 0.7f), hsb[2]);
+					argb = (argb & 0xFF000000) | (rgb & 0x00FFFFFF);
+				}
+				out.setRGB(x, y, argb);
+			}
+		}
+		return out;
 	}
 
 	private BufferedImage maxHitSplat()

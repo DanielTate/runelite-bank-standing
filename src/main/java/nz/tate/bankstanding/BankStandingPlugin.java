@@ -151,6 +151,7 @@ public class BankStandingPlugin extends Plugin
 
 	private BankStandingPanel panel;
 	private NavigationButton navButton;
+	private NavigationButton devButton;
 
 	private final StandTracker tracker = new StandTracker();
 	private Session session = new Session();
@@ -205,6 +206,17 @@ public class BankStandingPlugin extends Plugin
 			.build();
 		clientToolbar.addNavigation(navButton);
 
+		if (dev.developerMode)
+		{
+			devButton = NavigationButton.builder()
+				.tooltip("Bank Standing (dev)")
+				.icon(icons.small())
+				.priority(11)
+				.panel(new DevPanel(this, dev))
+				.build();
+			clientToolbar.addNavigation(devButton);
+		}
+
 		clientThread.invoke(() ->
 		{
 			ItemContainer equipment = client.getItemContainer(InventoryID.WORN);
@@ -232,6 +244,11 @@ public class BankStandingPlugin extends Plugin
 		celebration.stop();
 		clientToolbar.removeNavigation(navButton);
 		navButton = null;
+		if (devButton != null)
+		{
+			clientToolbar.removeNavigation(devButton);
+			devButton = null;
+		}
 		panel = null;
 		bankLocator.clear();
 		realXp.clear();
@@ -349,12 +366,14 @@ public class BankStandingPlugin extends Plugin
 
 		WorldPoint location = player.getWorldLocation();
 		String bankKey = BankNames.keyFor(location.getX(), location.getY());
-		if (keywords.claim(progress, Text.removeTags(event.getMessage()), System.currentTimeMillis(), today(), bankKey, worn))
+		Keywords.Kind phrase = keywords.claim(progress, Text.removeTags(event.getMessage()),
+			System.currentTimeMillis(), today(), bankKey, worn);
+		if (phrase != null)
 		{
 			BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
-			drop(roller.keywordRoll(level, effect.bonusHit), bank, level);
+			drop(roller.keywordRoll(level, effect.bonusHit), bank, level, phrase);
 		}
 	}
 
@@ -391,9 +410,13 @@ public class BankStandingPlugin extends Plugin
 			refreshPanel();
 		}
 
-		if (config.showCape() && progress.level() >= Experience.MAX_LEVEL)
+		if (config.showCape() && (progress.level() >= Experience.MAX_LEVEL || dev.previewCape))
 		{
 			capeDisplay.apply();
+		}
+		else
+		{
+			capeDisplay.restore(wornCape);
 		}
 
 		WorldPoint location = player.getWorldLocation();
@@ -420,7 +443,7 @@ public class BankStandingPlugin extends Plugin
 		{
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
-			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level);
+			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level, null);
 		}
 	}
 
@@ -448,13 +471,29 @@ public class BankStandingPlugin extends Plugin
 	 * Awards one rolled hit and shows it: a max hit is exactly the normal max for the level,
 	 * and anything above that (only reachable with a gear bonus) is boosted.
 	 */
-	private void drop(int hit, BankRecord bank, int level)
+	private void drop(int hit, BankRecord bank, int level, Keywords.Kind phrase)
 	{
 		int xp = hit * dev.xpMultiplier;
 		award(xp, bank, level);
-		boolean showRare = dev.rareEvery > 0 && ++devDrops % dev.rareEvery == 0;
+		devDrops++;
+		boolean showRare = dev.rareEvery > 0 && devDrops % dev.rareEvery == 0;
 		int normalMax = XpRoller.baseMaxHit(level);
-		dropFeed.add(xp, normalMax > 1 && hit == normalMax, showRare || hit > normalMax);
+		dropFeed.add(xp, normalMax > 1 && hit == normalMax, showRare || hit > normalMax, phrase, previewSprite());
+	}
+
+	/** Development only: the next sprite from {@code -PpreviewSplats}, named in chat. */
+	private int previewSprite()
+	{
+		if (dev.previewSplats.length == 0)
+		{
+			return 0;
+		}
+		int sprite = dev.previewSplats[devDrops % dev.previewSplats.length];
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.GAMEMESSAGE)
+			.runeLiteFormattedMessage("Splat preview: " + sprite)
+			.build());
+		return sprite;
 	}
 
 	private void award(int drop, BankRecord bank, int levelBefore)
@@ -489,6 +528,74 @@ public class BankStandingPlugin extends Plugin
 			store.save(progress);
 			dirty = false;
 		}
+	}
+
+	// Dev panel actions. Called on the Swing thread; game work is moved to the client thread.
+
+	void devSplat(boolean maxHit, boolean boosted, Keywords.Kind phrase)
+	{
+		dropFeed.add(maxHit ? 25 : boosted ? 30 : 7, maxHit, boosted, phrase, 0);
+	}
+
+	void devSprite(int spriteId)
+	{
+		dropFeed.add(7, false, false, null, spriteId);
+	}
+
+	void devFireworks()
+	{
+		clientThread.invoke(() ->
+		{
+			Player player = client.getLocalPlayer();
+			if (player != null)
+			{
+				player.createSpotAnim(FIREWORKS_KEY, SpotanimID.LEVELUP_ANIM, 0, 0);
+			}
+		});
+	}
+
+	void devCelebrate()
+	{
+		clientThread.invoke(celebration::start);
+	}
+
+	void devPreviewCape(boolean on)
+	{
+		dev.previewCape = on;
+	}
+
+	void devSetLevel(int level)
+	{
+		devSetXp(Experience.xpForLevel(level));
+	}
+
+	void devSetXp(int xp)
+	{
+		clientThread.invoke(() ->
+		{
+			if (progress != null)
+			{
+				progress.xp = xp;
+				dirty = true;
+				save();
+				refreshPanel();
+			}
+		});
+	}
+
+	void devReset()
+	{
+		clientThread.invoke(() ->
+		{
+			if (progress != null)
+			{
+				progress = new Progress();
+				session = new Session();
+				dirty = true;
+				save();
+				refreshPanel();
+			}
+		});
 	}
 
 	private void applyDevOverrides()

@@ -30,14 +30,14 @@ import javax.inject.Singleton;
 
 /**
  * Testing shortcuts for the development client, set with Gradle properties on
- * {@code ./gradlew run} (see build.gradle). Only read when RuneLite runs in developer mode;
- * for players every option is off.
+ * {@code ./gradlew run} (see build.gradle) or changed from the {@link DevPanel}. Only read
+ * when RuneLite runs in developer mode; for players every option is off.
  */
 @Singleton
 class DevOptions
 {
 	/** {@code -PxpMultiplier=N}: every drop is worth N times as much. */
-	final int xpMultiplier;
+	int xpMultiplier;
 	/** {@code -PsetXp=N}: the saved XP is set to N on the first login. */
 	final Integer setXp;
 	/** {@code -PresetProgress}: the save is wiped on the first login. */
@@ -46,14 +46,30 @@ class DevOptions
 	final int rareEvery;
 	/** {@code -PcelebrateEvery=N}: the 99 celebration replays every N seconds. */
 	final int celebrateEvery;
+	final boolean developerMode;
+	/** Shows the 99 cape at any level (dev panel only). */
+	boolean previewCape;
+	/** {@code -PpreviewSplats=1,2,3}: each drop shows the next of these sprites, named in chat. */
+	final int[] previewSplats;
 
 	@Inject
 	DevOptions(@Named("developerMode") boolean developerMode)
 	{
+		this.developerMode = developerMode;
 		xpMultiplier = developerMode ? Math.max(1, Integer.getInteger("bankstanding.xpMultiplier", 1)) : 1;
 		setXp = developerMode ? Integer.getInteger("bankstanding.setXp") : null;
 		resetProgress = developerMode && Boolean.getBoolean("bankstanding.resetProgress");
 		rareEvery = developerMode ? Integer.getInteger("bankstanding.rareEvery", 0) : 0;
 		celebrateEvery = developerMode ? Integer.getInteger("bankstanding.celebrateEvery", 0) : 0;
+		previewSplats = developerMode ? ids(System.getProperty("bankstanding.previewSplats", "")) : new int[0];
+	}
+
+	private static int[] ids(String list)
+	{
+		return java.util.Arrays.stream(list.split(","))
+			.map(String::trim)
+			.filter(id -> !id.isEmpty())
+			.mapToInt(Integer::parseInt)
+			.toArray();
 	}
 }

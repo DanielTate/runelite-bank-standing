@@ -35,8 +35,9 @@ Progress is saved separately for each of your accounts.
 ./gradlew build      # requires JDK 17; the plugin targets Java 11
 ```
 
-`./gradlew run` starts a development client. It takes a few testing options, which only
-work there:
+`./gradlew run` starts a development client. It adds a **Bank Standing (dev)** sidebar
+panel for previewing hitsplats, effects and the cape and for setting your level, and takes a
+few testing options. None of this works outside developer mode:
 
 | Option | Effect |
 |---|---|
@@ -45,6 +46,7 @@ work there:
 | `-PresetProgress` | Wipes your saved progress on the first login |
 | `-PcelebrateEvery=N` | Replays the 99 celebration every N seconds |
 | `-PrareEvery=N` | Every Nth drop uses the special hitsplat |
+| `-PpreviewSplats=A,B,C` | Each drop shows the next of these sprite IDs, named in chat |
 
 ## Credits
 

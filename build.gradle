@@ -42,6 +42,9 @@ tasks.register('run', JavaExec) {
 	if (findProperty('celebrateEvery')) {
 		jvmArgs "-Dbankstanding.celebrateEvery=${findProperty('celebrateEvery')}"
 	}
+	if (findProperty('previewSplats')) {
+		jvmArgs "-Dbankstanding.previewSplats=${findProperty('previewSplats')}"
+	}
 	if (findProperty('rareEvery')) {
 		jvmArgs "-Dbankstanding.rareEvery=${findProperty('rareEvery')}"
 	}

@@ -49,6 +49,15 @@ public final class Keywords
 	static final int DAILY_CAP = 10;
 	private static final String SALT = "bankstanding:";
 
+	/** What a phrase is tied to, which decides the colour of its hitsplat. */
+	public enum Kind
+	{
+		ANYWHERE,
+		LOCATION,
+		DATE,
+		DATE_AND_LOCATION
+	}
+
 	/**
 	 * One phrase: its hash, the holiday it needs (or null), the banks it works at (or any) and
 	 * items one of which must be worn (or none).
@@ -77,6 +86,15 @@ public final class Keywords
 		{
 			items = itemIds;
 			return this;
+		}
+
+		Kind kind()
+		{
+			if (holiday != null)
+			{
+				return banks.isEmpty() ? Kind.DATE : Kind.DATE_AND_LOCATION;
+			}
+			return banks.isEmpty() ? Kind.ANYWHERE : Kind.LOCATION;
 		}
 
 		boolean works(String bankKey, LocalDate today, Set<Integer> worn)
@@ -200,28 +218,31 @@ public final class Keywords
 		return new Phrase(hash, holiday, banks);
 	}
 
-	/** True if this message is a phrase that may pay out here and now; records the payout. */
-	public boolean claim(Progress p, String message, long nowMillis, LocalDate today, String bankKey, Set<Integer> worn)
+	/**
+	 * The kind of phrase this message is, if it may pay out here and now (and records the
+	 * payout); otherwise null.
+	 */
+	public Kind claim(Progress p, String message, long nowMillis, LocalDate today, String bankKey, Set<Integer> worn)
 	{
 		String hash = hash(normalise(message));
-		boolean matches = false;
+		Phrase match = null;
 		for (Phrase phrase : phrases)
 		{
 			if (phrase.hash.equals(hash) && phrase.works(bankKey, today, worn))
 			{
-				matches = true;
+				match = phrase;
 				break;
 			}
 		}
-		if (!matches)
+		if (match == null)
 		{
-			return false;
+			return null;
 		}
 
 		Long last = p.keywordPaid.get(hash);
 		if (last != null && nowMillis - last < COOLDOWN_MILLIS)
 		{
-			return false;
+			return null;
 		}
 
 		String day = today.toString();
@@ -232,12 +253,12 @@ public final class Keywords
 		}
 		if (p.keywordCount >= DAILY_CAP)
 		{
-			return false;
+			return null;
 		}
 
 		p.keywordCount++;
 		p.keywordPaid.put(hash, nowMillis);
-		return true;
+		return match.kind();
 	}
 
 	static String normalise(String message)
