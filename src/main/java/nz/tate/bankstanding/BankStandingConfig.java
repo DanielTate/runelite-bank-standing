@@ -26,9 +26,20 @@ package nz.tate.bankstanding;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
+import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup(BankStandingConfig.GROUP)
 public interface BankStandingConfig extends Config
 {
 	String GROUP = "bankstanding";
+
+	@ConfigItem(
+		keyName = "showCape",
+		name = "Show 99 cape",
+		description = "At level 99, show the Bank Standing cape on your character. Only you can see it."
+	)
+	default boolean showCape()
+	{
+		return true;
+	}
 }

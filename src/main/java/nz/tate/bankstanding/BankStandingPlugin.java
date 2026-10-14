@@ -37,6 +37,7 @@ import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Item;
@@ -55,10 +56,12 @@ import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
@@ -128,6 +131,15 @@ public class BankStandingPlugin extends Plugin
 	@Inject
 	private ItemManager itemManager;
 
+	@Inject
+	private BankStandingConfig config;
+
+	@Inject
+	private CapeDisplay capeDisplay;
+
+	@Inject
+	private ClientThread clientThread;
+
 	private BankStandingPanel panel;
 	private NavigationButton navButton;
 
@@ -141,6 +153,7 @@ public class BankStandingPlugin extends Plugin
 
 	private Set<Integer> worn = Collections.emptySet();
 	private long wornValue;
+	private int wornCape = -1;
 	private Emote emote = Emote.NONE;
 	private int emoteUntilTick;
 
@@ -168,11 +181,26 @@ public class BankStandingPlugin extends Plugin
 			.panel(panel)
 			.build();
 		clientToolbar.addNavigation(navButton);
+
+		clientThread.invoke(() ->
+		{
+			ItemContainer equipment = client.getItemContainer(InventoryID.WORN);
+			if (equipment != null)
+			{
+				readEquipment(equipment);
+			}
+			if (client.getGameState() == GameState.LOGGED_IN)
+			{
+				bankLocator.scan(client.getTopLevelWorldView().getScene());
+			}
+		});
 	}
 
 	@Override
 	protected void shutDown()
 	{
+		int realCape = wornCape;
+		clientThread.invoke(() -> capeDisplay.restore(realCape));
 		overlayManager.remove(skillTileOverlay);
 		overlayManager.remove(xpDropOverlay);
 		overlayManager.remove(hitsplatOverlay);
@@ -185,6 +213,7 @@ public class BankStandingPlugin extends Plugin
 		progress = null;
 		worn = Collections.emptySet();
 		wornValue = 0;
+		wornCape = -1;
 		emote = Emote.NONE;
 	}
 
@@ -201,6 +230,7 @@ public class BankStandingPlugin extends Plugin
 			tracker.reset();
 			realXp.clear();
 			progress = null;
+			capeDisplay.forget();
 			BankStandingPanel shown = panel;
 			SwingUtilities.invokeLater(shown::showLoggedOut);
 		}
@@ -235,7 +265,11 @@ public class BankStandingPlugin extends Plugin
 		{
 			return;
 		}
-		ItemContainer container = event.getItemContainer();
+		readEquipment(event.getItemContainer());
+	}
+
+	private void readEquipment(ItemContainer container)
+	{
 		Set<Integer> ids = new HashSet<>();
 		long value = 0;
 		for (Item item : container.getItems())
@@ -248,6 +282,17 @@ public class BankStandingPlugin extends Plugin
 		}
 		worn = ids;
 		wornValue = value;
+		Item cape = container.getItem(EquipmentInventorySlot.CAPE.getSlotIdx());
+		wornCape = cape == null ? -1 : cape.getId();
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (BankStandingConfig.GROUP.equals(event.getGroup()) && "showCape".equals(event.getKey()) && !config.showCape())
+		{
+			clientThread.invoke(() -> capeDisplay.restore(wornCape));
+		}
 	}
 
 	@Subscribe
@@ -305,6 +350,11 @@ public class BankStandingPlugin extends Plugin
 				return;
 			}
 			refreshPanel();
+		}
+
+		if (config.showCape() && progress.level() >= Experience.MAX_LEVEL)
+		{
+			capeDisplay.apply();
 		}
 
 		WorldPoint location = player.getWorldLocation();

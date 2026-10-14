@@ -29,9 +29,12 @@ import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
+import net.runelite.api.GameObject;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.ObjectComposition;
+import net.runelite.api.Scene;
+import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 
@@ -75,6 +78,31 @@ class BankLocator
 	void clear()
 	{
 		candidates.clear();
+	}
+
+	/** Picks up banks already loaded, for when the plugin starts mid-session. */
+	void scan(Scene scene)
+	{
+		for (Tile[][] plane : scene.getTiles())
+		{
+			for (Tile[] column : plane)
+			{
+				for (Tile tile : column)
+				{
+					if (tile == null)
+					{
+						continue;
+					}
+					for (GameObject object : tile.getGameObjects())
+					{
+						if (object != null)
+						{
+							objectSpawned(object);
+						}
+					}
+				}
+			}
+		}
 	}
 
 	boolean isNearBank(WorldPoint player)
