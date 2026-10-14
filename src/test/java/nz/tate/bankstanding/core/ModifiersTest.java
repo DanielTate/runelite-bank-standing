@@ -112,8 +112,8 @@ public class ModifiersTest
 	@Test
 	public void easterMovesEachYear()
 	{
-		assertEquals(LocalDate.of(2026, 4, 5), Modifiers.easterSunday(2026));
-		assertEquals(LocalDate.of(2027, 3, 28), Modifiers.easterSunday(2027));
+		assertEquals(LocalDate.of(2026, 4, 5), Holiday.easterSunday(2026));
+		assertEquals(LocalDate.of(2027, 3, 28), Holiday.easterSunday(2027));
 		StandContext c = at("ge", 1037);
 		c.today = LocalDate.of(2027, 3, 26);
 		assertTrue(Modifiers.holidayItemWorn(c));

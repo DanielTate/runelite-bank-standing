@@ -169,7 +169,7 @@ public class BankStandingPlugin extends Plugin
 	private long devNextCelebration;
 
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
-	private final Keywords keywords = new Keywords(Keywords.HASHES);
+	private final Keywords keywords = new Keywords(Keywords.PHRASES);
 
 	/** An emote's effect lasts this long after it starts. */
 	private static final int EMOTE_TICKS = 100;
@@ -347,11 +347,11 @@ public class BankStandingPlugin extends Plugin
 			return;
 		}
 
-		if (keywords.claim(progress, Text.removeTags(event.getMessage()), System.currentTimeMillis(), today()))
+		WorldPoint location = player.getWorldLocation();
+		String bankKey = BankNames.keyFor(location.getX(), location.getY());
+		if (keywords.claim(progress, Text.removeTags(event.getMessage()), System.currentTimeMillis(), today(), bankKey))
 		{
-			WorldPoint location = player.getWorldLocation();
-			BankRecord bank = progress.bank(BankNames.keyFor(location.getX(), location.getY()),
-				location.getX(), location.getY());
+			BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
 			drop(roller.keywordRoll(level, effect.bonusHit), bank, level);

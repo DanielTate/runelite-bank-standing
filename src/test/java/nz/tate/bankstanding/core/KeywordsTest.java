@@ -25,6 +25,7 @@
 package nz.tate.bankstanding.core;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import static org.junit.Assert.assertEquals;
@@ -38,35 +39,34 @@ public class KeywordsTest
 	private static final LocalDate DAY = LocalDate.of(2026, 10, 14);
 	private static final long HOUR = Keywords.COOLDOWN_MILLIS;
 
-	private final Keywords keywords = new Keywords(hashes("test phrase", "other phrase"));
+	private final Keywords keywords = new Keywords(Arrays.asList(
+		Keywords.phrase(Keywords.hash("test phrase"), null),
+		Keywords.phrase(Keywords.hash("other phrase"), null),
+		Keywords.phrase(Keywords.hash("spooky phrase"), Holiday.HALLOWEEN),
+		Keywords.phrase(Keywords.hash("local phrase"), null, "ge", "edgeville")));
 
-	private static Set<String> hashes(String... phrases)
+	private boolean claim(Progress p, String message, long now, LocalDate day)
 	{
-		Set<String> set = new HashSet<>();
-		for (String phrase : phrases)
-		{
-			set.add(Keywords.hash(phrase));
-		}
-		return set;
+		return keywords.claim(p, message, now, day, "varrock-west");
 	}
 
 	@Test
 	public void wholeMessageOnlyIgnoringCaseAndSpacing()
 	{
 		Progress p = new Progress();
-		assertTrue(keywords.claim(p, "  Test   PHRASE ", 0, DAY));
-		assertFalse(keywords.claim(p, "lol test phrase", 5 * HOUR, DAY));
-		assertFalse(keywords.claim(p, "hello", 5 * HOUR, DAY));
+		assertTrue(claim(p, "  Test   PHRASE ", 0, DAY));
+		assertFalse(claim(p, "lol test phrase", 5 * HOUR, DAY));
+		assertFalse(claim(p, "hello", 5 * HOUR, DAY));
 	}
 
 	@Test
 	public void eachPhrasePaysOncePerHour()
 	{
 		Progress p = new Progress();
-		assertTrue(keywords.claim(p, "test phrase", 0, DAY));
-		assertFalse(keywords.claim(p, "test phrase", HOUR - 1, DAY));
-		assertTrue(keywords.claim(p, "other phrase", HOUR - 1, DAY));
-		assertTrue(keywords.claim(p, "test phrase", HOUR, DAY));
+		assertTrue(claim(p, "test phrase", 0, DAY));
+		assertFalse(claim(p, "test phrase", HOUR - 1, DAY));
+		assertTrue(claim(p, "other phrase", HOUR - 1, DAY));
+		assertTrue(claim(p, "test phrase", HOUR, DAY));
 	}
 
 	@Test
@@ -75,15 +75,34 @@ public class KeywordsTest
 		Progress p = new Progress();
 		for (int i = 0; i < Keywords.DAILY_CAP; i++)
 		{
-			assertTrue(keywords.claim(p, "test phrase", i * HOUR, DAY));
+			assertTrue(claim(p, "test phrase", i * HOUR, DAY));
 		}
-		assertFalse(keywords.claim(p, "test phrase", 20 * HOUR, DAY));
-		assertTrue(keywords.claim(p, "test phrase", 21 * HOUR, DAY.plusDays(1)));
+		assertFalse(claim(p, "test phrase", 20 * HOUR, DAY));
+		assertTrue(claim(p, "test phrase", 21 * HOUR, DAY.plusDays(1)));
 	}
 
 	@Test
-	public void shippedListHasThreeHashes()
+	public void holidayPhrasesOnlyWorkOnTheHoliday()
 	{
-		assertEquals(3, Keywords.HASHES.size());
+		assertFalse(claim(new Progress(), "spooky phrase", 0, DAY));
+		assertTrue(claim(new Progress(), "spooky phrase", 0, LocalDate.of(2026, 10, 31)));
+	}
+
+	@Test
+	public void bankPhrasesOnlyWorkAtTheirBanks()
+	{
+		assertFalse(claim(new Progress(), "local phrase", 0, DAY));
+		assertTrue(keywords.claim(new Progress(), "local phrase", 0, DAY, "edgeville"));
+	}
+
+	@Test
+	public void shippedPhrasesAreUnique()
+	{
+		Set<String> hashes = new HashSet<>();
+		for (Keywords.Phrase phrase : Keywords.PHRASES)
+		{
+			assertTrue(hashes.add(phrase.hash));
+		}
+		assertEquals(31, hashes.size());
 	}
 }

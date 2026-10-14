@@ -204,47 +204,9 @@ public final class Modifiers
 
 	static boolean holidayItemWorn(StandContext c)
 	{
-		LocalDate d = c.today;
-		int year = d.getYear();
-		if (within(d, LocalDate.of(year, 12, 20), LocalDate.of(year, 12, 31)) && c.wearingAny(Items.CHRISTMAS))
-		{
-			return true;
-		}
-		if ((within(d, LocalDate.of(year, 10, 25), LocalDate.of(year, 10, 31)) || d.equals(LocalDate.of(year, 11, 1)))
-			&& c.wearingAny(Items.HALLOWEEN))
-		{
-			return true;
-		}
-		LocalDate easter = easterSunday(year);
-		if (within(d, easter.minusDays(3), easter.plusDays(3)) && c.wearingAny(Items.EASTER))
-		{
-			return true;
-		}
-		return within(d, LocalDate.of(year, 2, 20), LocalDate.of(year, 2, 24)) && c.wearingAny(Items.BIRTHDAY);
-	}
-
-	private static boolean within(LocalDate d, LocalDate from, LocalDate to)
-	{
-		return !d.isBefore(from) && !d.isAfter(to);
-	}
-
-	/** Western Easter Sunday (anonymous Gregorian algorithm). */
-	static LocalDate easterSunday(int year)
-	{
-		int a = year % 19;
-		int b = year / 100;
-		int c = year % 100;
-		int d = b / 4;
-		int e = b % 4;
-		int f = (b + 8) / 25;
-		int g = (b - f + 1) / 3;
-		int h = (19 * a + b - d - g + 15) % 30;
-		int i = c / 4;
-		int k = c % 4;
-		int l = (32 + 2 * e + 2 * i - h - k) % 7;
-		int m = (a + 11 * h + 22 * l) / 451;
-		int month = (h + l - 7 * m + 114) / 31;
-		int day = ((h + l - 7 * m + 114) % 31) + 1;
-		return LocalDate.of(year, month, day);
+		return Holiday.CHRISTMAS.isOn(c.today) && c.wearingAny(Items.CHRISTMAS)
+			|| Holiday.HALLOWEEN.isOn(c.today) && c.wearingAny(Items.HALLOWEEN)
+			|| Holiday.EASTER.isOn(c.today) && c.wearingAny(Items.EASTER)
+			|| Holiday.BIRTHDAY.isOn(c.today) && c.wearingAny(Items.BIRTHDAY);
 	}
 }
