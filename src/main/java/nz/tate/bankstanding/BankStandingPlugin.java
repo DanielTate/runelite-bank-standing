@@ -145,6 +145,9 @@ public class BankStandingPlugin extends Plugin
 
 	private final StandTracker tracker = new StandTracker();
 	private final XpRoller roller = new XpRoller(new Random());
+
+	/** Development only: `./gradlew run -PxpMultiplier=N` scales every drop. Always 1 for players. */
+	private static final int DEV_XP_MULTIPLIER = Math.max(1, Integer.getInteger("bankstanding.xpMultiplier", 1));
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.HASHES);
 
@@ -328,7 +331,7 @@ public class BankStandingPlugin extends Plugin
 				location.getX(), location.getY());
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
-			int drop = roller.keywordRoll(level, effect.bonusHit);
+			int drop = roller.keywordRoll(level, effect.bonusHit) * DEV_XP_MULTIPLIER;
 			award(drop, bank, level);
 			dropFeed.add(drop, drop == XpRoller.maxHit(level, effect.bonusHit));
 		}
@@ -376,7 +379,7 @@ public class BankStandingPlugin extends Plugin
 		{
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
-			int drop = roller.roll(level, effect.boost, effect.bonusHit);
+			int drop = roller.roll(level, effect.boost, effect.bonusHit) * DEV_XP_MULTIPLIER;
 			award(drop, bank, level);
 			dropFeed.add(drop, drop == XpRoller.maxHit(level, effect.bonusHit));
 		}

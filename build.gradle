@@ -38,7 +38,7 @@ tasks.register('run', JavaExec) {
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = pluginMainClass
 
-	jvmArgs "-ea"
+	jvmArgs "-ea", "-Dbankstanding.xpMultiplier=${findProperty('xpMultiplier') ?: 10}"
 	args "--developer-mode", "--debug"
 }
 
