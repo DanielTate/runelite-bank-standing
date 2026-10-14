@@ -151,7 +151,23 @@ public final class Keywords
 		phrase("82f0f54adfac04445a83131e1264c0069d421852669c747642741d8b118c52a6", Holiday.CHRISTMAS),
 		phrase("fbe48d6dbdbf043b98c23d3e75a8e6aa34499d5a6aabaef155a308637a9a01c9", Holiday.HALLOWEEN),
 		phrase("760a6b0373e1cf4cc69ebc8f1f638db9e7077f40311c2672f5ee18db7d86f59a", Holiday.NEW_YEAR),
-		phrase("3204353185e09be163269cd65f3cef13a5639663e7db3f9c5d08e020ea731d47", Holiday.FALADOR_MASSACRE, "falador-east", "falador-west")
+		phrase("3204353185e09be163269cd65f3cef13a5639663e7db3f9c5d08e020ea731d47", Holiday.FALADOR_MASSACRE, "falador-east", "falador-west"),
+		phrase("436bd2d2e747da47493a2eaf0efedb6d0a956f3c0e202a100ada18d2419dfb60", null),
+		phrase("6a1c0eb86ee2469dc74b65cc219b607ab4ae5c2f2d67885eb99a732b9c69e45f", null),
+		phrase("cf2ddc9d7f63e6592fd310d0aad96c3a10322b4300e946475345f8d96cb250dc", null),
+		phrase("83f86bce36c272019f2f328367d8657c48d3f12636e8538152a2ef524427dd98", null, "falador-east", "falador-west"),
+		phrase("542bb96d81a99c4780661a8543dbe90dd871c47af6816985f3111b6c22d262bb", null, "lumbridge"),
+		phrase("8872e5b4f35036452a60775ba4fd85806b2ca778f98320fcbac03f3ddd90386a", null, "lumbridge"),
+		phrase("e474ef2ffc9262541161589eed9e1c97fb55a710205ac47f98ca85a69ea78085", null, "tutorial-island"),
+		phrase("5e0a4cbe0a0e23367aba94a6d33a807408b4357e109aeaf703e67ae9ca16b0d4", null, "varrock-east"),
+		phrase("69b543f7ec87f2d82b859fa24b6a25768de55da61875e716e2f1568a6d4496c1", null, "seers"),
+		phrase("d1766f3897ea8a8c6542d81952a50c51283ab9900fc4dab1ec9522531b05c5dc", null, "catherby"),
+		phrase("9eaa1f638170b511933fa40a80d500a218e55d7119f7694ab684de1bcf8c2f41", null, "ardougne-south"),
+		phrase("3c1f1edb15355c820e24e03209c49c3c8e2d5001f06da56b74ec7437f2dde944", null, "draynor"),
+		phrase("6535163e94f8cf6a4da75a055379da8dd4bcf29c8432fe9cb4af5338fd9b14b1", Holiday.HALLOWEEN, "draynor"),
+		phrase("812612409f5e9da77909da67192341fc742286e9c2466d055addf39f1cc7ec71", null).wearing(Items.ids(1333, 23330, 23332, 23334)),
+		phrase("229d295af8b3509c6c6f1ea327f7c5a0bd43cf49fa49bc9c10ad992cdc02dfce", null).wearing(Items.ids(1149)),
+		phrase("50b100fb48ec767a128ba8fc0a8d81b38d5abf797c77dc1cbc06c32afb2a812b", Holiday.CHRISTMAS)
 	));
 
 	private final List<Phrase> phrases;
