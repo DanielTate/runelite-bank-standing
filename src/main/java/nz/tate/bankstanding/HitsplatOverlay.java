@@ -67,6 +67,9 @@ class HitsplatOverlay extends Overlay
 	private static final float BLUE_HUE = 0.6f;
 	private static final float GREEN_HUE = 0.33f;
 	private static final float GOLD_HUE = 0.125f;
+	private static final float TINT_CONTRAST = 2.2f;
+	/** Brightness that stays put when stretching; the splat's body sits below it and darkens. */
+	private static final float TINT_PIVOT = 0.7f;
 	private static final float SCALE = 1.5f;
 	/** How far above the top of the player's model the splat sits, in local units. */
 	private static final int ABOVE_HEAD = 40;
@@ -175,7 +178,11 @@ class HitsplatOverlay extends Overlay
 		return cached;
 	}
 
-	/** Coloured pixels take this hue; greys, outline and shading are kept. */
+	/**
+	 * Coloured pixels take this hue, with their brightness stretched by {@link #TINT_CONTRAST}
+	 * around {@link #TINT_PIVOT} so the light and dark parts stand apart; greys and outline are
+	 * kept.
+	 */
 	static BufferedImage tinted(BufferedImage splat, float hue)
 	{
 		BufferedImage out = new BufferedImage(splat.getWidth(), splat.getHeight(), BufferedImage.TYPE_INT_ARGB);
@@ -188,7 +195,8 @@ class HitsplatOverlay extends Overlay
 				Color.RGBtoHSB((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF, hsb);
 				if (hsb[1] > 0.2f)
 				{
-					int rgb = Color.HSBtoRGB(hue, Math.max(hsb[1], 0.7f), hsb[2]);
+					float brightness = Math.max(0f, Math.min(1f, TINT_PIVOT + (hsb[2] - TINT_PIVOT) * TINT_CONTRAST));
+					int rgb = Color.HSBtoRGB(hue, Math.max(hsb[1], 0.7f), brightness);
 					argb = (argb & 0xFF000000) | (rgb & 0x00FFFFFF);
 				}
 				out.setRGB(x, y, argb);
