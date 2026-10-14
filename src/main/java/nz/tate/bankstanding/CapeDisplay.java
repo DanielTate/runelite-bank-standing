@@ -25,14 +25,11 @@
 package nz.tate.bankstanding;
 
 import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.ColorTextureOverride;
 import net.runelite.api.ItemComposition;
-import net.runelite.api.ModelData;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.gameval.ItemID;
@@ -42,60 +39,93 @@ import nz.tate.bankstanding.core.CapePalette;
 /**
  * Shows the 99 Bank Standing cape on your own character, on your own client only.
  *
- * <p>It swaps the cape slot of the local player's appearance to a base cape and turns it
- * gold by changing this client's copy of the cape's item definition: its own recolour
- * slots if it has them, otherwise slots taken from its model's colours. So on this client
- * every copy of the base cape shows gold while the 99 cape is on; restoring undoes it. The game rebuilds the appearance whenever equipment changes, so this
- * is re-applied each tick; nothing is sent to the server.
+ * <p>It puts a skillcape in the cape slot of your appearance and turns it gold with a colour
+ * override on your appearance alone. Item definitions are never changed, so other players'
+ * capes, including the same skillcape, look exactly as normal. The game rebuilds your
+ * appearance whenever equipment changes, so this is re-applied each tick; nothing is sent to
+ * the server.
  */
-@Slf4j
 @Singleton
 class CapeDisplay
 {
-	static final int BASE_CAPE = ItemID.CAPE_OF_SKULLS;
+	/** Skillcapes the cape can be built from; they all have recolour slots. */
+	static final int[] BASES = {
+		ItemID.SKILLCAPE_QP, ItemID.SKILLCAPE_ATTACK, ItemID.SKILLCAPE_STRENGTH, ItemID.SKILLCAPE_DEFENCE,
+		ItemID.SKILLCAPE_RANGING, ItemID.SKILLCAPE_PRAYER, ItemID.SKILLCAPE_MAGIC, ItemID.SKILLCAPE_RUNECRAFTING,
+		ItemID.SKILLCAPE_HITPOINTS, ItemID.SKILLCAPE_AGILITY, ItemID.SKILLCAPE_HERBLORE, ItemID.SKILLCAPE_THIEVING,
+		ItemID.SKILLCAPE_CRAFTING, ItemID.SKILLCAPE_FLETCHING, ItemID.SKILLCAPE_SLAYER,
+		ItemID.SKILLCAPE_CONSTRUCTION, ItemID.SKILLCAPE_MINING, ItemID.SKILLCAPE_SMITHING, ItemID.SKILLCAPE_FISHING,
+		ItemID.SKILLCAPE_COOKING, ItemID.SKILLCAPE_FIREMAKING, ItemID.SKILLCAPE_WOODCUTTING,
+		ItemID.SKILLCAPE_FARMING, ItemID.SKILLCAPE_HUNTING, ItemID.SKILLCAPE_SAILING, ItemID.SKILLCAPE_AD,
+	};
+	private static final String[] NAMES = {
+		"Quest point", "Attack", "Strength", "Defence", "Ranged", "Prayer", "Magic", "Runecraft", "Hitpoints",
+		"Agility", "Herblore", "Thieving", "Crafting", "Fletching", "Slayer", "Construction", "Mining", "Smithing",
+		"Fishing", "Cooking", "Firemaking", "Woodcutting", "Farming", "Hunter", "Sailing", "Achievement diary",
+	};
+	static final int DEFAULT_BASE = ItemID.SKILLCAPE_QP;
+
+	/** The skillcape's name, for the dev panel. */
+	static String name(int base)
+	{
+		for (int i = 0; i < BASES.length; i++)
+		{
+			if (BASES[i] == base)
+			{
+				return NAMES[i];
+			}
+		}
+		return String.valueOf(base);
+	}
 
 	private final Client client;
-	private final int capeItem = BASE_CAPE;
+	private final DevOptions dev;
 	private boolean applied;
 
-	/** The gold recolour, kept so it can be re-applied if the game reloads the item. */
-	private short[] definitionFrom;
-	private short[] definitionTo;
-	/** The definition's own recolour, put back on restore. */
-	private short[] originalFrom;
-	private short[] originalTo;
-	private boolean prepared;
-	private boolean warned;
-
 	@Inject
-	CapeDisplay(Client client)
+	CapeDisplay(Client client, DevOptions dev)
 	{
 		this.client = client;
+		this.dev = dev;
+	}
+
+	/** The skillcape in use: the default, or another chosen in the dev panel. */
+	private int base()
+	{
+		return dev.capeBase > 0 ? dev.capeBase : DEFAULT_BASE;
 	}
 
 	void apply()
 	{
 		Player player = client.getLocalPlayer();
 		PlayerComposition appearance = player == null ? null : player.getPlayerComposition();
-		if (appearance == null || !prepare())
+		if (appearance == null)
 		{
 			return;
 		}
+		int base = base();
+		ItemComposition cape = client.getItemDefinition(base);
+		short[] original = cape.getColorToReplaceWith();
+		if (original == null || original.length == 0)
+		{
+			return;
+		}
+		short[] gold = gold(original);
 
 		int[] equipment = appearance.getEquipmentIds();
 		int slot = KitType.CAPE.getIndex();
-		int wanted = capeItem + PlayerComposition.ITEM_OFFSET;
+		int wanted = base + PlayerComposition.ITEM_OFFSET;
 		boolean changed = equipment[slot] != wanted;
 		equipment[slot] = wanted;
 
-		ItemComposition cape = client.getItemDefinition(capeItem);
-		if (!Arrays.equals(cape.getColorToReplaceWith(), definitionTo))
+		ColorTextureOverride override = appearance.getColorTextureOverride(KitType.CAPE);
+		if (changed || override == null || !Arrays.equals(override.getColorToReplaceWith(), gold))
 		{
-			cape.setColorToReplace(definitionFrom);
-			cape.setColorToReplaceWith(definitionTo);
+			override = appearance.createColorTextureOverride(KitType.CAPE, base);
+			short[] colours = override.getColorToReplaceWith();
+			System.arraycopy(gold, 0, colours, 0, Math.min(gold.length, colours.length));
 			changed = true;
 		}
-
 		if (changed)
 		{
 			appearance.setHash();
@@ -111,14 +141,13 @@ class CapeDisplay
 			return;
 		}
 		applied = false;
-		undoDefinition();
-
 		Player player = client.getLocalPlayer();
 		PlayerComposition appearance = player == null ? null : player.getPlayerComposition();
 		if (appearance == null)
 		{
 			return;
 		}
+		appearance.removeColorTextureOverride(KitType.CAPE);
 		appearance.getEquipmentIds()[KitType.CAPE.getIndex()] =
 			wornCapeId > 0 ? wornCapeId + PlayerComposition.ITEM_OFFSET : 0;
 		appearance.setHash();
@@ -128,65 +157,6 @@ class CapeDisplay
 	void forget()
 	{
 		applied = false;
-	}
-
-	/** Works out the gold colours for the base cape. False until its model has loaded. */
-	private boolean prepare()
-	{
-		if (prepared)
-		{
-			return true;
-		}
-		ItemComposition cape = client.getItemDefinition(capeItem);
-		originalFrom = cape.getColorToReplace();
-		originalTo = cape.getColorToReplaceWith();
-		if (originalFrom != null && originalTo != null && originalTo.length > 0)
-		{
-			definitionFrom = originalFrom;
-			definitionTo = gold(originalTo);
-			log.debug("Cape {} recoloured through its own slots ({} colours)", capeItem, definitionTo.length);
-			prepared = true;
-			return true;
-		}
-
-		ModelData model = client.loadModelData(cape.getInventoryModel());
-		if (model == null)
-		{
-			if (!warned)
-			{
-				log.debug("Cape {} model not loaded yet", capeItem);
-				warned = true;
-			}
-			return false;
-		}
-		Set<Short> distinct = new LinkedHashSet<>();
-		for (short colour : model.getFaceColors())
-		{
-			distinct.add(colour);
-		}
-		definitionFrom = new short[distinct.size()];
-		int i = 0;
-		for (short colour : distinct)
-		{
-			definitionFrom[i++] = colour;
-		}
-		definitionTo = gold(definitionFrom);
-		log.debug("Cape {} recoloured through its definition ({} colours)", capeItem, definitionFrom.length);
-		prepared = true;
-		return true;
-	}
-
-	private void undoDefinition()
-	{
-		if (definitionTo != null)
-		{
-			ItemComposition cape = client.getItemDefinition(capeItem);
-			if (Arrays.equals(cape.getColorToReplaceWith(), definitionTo))
-			{
-				cape.setColorToReplace(originalFrom);
-				cape.setColorToReplaceWith(originalTo);
-			}
-		}
 	}
 
 	private static short[] gold(short[] colours)

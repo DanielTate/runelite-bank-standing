@@ -32,6 +32,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
@@ -87,6 +88,13 @@ class DevPanel extends PluginPanel
 		cape.setOpaque(false);
 		cape.addActionListener(e -> plugin.devPreviewCape(cape.isSelected()));
 		body.add(cape);
+		JComboBox<String> capeBase = new JComboBox<>();
+		for (int base : CapeDisplay.BASES)
+		{
+			capeBase.addItem(CapeDisplay.name(base));
+		}
+		capeBase.addActionListener(e -> dev.capeBase = CapeDisplay.BASES[capeBase.getSelectedIndex()]);
+		body.add(row(new JLabel("Cape base"), capeBase));
 
 		body.add(heading("Standing unlocks"));
 		JCheckBox pretend = new JCheckBox("Act as if standing (rug, seat, fidgets, bankers)", dev.pretendStanding);
@@ -149,7 +157,7 @@ class DevPanel extends PluginPanel
 		return panel;
 	}
 
-	private static JPanel row(JLabel label, JSpinner spinner)
+	private static JPanel row(JLabel label, JComponent spinner)
 	{
 		JPanel panel = new JPanel(new BorderLayout(8, 0));
 		panel.setOpaque(false);

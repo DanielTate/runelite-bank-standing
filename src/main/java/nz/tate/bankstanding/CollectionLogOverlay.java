@@ -263,7 +263,7 @@ class CollectionLogOverlay extends GameWindow
 				total += each.slots.size();
 			}
 		}
-		art.bold.drawShadowedCentred(graphics, "Collection Log - " + done + "/" + total, x + WIDTH / 2, y + 11, ORANGE);
+		art.bold.drawShadowedCentred(graphics, "Bank Standing Collection Log - " + done + "/" + total, x + WIDTH / 2, y + 11, ORANGE);
 
 		for (int t = 0; t < TABS.length; t++)
 		{

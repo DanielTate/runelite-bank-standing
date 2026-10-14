@@ -510,7 +510,7 @@ public class BankStandingPlugin extends Plugin
 		BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
 		if (newBank)
 		{
-			collected("New bank added to your collection log: ", BankNames.displayName(bankKey, bank), -1, false);
+			collected("New bank: ", BankNames.displayName(bankKey, bank), -1, false);
 		}
 		bank.ticks++;
 		session.ticks++;
@@ -553,7 +553,7 @@ public class BankStandingPlugin extends Plugin
 	{
 		if (CollectionLog.collect(progress, drop, System.currentTimeMillis()))
 		{
-			collected("New item added to your collection log: ", drop.name, drop.icon, drop.gold);
+			collected("New item: ", drop.name, drop.icon, drop.gold);
 		}
 		else
 		{
@@ -564,11 +564,14 @@ public class BankStandingPlugin extends Plugin
 		refreshPanel();
 	}
 
-	/** The chat line in the log's red, and the popup. */
-	private void collected(String message, String name, int icon, boolean gold)
+	/**
+	 * The chat line and the popup for something new in the log. Both say Bank Standing, so
+	 * they can't be mistaken for the game's own collection log.
+	 */
+	private void collected(String what, String name, int icon, boolean gold)
 	{
-		chat(message + "<col=ef1020>" + name + "</col>");
-		collectionPopup.show((icon > 0 ? "New item: " : "New bank: ") + name, icon, gold);
+		chat("Bank Standing collection log - " + what + "<col=ef1020>" + name + "</col>");
+		collectionPopup.show(what + name, icon, gold);
 	}
 
 	private void chat(String message)
@@ -768,7 +771,7 @@ public class BankStandingPlugin extends Plugin
 
 	void devTestPopup()
 	{
-		clientThread.invoke(() -> collected("New item added to your collection log: ", "Golden booth key", 989, true));
+		clientThread.invoke(() -> collected("New item: ", "Golden booth key", 989, true));
 	}
 
 	void devResetCollection()

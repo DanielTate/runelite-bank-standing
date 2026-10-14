@@ -53,6 +53,8 @@ class DevOptions
 	boolean pretendStanding;
 	/** Shows the pet as if you owned it (dev panel only). */
 	boolean previewPet;
+	/** The skillcape the 99 cape is built from, or 0 for the default (dev panel only). */
+	int capeBase;
 	/** {@code -PpreviewSplats=1,2,3}: each drop shows the next of these sprites, named in chat. */
 	final int[] previewSplats;
 

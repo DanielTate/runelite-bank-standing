@@ -39,6 +39,14 @@ The game's own logout timer still applies, so you will need to stay at your keyb
 
 Progress is saved separately for each of your accounts.
 
+## Fair play
+
+- Everything is drawn on your own client. Nobody else sees your cape, rug, seat, pet or
+  hitsplats, and the game server never hears about them.
+- The plugin makes no network requests and sends no data anywhere.
+- It never clicks, moves or acts for you. It only watches what you do, and it gives no
+  advantage in the real game.
+
 ## Build
 
 ```
@@ -46,8 +54,9 @@ Progress is saved separately for each of your accounts.
 ```
 
 `./gradlew run` starts a development client. It adds a **Bank Standing (dev)** sidebar
-panel for previewing hitsplats, effects, the cape, the standing unlocks and the collection log, and for setting your level, and takes a
-few testing options. None of this works outside developer mode:
+panel for previewing hitsplats, effects, the cape, the standing unlocks and the collection
+log, and for setting your level, and takes a few testing options. None of this works
+outside developer mode:
 
 | Option | Effect |
 |---|---|

@@ -30,6 +30,7 @@ import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import javax.inject.Inject;
@@ -40,13 +41,14 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
- * The banner that slides down when something new goes in the collection log, like the game's
- * own "Collection log" popup. Several in a row are shown one after another.
+ * The banner that slides down when something new goes in the Bank Standing collection log.
+ * It's styled like the game's interfaces but titled with the skill's name and icon, so it's
+ * never mistaken for the game's own popup. Several in a row are shown one after another.
  */
 @Singleton
 class CollectionPopupOverlay extends Overlay
 {
-	private static final int WIDTH = 300;
+	private static final int WIDTH = 320;
 	private static final int HEIGHT = 64;
 	private static final Color ORANGE = new Color(0xff, 0x98, 0x1f);
 	private static final int ICON = 32;
@@ -72,13 +74,15 @@ class CollectionPopupOverlay extends Overlay
 
 	private final Client client;
 	private final GuideArt art;
+	private final BufferedImage skillIcon;
 	private final Deque<Entry> queue = new ArrayDeque<>();
 
 	@Inject
-	CollectionPopupOverlay(Client client, GuideArt art)
+	CollectionPopupOverlay(Client client, GuideArt art, Icons icons)
 	{
 		this.client = client;
 		this.art = art;
+		this.skillIcon = icons.small();
 		setPosition(OverlayPosition.DYNAMIC);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 	}
@@ -131,7 +135,12 @@ class CollectionPopupOverlay extends Overlay
 			textX = x + 20 + ICON + 10;
 		}
 		int centre = (textX + x + WIDTH - 20) / 2;
-		art.bold.drawShadowedCentred(graphics, "Collection log", centre, y + 14, ORANGE);
+		// "Bank Standing" and the skill's icon, so it can't be mistaken for the game's own popup.
+		String title = "Bank Standing collection log";
+		int titleWidth = skillIcon.getWidth() + 4 + art.bold.width(title);
+		int titleX = centre - titleWidth / 2;
+		graphics.drawImage(skillIcon, titleX, y + 12, null);
+		art.bold.drawShadowed(graphics, title, titleX + skillIcon.getWidth() + 4, y + 14, ORANGE);
 		art.plain.drawShadowedCentred(graphics, entry.text, centre, y + 18 + art.bold.height(), Color.WHITE);
 		graphics.setComposite(before);
 		return new Dimension(WIDTH, HEIGHT);
