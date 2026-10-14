@@ -88,6 +88,19 @@ public class UnlocksTest
 	}
 
 	@Test
+	public void everyCategoryHasLines()
+	{
+		for (Unlocks.Category category : Unlocks.Category.values())
+		{
+			assertTrue(category.title, !Unlocks.in(category).isEmpty());
+		}
+		for (Unlocks.Unlock unlock : Unlocks.ALL)
+		{
+			assertTrue(unlock.text, unlock.item > 0 || unlock.sprite > 0);
+		}
+	}
+
+	@Test
 	public void guideIsInLevelOrder()
 	{
 		int last = 0;

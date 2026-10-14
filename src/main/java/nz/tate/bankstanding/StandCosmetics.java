@@ -25,9 +25,7 @@
 package nz.tate.bankstanding;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -51,8 +49,6 @@ import nz.tate.bankstanding.core.Unlocks;
 @Singleton
 class StandCosmetics
 {
-	private static final int TILE = 128;
-
 	// Rug pieces: corner, side, middle. The standard rug is red with a gold trim.
 	private static final int[] WORN_RUG = {1061, 1117, 1113};
 	private static final int[] RUG = {1110, 1134, 1067};
@@ -92,7 +88,7 @@ class StandCosmetics
 	private final Client client;
 	private final Random random = new Random();
 
-	private RuneLiteObject rugObject;
+	private final List<RuneLiteObject> rugPieces = new ArrayList<>();
 	private Unlocks.Rug rugShown = Unlocks.Rug.NONE;
 	private RuneLiteObject seatObject;
 	private Unlocks.Seat seatShown = Unlocks.Seat.NONE;
@@ -159,11 +155,7 @@ class StandCosmetics
 	void clear()
 	{
 		wasStanding = false;
-		if (rugObject != null)
-		{
-			rugObject.setActive(false);
-			rugObject = null;
-		}
+		removeRug();
 		rugShown = Unlocks.Rug.NONE;
 		if (seatObject != null)
 		{
@@ -208,37 +200,13 @@ class StandCosmetics
 
 	private void placeRug(Player player, Unlocks.Rug rug)
 	{
-		if (rugObject != null)
-		{
-			rugObject.setActive(false);
-			rugObject = null;
-		}
+		removeRug();
 		rugShown = rug;
 		if (rug == Unlocks.Rug.NONE)
 		{
 			return;
 		}
-		ModelData model = buildRug(rug == Unlocks.Rug.WORN ? WORN_RUG : RUG);
-		if (model == null)
-		{
-			rugShown = Unlocks.Rug.NONE;
-			return;
-		}
-		if (rug == Unlocks.Rug.BLUE)
-		{
-			model.recolor(RUG_BODY, BLUE_BODY).recolor(RUG_TRIM, BLUE_TRIM);
-		}
-		else if (rug == Unlocks.Rug.GOLD)
-		{
-			model.recolor(RUG_BODY, GOLD_BODY).recolor(RUG_TRIM, GOLD_TRIM);
-		}
-		rugObject = spawn(player, model, 0);
-	}
-
-	/** Lays out a 3 by 3 rug centred on your tile, turning each edge piece to face outwards. */
-	private ModelData buildRug(int[] pieces)
-	{
-		List<ModelData> parts = new ArrayList<>();
+		int[] pieces = rug == Unlocks.Rug.WORN ? WORN_RUG : RUG;
 		for (int dx = -1; dx <= 1; dx++)
 		{
 			for (int dy = -1; dy <= 1; dy++)
@@ -247,84 +215,78 @@ class StandCosmetics
 				ModelData base = client.loadModelData(pieces[edges == 2 ? 0 : edges == 1 ? 1 : 2]);
 				if (base == null)
 				{
-					return null;
+					removeRug();
+					rugShown = Unlocks.Rug.NONE;
+					return;
 				}
-				ModelData piece = edges == 0 ? base.cloneVertices() : facing(base, dx, dy);
-				parts.add(piece.translate(dx * TILE, 0, dy * TILE));
+				ModelData piece = base.cloneColors();
+				if (rug == Unlocks.Rug.BLUE)
+				{
+					piece.recolor(RUG_BODY, BLUE_BODY).recolor(RUG_TRIM, BLUE_TRIM);
+				}
+				else if (rug == Unlocks.Rug.GOLD)
+				{
+					piece.recolor(RUG_BODY, GOLD_BODY).recolor(RUG_TRIM, GOLD_TRIM);
+				}
+				int turns = edges == 0 ? 0 : turnsToFaceMiddle(base, dx, dy);
+				RuneLiteObject object = spawn(player, piece, dx, dy, turns * 512);
+				if (object != null)
+				{
+					rugPieces.add(object);
+				}
 			}
 		}
-		return client.mergeModels(parts.toArray(new ModelData[0])).cloneColors();
+	}
+
+	private void removeRug()
+	{
+		for (RuneLiteObject piece : rugPieces)
+		{
+			piece.setActive(false);
+		}
+		rugPieces.clear();
 	}
 
 	/**
-	 * Turns a rug edge piece so its border points towards (dx, dy). The border is found from the
-	 * model itself: the faces that aren't the rug's main colour.
+	 * How many quarter turns make a rug edge piece face the middle. The game's edge pieces only
+	 * cover the inner part of their tile (the rug's edge falls mid-tile), so the piece is turned
+	 * until the area it covers points back towards the player's tile. A quarter turn moves a
+	 * point (x, z) to (z, -x), the same way the renderer turns an object.
 	 */
-	private static ModelData facing(ModelData base, int dx, int dy)
+	private static int turnsToFaceMiddle(ModelData model, int dx, int dy)
 	{
-		ModelData best = null;
+		double[] centre = centre(model);
+		double x = centre[0];
+		double z = centre[1];
+		int best = 0;
 		double bestScore = Double.NEGATIVE_INFINITY;
 		for (int turns = 0; turns < 4; turns++)
 		{
-			ModelData turned = base.cloneVertices();
-			if (turns == 1)
-			{
-				turned.rotateY90Ccw();
-			}
-			else if (turns == 2)
-			{
-				turned.rotateY180Ccw();
-			}
-			else if (turns == 3)
-			{
-				turned.rotateY270Ccw();
-			}
-			double[] border = borderCentre(turned);
-			double score = border[0] * dx + border[1] * dy;
+			double score = -(x * dx + z * dy);
 			if (score > bestScore)
 			{
 				bestScore = score;
-				best = turned;
+				best = turns;
 			}
+			double turned = z;
+			z = -x;
+			x = turned;
 		}
 		return best;
 	}
 
-	/** The average x and z of the faces that aren't the most common colour. */
-	private static double[] borderCentre(ModelData model)
+	/** The average x and z of the model's vertices. */
+	private static double[] centre(ModelData model)
 	{
-		short[] colours = model.getFaceColors();
-		Map<Short, Integer> counts = new HashMap<>();
-		for (short colour : colours)
-		{
-			counts.merge(colour, 1, Integer::sum);
-		}
-		short main = colours.length == 0 ? 0 : colours[0];
-		for (Map.Entry<Short, Integer> entry : counts.entrySet())
-		{
-			if (entry.getValue() > counts.get(main))
-			{
-				main = entry.getKey();
-			}
-		}
 		float[] xs = model.getVerticesX();
 		float[] zs = model.getVerticesZ();
-		int[][] faces = {model.getFaceIndices1(), model.getFaceIndices2(), model.getFaceIndices3()};
+		int n = model.getVerticesCount();
 		double x = 0;
 		double z = 0;
-		int n = 0;
-		for (int face = 0; face < model.getFaceCount(); face++)
+		for (int i = 0; i < n; i++)
 		{
-			if (counts.size() > 1 && colours[face] == main)
-			{
-				continue;
-			}
-			for (int[] corner : faces)
-			{
-				x += xs[corner[face]];
-				z += zs[corner[face]];
-				n++;
-			}
+			x += xs[i];
+			z += zs[i];
 		}
 		return n == 0 ? new double[]{0, 0} : new double[]{x / n, z / n};
 	}
@@ -348,7 +310,7 @@ class StandCosmetics
 			seatShown = Unlocks.Seat.NONE;
 			return;
 		}
-		seatObject = spawn(player, model.cloneVertices(), player.getOrientation());
+		seatObject = spawn(player, model, 0, 0, player.getOrientation());
 		sitAnimation = seat == Unlocks.Seat.THRONE ? THRONE_SIT : STOOL_SIT;
 	}
 
@@ -392,9 +354,10 @@ class StandCosmetics
 		standingIdlePose = -1;
 	}
 
-	private RuneLiteObject spawn(Player player, ModelData model, int orientation)
+	/** Places a model on the tile (dx, dy) away from the player. */
+	private RuneLiteObject spawn(Player player, ModelData model, int dx, int dy, int orientation)
 	{
-		LocalPoint here = LocalPoint.fromWorld(player.getWorldView(), player.getWorldLocation());
+		LocalPoint here = LocalPoint.fromWorld(player.getWorldView(), player.getWorldLocation().dx(dx).dy(dy));
 		if (here == null)
 		{
 			return null;

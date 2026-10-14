@@ -158,16 +158,58 @@ public final class Unlocks
 		return title;
 	}
 
+	/** The skill guide's sidebar, like a real skill's categories. */
+	public enum Category
+	{
+		REACH("Reach"),
+		TIMING("Timing"),
+		COMFORT("Comfort"),
+		COMPANY("Company"),
+		TITLES("Titles"),
+		CAPE("Cape");
+
+		public final String title;
+
+		Category(String title)
+		{
+			this.title = title;
+		}
+	}
+
+	// Icons: item IDs, or sprite IDs for the emotes.
+	private static final int BOOTS = 11860;
+	private static final int WATCH = 2575;
+	private static final int BANKERS_NOTE = 28767;
+	private static final int[] RUG_ICONS = {8316, 8317, 8318, 8318};
+	private static final int STOOL_ICON = 8826;
+	private static final int THRONE_ICON = 8360;
+	private static final int COINS = 995;
+	private static final int SCROLL = 10485;
+	private static final int CAPE_ICON = 23351;
+	private static final int YAWN_SPRITE = 718;
+	private static final int SKILLCAPE_SPRITE = 736;
+
 	/** One line of the skill guide. */
 	public static final class Unlock
 	{
 		public final int level;
 		public final String text;
+		public final Category category;
+		/** The icon: an item, or -1. */
+		public final int item;
+		/** The icon when it's a sprite instead of an item, or -1. */
+		public final int sprite;
+		/** Whether the icon is shown turned gold. */
+		public final boolean gold;
 
-		Unlock(int level, String text)
+		Unlock(int level, String text, Category category, int item, int sprite, boolean gold)
 		{
 			this.level = level;
 			this.text = text;
+			this.category = category;
+			this.item = item;
+			this.sprite = sprite;
+			this.gold = gold;
 		}
 	}
 
@@ -181,46 +223,78 @@ public final class Unlocks
 		{
 			if (level == 1 || bankRange(level) > bankRange(level - 1))
 			{
-				all.add(new Unlock(level, "Bank stand within " + bankRange(level) + (level == 1 ? " tile" : " tiles")));
+				all.add(new Unlock(level, "Bank stand within " + bankRange(level) + (level == 1 ? " tile" : " tiles"),
+					Category.REACH, BOOTS, -1, false));
 			}
 			if (level > 1 && startDelayTicks(level) < startDelayTicks(level - 1))
 			{
-				all.add(new Unlock(level, "XP starts after " + Math.round(startDelayTicks(level) * 0.6) + " seconds"));
+				all.add(new Unlock(level, "XP starts after " + Math.round(startDelayTicks(level) * 0.6) + " seconds",
+					Category.TIMING, WATCH, -1, false));
 			}
 			for (Rug rug : Rug.values())
 			{
 				if (rug != Rug.NONE && rug.level == level)
 				{
-					all.add(new Unlock(level, rug.text));
+					all.add(new Unlock(level, rug.text, Category.COMFORT, RUG_ICONS[rug.ordinal() - 1], -1,
+						rug == Rug.GOLD));
 				}
 			}
 			for (Seat seat : Seat.values())
 			{
 				if (seat != Seat.NONE && seat.level == level)
 				{
-					all.add(new Unlock(level, seat.text));
+					all.add(new Unlock(level, seat.text, Category.COMFORT,
+						seat == Seat.THRONE ? THRONE_ICON : STOOL_ICON, -1, false));
 				}
 			}
 			if (level == FIDGETS)
 			{
-				all.add(new Unlock(level, "You fidget while you wait"));
+				all.add(new Unlock(level, "You fidget while you wait", Category.COMPANY, -1, YAWN_SPRITE, false));
 			}
 			if (level == BANKERS)
 			{
-				all.add(new Unlock(level, "Bankers notice you"));
+				all.add(new Unlock(level, "Bankers notice you", Category.COMPANY, COINS, -1, false));
 			}
 			if (level == QUICK_PEEK)
 			{
-				all.add(new Unlock(level, "Quick peek: open the bank for 10 seconds"));
+				all.add(new Unlock(level, "Quick peek: open the bank for 10 seconds", Category.TIMING,
+					BANKERS_NOTE, -1, false));
 			}
-			if (level > 1 && !title(level).equals(title(level - 1)))
+			if (level == 1 || !title(level).equals(title(level - 1)))
 			{
-				all.add(new Unlock(level, "Title: " + title(level)));
+				all.add(new Unlock(level, title(level), Category.TITLES, SCROLL, -1, level >= MAX));
 			}
 		}
-		all.add(new Unlock(MAX, "Bank Standing cape, worn while you stand"));
-		all.add(new Unlock(MAX, "Cape emote"));
+		all.add(new Unlock(MAX, "Bank Standing cape, worn while you stand", Category.CAPE, CAPE_ICON, -1, true));
+		all.add(new Unlock(MAX, "Cape emote", Category.CAPE, -1, SKILLCAPE_SPRITE, false));
 		ALL = Collections.unmodifiableList(all);
+	}
+
+	/** The guide lines in one category, in level order. */
+	public static List<Unlock> in(Category category)
+	{
+		List<Unlock> lines = new ArrayList<>();
+		for (Unlock unlock : ALL)
+		{
+			if (unlock.category == category)
+			{
+				lines.add(unlock);
+			}
+		}
+		return lines;
+	}
+
+	/** The first thing still to unlock, or null at 99. */
+	public static Unlock next(int level)
+	{
+		for (Unlock unlock : ALL)
+		{
+			if (unlock.level > level)
+			{
+				return unlock;
+			}
+		}
+		return null;
 	}
 
 	/** The next level that unlocks something, or -1 at 99. */
