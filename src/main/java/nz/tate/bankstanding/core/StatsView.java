@@ -24,6 +24,8 @@
  */
 package nz.tate.bankstanding.core;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -64,6 +66,9 @@ public final class StatsView
 	public final String xpPerHour;
 	public final String todayTime;
 
+	/** Personal records as label and value pairs, in the order shown. */
+	public final List<String[]> records = new ArrayList<>();
+
 	public StatsView(Progress progress, Session session, String today)
 	{
 		sessionXp = number(session.xp);
@@ -87,6 +92,8 @@ public final class StatsView
 			percent = (int) ((progress.xp - start) * 100L / (next - start));
 		}
 
+		addRecords(progress.records);
+
 		List<Map.Entry<String, BankRecord>> entries = new ArrayList<>(progress.banks.entrySet());
 		entries.sort(Comparator.comparingLong((Map.Entry<String, BankRecord> e) -> e.getValue().ticks).reversed());
 		banks = new ArrayList<>();
@@ -96,6 +103,36 @@ public final class StatsView
 			banks.add(new BankRow(BankNames.displayName(entry.getKey(), record),
 				duration(record.ticks), number(record.xp)));
 		}
+	}
+
+	private void addRecords(Records r)
+	{
+		if (r.firstSeen > 0)
+		{
+			records.add(new String[]{"Started", date(r.firstSeen)});
+		}
+		records.add(new String[]{"Total standing", duration(r.totalTicks)});
+		records.add(new String[]{"Longest stand", duration(r.longestStandTicks)});
+		records.add(new String[]{"Best day", duration(r.bestDayTicks)});
+		records.add(new String[]{"Best XP per hour", r.bestXpPerHour > 0 ? number(r.bestXpPerHour) : "-"});
+		reached(r, "level", Experience.MAX_LEVEL, "Reached 99");
+		reached(r, "xp", Experience.MAX_XP, "Reached 200m");
+	}
+
+	/** "2026-10-15 (183 days)": when a milestone was reached and how long it took. */
+	private void reached(Records r, String kind, int value, String label)
+	{
+		Records.Milestone milestone = r.find(kind, value);
+		if (milestone != null)
+		{
+			long days = (milestone.at - r.firstSeen) / 86_400_000L;
+			records.add(new String[]{label, date(milestone.at) + " (" + days + (days == 1 ? " day)" : " days)")});
+		}
+	}
+
+	static String date(long epochMillis)
+	{
+		return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate().toString();
 	}
 
 	static String number(long value)

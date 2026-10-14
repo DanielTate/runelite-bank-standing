@@ -64,6 +64,8 @@ class BankStandingPanel extends PluginPanel
 	private final JLabel todayTime = value();
 	private final ProgressBar progressBar = new ProgressBar();
 	private final JPanel bankRows = new JPanel();
+	private final JPanel recordRows = new JPanel(new GridLayout(0, 2, 0, 4));
+	private final JPanel recordSection = new JPanel(new BorderLayout(0, 6));
 
 	BankStandingPanel(Icons icons, Runnable onCapeEmote)
 	{
@@ -121,10 +123,19 @@ class BankStandingPanel extends PluginPanel
 		sessionSection.add(heading("This session"), BorderLayout.NORTH);
 		sessionSection.add(sessionStats, BorderLayout.CENTER);
 
+		recordRows.setOpaque(false);
+		recordSection.setOpaque(false);
+		recordSection.add(heading("Records"), BorderLayout.NORTH);
+		recordSection.add(recordRows, BorderLayout.CENTER);
+
 		JPanel north = new JPanel(new BorderLayout(0, 12));
 		north.setOpaque(false);
 		north.add(top, BorderLayout.NORTH);
-		north.add(sessionSection, BorderLayout.SOUTH);
+		JPanel middleSections = new JPanel(new BorderLayout(0, 12));
+		middleSections.setOpaque(false);
+		middleSections.add(sessionSection, BorderLayout.NORTH);
+		middleSections.add(recordSection, BorderLayout.SOUTH);
+		north.add(middleSections, BorderLayout.SOUTH);
 		add(north, BorderLayout.NORTH);
 
 		bankRows.setLayout(new GridLayout(0, 1, 0, 4));
@@ -151,6 +162,7 @@ class BankStandingPanel extends PluginPanel
 		capeEmote.setVisible(false);
 		stats.setVisible(false);
 		sessionSection.setVisible(false);
+		recordSection.setVisible(false);
 		progressBar.setValue(0);
 		progressBar.setMaximumValue(100);
 		progressBar.setCenterLabel("");
@@ -167,6 +179,15 @@ class BankStandingPanel extends PluginPanel
 		capeEmote.setVisible(view.level >= Experience.MAX_LEVEL);
 		stats.setVisible(true);
 		sessionSection.setVisible(true);
+		recordSection.setVisible(true);
+		recordRows.removeAll();
+		for (String[] record : view.records)
+		{
+			recordRows.add(name(record[0]));
+			JLabel value = value();
+			value.setText(record[1]);
+			recordRows.add(value);
+		}
 		sessionXp.setText(view.sessionXp);
 		sessionTime.setText(view.sessionTime);
 		xpPerHour.setText(view.xpPerHour);

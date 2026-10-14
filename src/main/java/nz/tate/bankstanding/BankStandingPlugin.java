@@ -30,6 +30,7 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -128,6 +129,9 @@ public class BankStandingPlugin extends Plugin
 	private StandCosmetics cosmetics;
 
 	@Inject
+	private ConfigManager configManager;
+
+	@Inject
 	private MouseManager mouseManager;
 
 	@Inject
@@ -170,6 +174,8 @@ public class BankStandingPlugin extends Plugin
 
 	/** Our own slot in the player's spot animations, so the fireworks never replace the game's. */
 	private static final int FIREWORKS_KEY = 0x42414E4B;
+	/** Client-wide config key: when the plugin first started, in epoch milliseconds. */
+	private static final String INSTALLED_KEY = "installedAt";
 
 	/** Unsaved changes are written at most this often (a minute), and on logout. */
 	private static final int SAVE_EVERY_TICKS = 100;
@@ -203,6 +209,11 @@ public class BankStandingPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		// RuneLite doesn't record when a plugin was installed, so note the first start.
+		if (configManager.getConfiguration(BankStandingConfig.GROUP, INSTALLED_KEY) == null)
+		{
+			configManager.setConfiguration(BankStandingConfig.GROUP, INSTALLED_KEY, System.currentTimeMillis());
+		}
 		tracker.reset();
 		overlayManager.add(skillTileOverlay);
 		overlayManager.add(skillGuideOverlay);
@@ -435,6 +446,7 @@ public class BankStandingPlugin extends Plugin
 			}
 			progress.renameBanks();
 			applyDevOverrides();
+			progress.records.begin(progress, System.currentTimeMillis());
 			session = new Session();
 			refreshPanel();
 		}
@@ -461,6 +473,7 @@ public class BankStandingPlugin extends Plugin
 
 		if (!tracker.isStanding())
 		{
+			progress.records.standEnded();
 			return;
 		}
 
@@ -474,6 +487,7 @@ public class BankStandingPlugin extends Plugin
 			save();
 		}
 		DailyStreak.standingTick(progress, today());
+		progress.records.standingTick(progress, session, System.currentTimeMillis());
 
 		if (roll)
 		{
@@ -536,6 +550,11 @@ public class BankStandingPlugin extends Plugin
 	{
 		int before = progress.xp;
 		progress.xp = Experience.addXp(progress.xp, drop);
+		progress.records.gainedXp(before, progress.xp, System.currentTimeMillis());
+		if (dev.xpMultiplier > 1)
+		{
+			progress.records.edited = true;
+		}
 		bank.xp += progress.xp - before;
 		session.xp += progress.xp - before;
 		refreshPanel();
@@ -612,6 +631,26 @@ public class BankStandingPlugin extends Plugin
 		dev.previewCape = on;
 	}
 
+	/** Replays the milestone history and says in chat whether it adds up. */
+	void devCheckRecords()
+	{
+		clientThread.invoke(() ->
+		{
+			if (progress == null)
+			{
+				return;
+			}
+			List<String> problems = progress.records.check(progress, System.currentTimeMillis());
+			String text = problems.isEmpty()
+				? "Records check: consistent (" + progress.records.milestones.size() + " milestones)"
+				: "Records check: " + String.join("; ", problems);
+			chatMessageManager.queue(QueuedMessage.builder()
+				.type(ChatMessageType.GAMEMESSAGE)
+				.runeLiteFormattedMessage(text)
+				.build());
+		});
+	}
+
 	void devSetLevel(int level)
 	{
 		devSetXp(Experience.xpForLevel(level));
@@ -624,6 +663,7 @@ public class BankStandingPlugin extends Plugin
 			if (progress != null)
 			{
 				progress.xp = xp;
+				progress.records.edited = true;
 				dirty = true;
 				save();
 				refreshPanel();
@@ -638,6 +678,7 @@ public class BankStandingPlugin extends Plugin
 			if (progress != null)
 			{
 				progress = new Progress();
+				progress.records.begin(progress, System.currentTimeMillis());
 				session = new Session();
 				dirty = true;
 				save();
@@ -660,6 +701,7 @@ public class BankStandingPlugin extends Plugin
 		if (dev.setXp != null)
 		{
 			progress.xp = Math.max(0, Math.min(Experience.MAX_XP, dev.setXp));
+			progress.records.edited = true;
 		}
 		store.save(progress);
 	}

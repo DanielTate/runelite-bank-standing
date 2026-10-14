@@ -98,7 +98,8 @@ class DevPanel extends PluginPanel
 		body.add(buttons(
 			button("Set level", () -> plugin.devSetLevel((Integer) level.getValue())),
 			button("One drop to 99", () -> plugin.devSetXp(Experience.xpForLevel(Experience.MAX_LEVEL) - 1)),
-			button("Reset progress", plugin::devReset)));
+			button("Reset progress", plugin::devReset),
+			button("Check records", plugin::devCheckRecords)));
 
 		JSpinner multiplier = new JSpinner(new SpinnerNumberModel(dev.xpMultiplier, 1, 1000, 1));
 		multiplier.addChangeListener(e -> dev.xpMultiplier = (Integer) multiplier.getValue());

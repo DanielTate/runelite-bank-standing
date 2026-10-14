@@ -45,6 +45,9 @@ public final class Progress
 	public String keywordDate;
 	public int keywordCount;
 
+	/** Personal records and the milestone history. */
+	public Records records = new Records();
+
 	public int level()
 	{
 		return Experience.levelForXp(xp);

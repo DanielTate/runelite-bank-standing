@@ -31,6 +31,8 @@ The game's own logout timer still applies, so you will need to stay at your keyb
   notice you, a quick look in the bank that doesn't end your stand, and at 99 a cape and a
   cape emote. They're only visible to you, and each one can be turned off in the settings.
 - XP that keeps counting past 99, all the way to 200m
+- Personal records: total and longest stands, your best day, best XP per hour, and when you
+  reached 99 and 200m. Every milestone is saved with a timestamp.
 
 Progress is saved separately for each of your accounts.
 
