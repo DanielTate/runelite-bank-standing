@@ -26,6 +26,7 @@ package nz.tate.bankstanding.core;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import static org.junit.Assert.assertEquals;
@@ -43,11 +44,12 @@ public class KeywordsTest
 		Keywords.phrase(Keywords.hash("test phrase"), null),
 		Keywords.phrase(Keywords.hash("other phrase"), null),
 		Keywords.phrase(Keywords.hash("spooky phrase"), Holiday.HALLOWEEN),
-		Keywords.phrase(Keywords.hash("local phrase"), null, "ge", "edgeville")));
+		Keywords.phrase(Keywords.hash("local phrase"), null, "ge", "edgeville"),
+		Keywords.phrase(Keywords.hash("dressed phrase"), null).wearing(1234)));
 
 	private boolean claim(Progress p, String message, long now, LocalDate day)
 	{
-		return keywords.claim(p, message, now, day, "varrock-west");
+		return keywords.claim(p, message, now, day, "varrock-west", Collections.emptySet());
 	}
 
 	@Test
@@ -92,7 +94,7 @@ public class KeywordsTest
 	public void bankPhrasesOnlyWorkAtTheirBanks()
 	{
 		assertFalse(claim(new Progress(), "local phrase", 0, DAY));
-		assertTrue(keywords.claim(new Progress(), "local phrase", 0, DAY, "edgeville"));
+		assertTrue(keywords.claim(new Progress(), "local phrase", 0, DAY, "edgeville", Collections.emptySet()));
 	}
 
 	@Test
@@ -103,6 +105,13 @@ public class KeywordsTest
 		{
 			assertTrue(hashes.add(phrase.hash));
 		}
-		assertEquals(31, hashes.size());
+		assertEquals(37, hashes.size());
+	}
+
+	@Test
+	public void itemPhrasesNeedTheItemWorn()
+	{
+		assertFalse(claim(new Progress(), "dressed phrase", 0, DAY));
+		assertTrue(keywords.claim(new Progress(), "dressed phrase", 0, DAY, "ge", Collections.singleton(1234)));
 	}
 }

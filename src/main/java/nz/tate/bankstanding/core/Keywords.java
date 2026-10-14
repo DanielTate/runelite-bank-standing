@@ -40,7 +40,7 @@ import java.util.Set;
  *
  * <p>Only hashes are stored, so reading the source doesn't give the phrases away. A phrase
  * must be the whole message. Some only work during a {@link Holiday}, some only at certain
- * banks. Each pays out at most once an hour, and all of them together at most
+ * banks, some only while wearing a particular item. Each pays out at most once an hour, and all of them together at most
  * {@link #DAILY_CAP} times per UTC day. Over a limit, nothing happens at all.
  */
 public final class Keywords
@@ -49,12 +49,16 @@ public final class Keywords
 	static final int DAILY_CAP = 10;
 	private static final String SALT = "bankstanding:";
 
-	/** One phrase: its hash, the holiday it needs (or null) and the banks it works at (or any). */
+	/**
+	 * One phrase: its hash, the holiday it needs (or null), the banks it works at (or any) and
+	 * an item that must be worn (or 0).
+	 */
 	public static final class Phrase
 	{
 		final String hash;
 		final Holiday holiday;
 		final Set<String> banks;
+		int item;
 
 		Phrase(String hash, Holiday holiday, String... banks)
 		{
@@ -63,9 +67,17 @@ public final class Keywords
 			this.banks = new HashSet<>(Arrays.asList(banks));
 		}
 
-		boolean worksAt(String bankKey, LocalDate today)
+		Phrase wearing(int itemId)
 		{
-			return (holiday == null || holiday.isOn(today)) && (banks.isEmpty() || banks.contains(bankKey));
+			item = itemId;
+			return this;
+		}
+
+		boolean works(String bankKey, LocalDate today, Set<Integer> worn)
+		{
+			return (holiday == null || holiday.isOn(today))
+				&& (banks.isEmpty() || banks.contains(bankKey))
+				&& (item == 0 || worn.contains(item));
 		}
 	}
 
@@ -73,12 +85,12 @@ public final class Keywords
 		phrase("f1a40f3bea462426df466ec436c4b69acb5f96dc774818a5f748e86d31f05c36", null),
 		phrase("8582cc1f392d6aaeac0e013312daf544b8c319c2c41255662d58cda0a58ba2dc", null),
 		phrase("7433c9bc284c7761c8d6e4d6903f3674fae7f64028627e5c38a5f9ca2007cbfe", null),
-		phrase("51216db7eb044d692c317f0ab66dd42b8aabe621ec47c445b30119c658b56771", null),
-		phrase("7b7665a2b19442e68024f3b6322be6577aadecfe0616fff8cfc81c4e4ac7086b", null),
 		phrase("bbe0aad4ae97389a0b84d70db00eaf256dff739ddc79a16e39edbf2f954ed514", null),
 		phrase("cf6ef486e7cd330199eb4e66e5807dcf0d352c3839b9d6b52bd830af6b267344", null),
-		phrase("0594fec1be810c65e3251cd92a473f56f42b1c8b24d503c6f5d643befd81c57f", null),
-		phrase("efcf244e01235cf74504818c1ffe0afebed0a6e57173c887503153169a1b3538", null),
+		phrase("2fec7a5e00d259d7e53c86831bce919927b3cec74883f2c662ab2cc9b6618410", null),
+		phrase("5d577393364cce868773ec818f847718f20b4833ba1f33f1f65773184608ced1", null),
+		phrase("9a44fcd68b778e1295c42a76193363e3c4761fe04b9ba19baa4430f1df531f55", null),
+		phrase("a21ebd2e0315c46fc5463e1b937f43e65f06b0a40cba3a0584316e1fe1359470", null),
 		phrase("ac2f3a05b1ea84f3762ceb96b2d68a673d8be3cb72afeecb8a89442ebf71ba9d", null, "edgeville"),
 		phrase("77826aa3d7a7e56968d8503f656c6a9ac60cd86bc0f3cfe0eb276682a61bc534", null, "edgeville", "ferox"),
 		phrase("8524ea71afe382572d7664a2618bdf54aa3dde61b1b179f11b8db754baf8ce58", null, "ge"),
@@ -100,7 +112,13 @@ public final class Keywords
 		phrase("76cace42c135a2f71be350a5aef28d6d8c3ee8f26ed6dde1038f436615e3167f", Holiday.HALLOWEEN, "canifis"),
 		phrase("dd182d91665152a0b62bd9cf21eaa040f5f94a6146e4e142fc5c57bdfe745b18", Holiday.EASTER),
 		phrase("18bdf57c428088df99a1ba9394e57d5e59a4ed5730da547a5104e377c63f230b", Holiday.EASTER),
-		phrase("7d21a448f37a0ea658451f5ab3615a6cffdaf95b09fe9951ec302bbb08c8c729", Holiday.BIRTHDAY)
+		phrase("7d21a448f37a0ea658451f5ab3615a6cffdaf95b09fe9951ec302bbb08c8c729", Holiday.BIRTHDAY),
+		phrase("af75ea8c8362c6e7eabe097bd74d8255717794b0068fe65b12c4e7f59de3e14f", null).wearing(20220),
+		phrase("e3fb3409ba47e141aa21300d018b10bc931fa1f558111883e8451f57915b57a5", null).wearing(20223),
+		phrase("6df044d1db7a19d6be624522a9d1fe5f64b30fab753653c638239eb6e7d74a5f", null).wearing(20226),
+		phrase("ea83ea768ce98829e7b63f0ed5fa943e33fd817edb6e1edb0d1c70cc1f2747dd", null).wearing(20229),
+		phrase("9960b6e4a7f69bf19af8696187d742730fb623654f2de72d52544661764a15d5", null).wearing(20232),
+		phrase("8bcda4597a0c3eb5ce3d68398e5efd6ba0947202827c02a2d55f5acec33169f0", null).wearing(20235)
 	));
 
 	private final List<Phrase> phrases;
@@ -116,13 +134,13 @@ public final class Keywords
 	}
 
 	/** True if this message is a phrase that may pay out here and now; records the payout. */
-	public boolean claim(Progress p, String message, long nowMillis, LocalDate today, String bankKey)
+	public boolean claim(Progress p, String message, long nowMillis, LocalDate today, String bankKey, Set<Integer> worn)
 	{
 		String hash = hash(normalise(message));
 		boolean matches = false;
 		for (Phrase phrase : phrases)
 		{
-			if (phrase.hash.equals(hash) && phrase.worksAt(bankKey, today))
+			if (phrase.hash.equals(hash) && phrase.works(bankKey, today, worn))
 			{
 				matches = true;
 				break;

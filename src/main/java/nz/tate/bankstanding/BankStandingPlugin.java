@@ -349,7 +349,7 @@ public class BankStandingPlugin extends Plugin
 
 		WorldPoint location = player.getWorldLocation();
 		String bankKey = BankNames.keyFor(location.getX(), location.getY());
-		if (keywords.claim(progress, Text.removeTags(event.getMessage()), System.currentTimeMillis(), today(), bankKey))
+		if (keywords.claim(progress, Text.removeTags(event.getMessage()), System.currentTimeMillis(), today(), bankKey, worn))
 		{
 			BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
 			int level = progress.level();
