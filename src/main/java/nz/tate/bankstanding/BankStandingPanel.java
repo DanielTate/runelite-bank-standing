@@ -53,6 +53,7 @@ class BankStandingPanel extends PluginPanel
 	private final JLabel status = new JLabel();
 	private final JLabel title = new JLabel();
 	private final JButton capeEmote = new JButton("Cape emote");
+	private final JButton collectionLog = new JButton("Collection log");
 	private final JPanel stats = new JPanel(new GridLayout(0, 2, 0, 4));
 	private final JLabel level = value();
 	private final JLabel totalXp = value();
@@ -67,7 +68,7 @@ class BankStandingPanel extends PluginPanel
 	private final JPanel recordRows = new JPanel(new GridLayout(0, 2, 0, 4));
 	private final JPanel recordSection = new JPanel(new BorderLayout(0, 6));
 
-	BankStandingPanel(Icons icons, Runnable onCapeEmote)
+	BankStandingPanel(Icons icons, Runnable onCapeEmote, Runnable onCollectionLog)
 	{
 		setLayout(new BorderLayout(0, 10));
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -85,11 +86,17 @@ class BankStandingPanel extends PluginPanel
 		title.setForeground(GOLD);
 		capeEmote.setFocusPainted(false);
 		capeEmote.addActionListener(e -> onCapeEmote.run());
+		collectionLog.setFocusPainted(false);
+		collectionLog.addActionListener(e -> onCollectionLog.run());
+		JPanel buttons = new JPanel(new GridLayout(0, 1, 0, 4));
+		buttons.setOpaque(false);
+		buttons.add(collectionLog);
+		buttons.add(capeEmote);
 		JPanel heading = new JPanel(new BorderLayout(0, 2));
 		heading.setOpaque(false);
 		heading.add(name, BorderLayout.NORTH);
 		heading.add(title, BorderLayout.CENTER);
-		heading.add(capeEmote, BorderLayout.SOUTH);
+		heading.add(buttons, BorderLayout.SOUTH);
 		top.add(heading, BorderLayout.NORTH);
 
 		stats.setOpaque(false);
@@ -160,6 +167,7 @@ class BankStandingPanel extends PluginPanel
 		status.setVisible(true);
 		title.setVisible(false);
 		capeEmote.setVisible(false);
+		collectionLog.setVisible(false);
 		stats.setVisible(false);
 		sessionSection.setVisible(false);
 		recordSection.setVisible(false);
@@ -177,6 +185,7 @@ class BankStandingPanel extends PluginPanel
 		title.setText(view.title);
 		title.setVisible(true);
 		capeEmote.setVisible(view.level >= Experience.MAX_LEVEL);
+		collectionLog.setVisible(true);
 		stats.setVisible(true);
 		sessionSection.setVisible(true);
 		recordSection.setVisible(true);

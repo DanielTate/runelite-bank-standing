@@ -51,6 +51,8 @@ class DevOptions
 	boolean previewCape;
 	/** Shows the rug, seat, fidgets and bankers as if standing, anywhere (dev panel only). */
 	boolean pretendStanding;
+	/** Shows the pet as if you owned it (dev panel only). */
+	boolean previewPet;
 	/** {@code -PpreviewSplats=1,2,3}: each drop shows the next of these sprites, named in chat. */
 	final int[] previewSplats;
 

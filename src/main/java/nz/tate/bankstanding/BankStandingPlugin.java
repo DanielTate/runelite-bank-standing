@@ -43,6 +43,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -76,6 +77,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
 import nz.tate.bankstanding.core.BankNames;
 import nz.tate.bankstanding.core.BankRecord;
+import nz.tate.bankstanding.core.CollectionLog;
 import nz.tate.bankstanding.core.DailyStreak;
 import nz.tate.bankstanding.core.Emote;
 import nz.tate.bankstanding.core.Experience;
@@ -126,6 +128,12 @@ public class BankStandingPlugin extends Plugin
 	private SkillGuideOverlay skillGuideOverlay;
 
 	@Inject
+	private CollectionLogOverlay collectionLogOverlay;
+
+	@Inject
+	private CollectionPopupOverlay collectionPopup;
+
+	@Inject
 	private StandCosmetics cosmetics;
 
 	@Inject
@@ -171,6 +179,7 @@ public class BankStandingPlugin extends Plugin
 	private final StandTracker tracker = new StandTracker();
 	private Session session = new Session();
 	private final XpRoller roller = new XpRoller(new Random());
+	private final Random collectionRandom = new Random();
 
 	/** Our own slot in the player's spot animations, so the fireworks never replace the game's. */
 	private static final int FIREWORKS_KEY = 0x42414E4B;
@@ -216,13 +225,20 @@ public class BankStandingPlugin extends Plugin
 		}
 		tracker.reset();
 		overlayManager.add(skillTileOverlay);
-		overlayManager.add(skillGuideOverlay);
-		mouseManager.registerMouseListener(skillGuideOverlay.mouse);
-		mouseManager.registerMouseWheelListener(skillGuideOverlay.wheel);
+		for (ParchmentWindow window : windows())
+		{
+			overlayManager.add(window);
+			mouseManager.registerMouseListener(window.mouse);
+			mouseManager.registerMouseWheelListener(window.wheel);
+		}
+		skillGuideOverlay.setOnOpen(collectionLogOverlay::close);
+		collectionLogOverlay.setOnOpen(skillGuideOverlay::close);
+		overlayManager.add(collectionPopup);
+		skillTileOverlay.addMenuEntry(MenuAction.RUNELITE_OVERLAY, "View", "Collection log", e -> openCollectionLog());
 		overlayManager.add(xpDropOverlay);
 		overlayManager.add(hitsplatOverlay);
 
-		panel = new BankStandingPanel(icons, this::capeEmote);
+		panel = new BankStandingPanel(icons, this::capeEmote, this::openCollectionLog);
 		navButton = NavigationButton.builder()
 			.tooltip("Bank Standing")
 			.icon(icons.small())
@@ -267,10 +283,16 @@ public class BankStandingPlugin extends Plugin
 			cosmetics.clear();
 		});
 		overlayManager.remove(skillTileOverlay);
-		mouseManager.unregisterMouseListener(skillGuideOverlay.mouse);
-		mouseManager.unregisterMouseWheelListener(skillGuideOverlay.wheel);
-		overlayManager.remove(skillGuideOverlay);
-		skillGuideOverlay.close();
+		for (ParchmentWindow window : windows())
+		{
+			mouseManager.unregisterMouseListener(window.mouse);
+			mouseManager.unregisterMouseWheelListener(window.wheel);
+			overlayManager.remove(window);
+			window.close();
+		}
+		skillTileOverlay.removeMenuEntry(MenuAction.RUNELITE_OVERLAY, "View", "Collection log");
+		overlayManager.remove(collectionPopup);
+		collectionPopup.clear();
 		overlayManager.remove(xpDropOverlay);
 		overlayManager.remove(hitsplatOverlay);
 		dropFeed.clear();
@@ -311,6 +333,11 @@ public class BankStandingPlugin extends Plugin
 			cosmetics.clear();
 			BankStandingPanel shown = panel;
 			SwingUtilities.invokeLater(shown::showLoggedOut);
+			for (ParchmentWindow window : windows())
+			{
+				window.close();
+			}
+			collectionPopup.clear();
 		}
 	}
 
@@ -460,7 +487,8 @@ public class BankStandingPlugin extends Plugin
 		// The cape and the other unlocks only show while bank standing; the dev options show
 		// them anywhere.
 		boolean standing = tracker.isStanding() || dev.pretendStanding;
-		cosmetics.tick(standing, currentLevel, config);
+		boolean pet = config.showPet() && (CollectionLog.hasPet(progress) || dev.previewPet);
+		cosmetics.tick(standing, currentLevel, config, pet);
 		if (dev.previewCape
 			|| config.showCape() && currentLevel >= Experience.MAX_LEVEL && standing)
 		{
@@ -477,8 +505,13 @@ public class BankStandingPlugin extends Plugin
 			return;
 		}
 
-		BankRecord bank = progress.bank(BankNames.keyFor(location.getX(), location.getY()),
-			location.getX(), location.getY());
+		String bankKey = BankNames.keyFor(location.getX(), location.getY());
+		boolean newBank = !progress.banks.containsKey(bankKey) && BankNames.find(location.getX(), location.getY()) != null;
+		BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
+		if (newBank)
+		{
+			collected("New bank added to your collection log: ", BankNames.displayName(bankKey, bank), -1, false);
+		}
 		bank.ticks++;
 		session.ticks++;
 		dirty = true;
@@ -494,7 +527,56 @@ public class BankStandingPlugin extends Plugin
 			int level = progress.level();
 			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
 			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level, null);
+			progress.rolls++;
+			CollectionLog.Drop found = CollectionLog.roll(collectionRandom);
+			if (found != null)
+			{
+				obtain(found);
+			}
 		}
+	}
+
+	private ParchmentWindow[] windows()
+	{
+		return new ParchmentWindow[]{skillGuideOverlay, collectionLogOverlay};
+	}
+
+	/** Opens the collection log, from the side panel or the skill tile's menu. */
+	void openCollectionLog()
+	{
+		collectionLogOverlay.showTab(CollectionLogOverlay.DROPS);
+		collectionLogOverlay.open();
+	}
+
+	/** Adds a drop to the log: the popup the first time, a chat line every time. Client thread. */
+	private void obtain(CollectionLog.Drop drop)
+	{
+		if (CollectionLog.collect(progress, drop, System.currentTimeMillis()))
+		{
+			collected("New item added to your collection log: ", drop.name, drop.icon, drop.gold);
+		}
+		else
+		{
+			chat("Bank Standing drop: <col=ef1020>" + drop.name + "</col>");
+		}
+		dirty = true;
+		save();
+		refreshPanel();
+	}
+
+	/** The chat line in the log's red, and the popup. */
+	private void collected(String message, String name, int icon, boolean gold)
+	{
+		chat(message + "<col=ef1020>" + name + "</col>");
+		collectionPopup.show((icon > 0 ? "New item: " : "New bank: ") + name, icon, gold);
+	}
+
+	private void chat(String message)
+	{
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.GAMEMESSAGE)
+			.runeLiteFormattedMessage(message)
+			.build());
 	}
 
 	private StandContext context(BankRecord bank, WorldPoint location)
@@ -649,6 +731,64 @@ public class BankStandingPlugin extends Plugin
 				.runeLiteFormattedMessage(text)
 				.build());
 		});
+	}
+
+	void devGiveDrop(String key)
+	{
+		clientThread.invoke(() ->
+		{
+			CollectionLog.Drop drop = CollectionLog.find(key);
+			if (progress != null && drop != null)
+			{
+				obtain(drop);
+			}
+		});
+	}
+
+	/** Gives the first drop not yet in the log. */
+	void devGiveNextDrop()
+	{
+		clientThread.invoke(() ->
+		{
+			if (progress == null)
+			{
+				return;
+			}
+			for (CollectionLog.Drop drop : CollectionLog.DROPS)
+			{
+				if (!progress.collection.containsKey(drop.key))
+				{
+					obtain(drop);
+					return;
+				}
+			}
+			chat("Collection log: you have every drop.");
+		});
+	}
+
+	void devTestPopup()
+	{
+		clientThread.invoke(() -> collected("New item added to your collection log: ", "Golden booth key", 989, true));
+	}
+
+	void devResetCollection()
+	{
+		clientThread.invoke(() ->
+		{
+			if (progress != null)
+			{
+				progress.collection.clear();
+				progress.rolls = 0;
+				dirty = true;
+				save();
+				refreshPanel();
+			}
+		});
+	}
+
+	void devPreviewPet(boolean on)
+	{
+		dev.previewPet = on;
 	}
 
 	void devSetLevel(int level)

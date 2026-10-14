@@ -64,6 +64,10 @@ class StandCosmetics
 	private static final int THRONE_MODEL = 12594;
 	private static final int THRONE_SIT = AnimationID.CHAIR_SIT_READY_THRONE_4;
 
+	/** The pet is the moneybag item's own model, made bigger, sitting beside you. */
+	private static final int PET_ITEM = 22533;
+	private static final int PET_SCALE = 256;
+
 	private static final int[] FIDGETS = {AnimationID.EMOTE_THINK, AnimationID.EMOTE_SHRUG, AnimationID.EMOTE_YAWN};
 	private static final int CAPE_EMOTE = AnimationID.MAX_CAPE_PLAYER_ANIM;
 	private static final int CAPE_EMOTE_SPOTANIM = 1286;
@@ -91,6 +95,7 @@ class StandCosmetics
 	private final List<RuneLiteObject> rugPieces = new ArrayList<>();
 	private Unlocks.Rug rugShown = Unlocks.Rug.NONE;
 	private RuneLiteObject seatObject;
+	private RuneLiteObject petObject;
 	private Unlocks.Seat seatShown = Unlocks.Seat.NONE;
 	private int sitAnimation = -1;
 	private int standingIdlePose = -1;
@@ -107,7 +112,7 @@ class StandCosmetics
 	}
 
 	/** Called every game tick with whether a stand is under way and what's switched on. */
-	void tick(boolean standing, int level, BankStandingConfig config)
+	void tick(boolean standing, int level, BankStandingConfig config, boolean pet)
 	{
 		Player player = client.getLocalPlayer();
 		if (player == null || !standing || !onLand(player))
@@ -130,6 +135,18 @@ class StandCosmetics
 			placeSeat(player, seat);
 		}
 		keepSitting(player);
+		if (pet && (started || petObject == null))
+		{
+			placePet(player);
+		}
+		else if (!pet)
+		{
+			removePet();
+		}
+		if (petObject != null)
+		{
+			petObject.setOrientation(player.getOrientation());
+		}
 
 		if (started)
 		{
@@ -163,7 +180,29 @@ class StandCosmetics
 			seatObject = null;
 		}
 		seatShown = Unlocks.Seat.NONE;
+		removePet();
 		standUp(client.getLocalPlayer());
+	}
+
+	private void placePet(Player player)
+	{
+		removePet();
+		int model = client.getItemDefinition(PET_ITEM).getInventoryModel();
+		ModelData data = model < 0 ? null : client.loadModelData(model);
+		if (data != null)
+		{
+			petObject = spawn(player, data.cloneVertices().scale(PET_SCALE, PET_SCALE, PET_SCALE), 1, 0,
+				player.getOrientation());
+		}
+	}
+
+	private void removePet()
+	{
+		if (petObject != null)
+		{
+			petObject.setActive(false);
+			petObject = null;
+		}
 	}
 
 	/** The 99 cape emote: the max cape animation, played in this client only. */

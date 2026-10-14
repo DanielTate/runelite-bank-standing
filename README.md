@@ -31,6 +31,9 @@ The game's own logout timer still applies, so you will need to stay at your keyb
   notice you, a quick look in the bank that doesn't end your stand, and at 99 a cape and a
   cape emote. They're only visible to you, and each one can be turned off in the settings.
 - XP that keeps counting past 99, all the way to 200m
+- A collection log of rare drops (including a pet) and every bank you've stood at, with a
+  popup when you get something new. Open it from the side panel or by right-clicking the
+  skill tile.
 - Personal records: total and longest stands, your best day, best XP per hour, and when you
   reached 99 and 200m. Every milestone is saved with a timestamp.
 
@@ -43,7 +46,7 @@ Progress is saved separately for each of your accounts.
 ```
 
 `./gradlew run` starts a development client. It adds a **Bank Standing (dev)** sidebar
-panel for previewing hitsplats, effects, the cape and the standing unlocks, and for setting your level, and takes a
+panel for previewing hitsplats, effects, the cape, the standing unlocks and the collection log, and for setting your level, and takes a
 few testing options. None of this works outside developer mode:
 
 | Option | Effect |

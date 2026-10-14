@@ -31,6 +31,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
@@ -39,6 +40,7 @@ import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
+import nz.tate.bankstanding.core.CollectionLog;
 import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.Keywords;
 
@@ -91,6 +93,24 @@ class DevPanel extends PluginPanel
 		pretend.setOpaque(false);
 		pretend.addActionListener(e -> dev.pretendStanding = pretend.isSelected());
 		body.add(pretend);
+
+		body.add(heading("Collection log"));
+		JComboBox<String> drop = new JComboBox<>();
+		for (CollectionLog.Drop each : CollectionLog.DROPS)
+		{
+			drop.addItem(each.name);
+		}
+		body.add(drop);
+		body.add(buttons(
+			button("Give drop", () -> plugin.devGiveDrop(CollectionLog.DROPS.get(drop.getSelectedIndex()).key)),
+			button("Give next missing", plugin::devGiveNextDrop),
+			button("Test popup", plugin::devTestPopup),
+			button("Open log", plugin::openCollectionLog),
+			button("Reset log", plugin::devResetCollection)));
+		JCheckBox pet = new JCheckBox("Show the pet without owning it", dev.previewPet);
+		pet.setOpaque(false);
+		pet.addActionListener(e -> plugin.devPreviewPet(pet.isSelected()));
+		body.add(pet);
 
 		body.add(heading("Progress (changes your save)"));
 		JSpinner level = new JSpinner(new SpinnerNumberModel(99, 1, Experience.MAX_LEVEL, 1));

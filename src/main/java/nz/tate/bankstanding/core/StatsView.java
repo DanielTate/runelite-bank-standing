@@ -130,7 +130,7 @@ public final class StatsView
 		}
 	}
 
-	static String date(long epochMillis)
+	public static String date(long epochMillis)
 	{
 		return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate().toString();
 	}

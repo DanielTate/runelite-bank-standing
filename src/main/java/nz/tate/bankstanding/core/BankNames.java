@@ -198,6 +198,12 @@ public final class BankNames
 	{
 	}
 
+	/** Every named bank. */
+	public static List<BankArea> all()
+	{
+		return AREAS;
+	}
+
 	public static boolean isRemote(String key)
 	{
 		return REMOTE.contains(key);

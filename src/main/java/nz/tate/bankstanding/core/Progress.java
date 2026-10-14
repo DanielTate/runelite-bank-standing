@@ -48,6 +48,10 @@ public final class Progress
 	/** Personal records and the milestone history. */
 	public Records records = new Records();
 
+	/** Collection log drops by key, and how many XP rolls there have been since it began. */
+	public Map<String, CollectionLog.Obtained> collection = new LinkedHashMap<>();
+	public long rolls;
+
 	public int level()
 	{
 		return Experience.levelForXp(xp);

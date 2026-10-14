@@ -64,6 +64,16 @@ public interface BankStandingConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "showPet",
+		name = "Show pet",
+		description = "Once you have the Bank Standing pet, it sits beside you while you bank stand. Only you can see it."
+	)
+	default boolean showPet()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "fidgets",
 		name = "Fidget",
 		description = "From level 25, your character fidgets now and then while you bank stand."
