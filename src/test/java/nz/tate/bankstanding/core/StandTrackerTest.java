@@ -47,14 +47,15 @@ public class StandTrackerTest
 	}
 
 	@Test
-	public void firstDropComesAfterThirtySecondsThenEveryFourTicks()
+	public void firstDropComesAfterThirtySecondsThenEveryInterval()
 	{
+		int interval = XpRoller.ROLL_INTERVAL_TICKS;
 		assertEquals(0, stand(StandTracker.START_DELAY_TICKS));
 		assertFalse(tracker.isStanding());
-		assertEquals(0, stand(3));
+		assertEquals(0, stand(interval - 1));
 		assertTrue(tracker.isStanding());
 		assertEquals(1, stand(1));
-		assertEquals(25, stand(100));
+		assertEquals(10, stand(interval * 10));
 	}
 
 	@Test

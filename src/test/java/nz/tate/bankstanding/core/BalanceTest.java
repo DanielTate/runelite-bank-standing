@@ -36,21 +36,21 @@ public class BalanceTest
 	private static final double SECONDS_PER_ROLL = XpRoller.ROLL_INTERVAL_TICKS * 0.6;
 
 	@Test
-	public void noModifiersTakesAbout210Days()
+	public void noModifiersTakesAbout212Days()
 	{
-		assertEquals(210, daysTo99(0), 3);
+		assertEquals(212, daysTo99(0), 3);
 	}
 
 	@Test
-	public void typicalModifiersTakeAbout200Days()
+	public void typicalModifiersTakeAbout202Days()
 	{
-		assertEquals(200, daysTo99(0.05), 3);
+		assertEquals(202, daysTo99(0.05), 3);
 	}
 
 	@Test
-	public void everythingStackedTakesAbout191Days()
+	public void everythingStackedTakesAbout193Days()
 	{
-		assertEquals(191, daysTo99(XpRoller.MAX_BOOST), 3);
+		assertEquals(193, daysTo99(XpRoller.MAX_BOOST), 3);
 	}
 
 	private static double daysTo99(double boost)

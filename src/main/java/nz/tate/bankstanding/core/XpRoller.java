@@ -31,7 +31,7 @@ import java.util.Random;
  *
  * <p>Drops run from 1 to the max hit on a geometric curve: each value is {@link #BASE_RATIO}
  * times as likely as the one below it, so 1 XP is the most common drop and a max hit comes
- * up once or twice an hour at 99. With one roll every 4 ticks this lands 99 at about 210
+ * up about twice an hour at 99. With one roll every 6 ticks this lands 99 at about 210
  * days of idle time, which {@code BalanceTest} pins.
  *
  * <p>Modifiers come in as a {@code boost}: a fraction (capped at {@link #MAX_BOOST}) by which
@@ -41,11 +41,11 @@ import java.util.Random;
  */
 public final class XpRoller
 {
-	public static final int ROLL_INTERVAL_TICKS = 4;
-	public static final double BASE_RATIO = 0.42;
+	public static final int ROLL_INTERVAL_TICKS = 6;
+	public static final double BASE_RATIO = 0.62;
 	public static final double MAX_BOOST = 0.10;
 	public static final int MAX_BONUS_HIT = 3;
-	public static final int TOP_MAX_HIT = 10;
+	public static final int TOP_MAX_HIT = 12;
 
 	/** Ratio used for the chat keyword bonus roll, which leans toward the high end. */
 	public static final double KEYWORD_RATIO = 0.75;

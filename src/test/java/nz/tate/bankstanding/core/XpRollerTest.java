@@ -34,11 +34,11 @@ public class XpRollerTest
 	private final XpRoller roller = new XpRoller(new Random(1));
 
 	@Test
-	public void maxHitRisesFromOneToTen()
+	public void maxHitRisesFromOneToTwelve()
 	{
 		assertEquals(1, XpRoller.baseMaxHit(1));
-		assertEquals(10, XpRoller.baseMaxHit(99));
-		assertEquals(13, XpRoller.maxHit(99, 7));
+		assertEquals(12, XpRoller.baseMaxHit(99));
+		assertEquals(15, XpRoller.maxHit(99, 7));
 	}
 
 	@Test
@@ -48,10 +48,10 @@ public class XpRollerTest
 		for (int i = 0; i < 200_000; i++)
 		{
 			int xp = roller.roll(99, 0, 0);
-			assertTrue(xp >= 1 && xp <= 10);
+			assertTrue(xp >= 1 && xp <= 12);
 			highest = Math.max(highest, xp);
 		}
-		assertEquals(10, highest);
+		assertEquals(12, highest);
 	}
 
 	@Test
@@ -66,7 +66,7 @@ public class XpRollerTest
 				ones++;
 			}
 		}
-		assertEquals(0.58, ones / (double) n, 0.01);
+		assertEquals(0.38, ones / (double) n, 0.01);
 	}
 
 	@Test
