@@ -29,14 +29,23 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.text.NumberFormat;
 import javax.inject.Inject;
+import net.runelite.api.Client;
+import net.runelite.api.Point;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.tooltip.Tooltip;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
+import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.Progress;
 
-/** A skills-tab style tile: the booth icon and the level shown as "42 / 42". */
+/**
+ * A skills-tab style tile: the booth icon and the level shown as "42 / 42". Hovering it shows
+ * the XP the way the skills tab does.
+ */
 class SkillTileOverlay extends Overlay
 {
 	private static final int WIDTH = 62;
@@ -47,12 +56,16 @@ class SkillTileOverlay extends Overlay
 	private static final Color LEVEL = new Color(255, 255, 0);
 
 	private final BankStandingPlugin plugin;
+	private final Client client;
+	private final TooltipManager tooltipManager;
 	private final BufferedImage icon;
 
 	@Inject
-	SkillTileOverlay(BankStandingPlugin plugin, Icons icons)
+	SkillTileOverlay(BankStandingPlugin plugin, Client client, TooltipManager tooltipManager, Icons icons)
 	{
 		this.plugin = plugin;
+		this.client = client;
+		this.tooltipManager = tooltipManager;
 		this.icon = icons.full();
 		setPosition(OverlayPosition.TOP_LEFT);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
@@ -84,7 +97,28 @@ class SkillTileOverlay extends Overlay
 		shadowed(graphics, level, 44 - metrics.stringWidth(level) / 2, 13);
 		shadowed(graphics, "/", 47, 20);
 		shadowed(graphics, level, 54 - metrics.stringWidth(level) / 2, 28);
+
+		Point mouse = client.getMouseCanvasPosition();
+		if (getBounds().contains(mouse.getX(), mouse.getY()))
+		{
+			tooltipManager.add(new Tooltip(tooltip(progress)));
+		}
 		return new Dimension(WIDTH, HEIGHT);
+	}
+
+	/** Like the skills tab: XP, then the next level and what's left, until 99. */
+	static String tooltip(Progress progress)
+	{
+		NumberFormat format = NumberFormat.getIntegerInstance();
+		String text = "Bank Standing XP: " + format.format(progress.xp);
+		int level = progress.level();
+		if (level < Experience.MAX_LEVEL)
+		{
+			int next = Experience.xpForLevel(level + 1);
+			text += "</br>Next level at: " + format.format(next)
+				+ "</br>Remaining XP: " + format.format(next - progress.xp);
+		}
+		return text;
 	}
 
 	private static void shadowed(Graphics2D graphics, String text, int x, int y)
