@@ -37,8 +37,8 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.SpotanimID;
 
 /**
- * The 99 celebration: fireworks, a meteor shower around the player, then a ring of
- * explosions. Built from the game's own effects as projectiles on this client only; nobody
+ * The 99 celebration: an abyssal portal opens under the player with fireworks, a meteor
+ * shower falls around them, then a beam of light, a ring of explosions and more fireworks. Built from the game's own effects as projectiles on this client only; nobody
  * else sees it. Driven by {@link #tick()} every client tick (20ms).
  */
 @Singleton
@@ -47,7 +47,11 @@ class Celebration
 	private static final int[] METEORS = {SpotanimID.WILD_FALLOFF_METEOR_FLYING, SpotanimID.INFERNO_ZUK_PROJECTILE};
 	private static final int[] BLASTS = {SpotanimID.WILD_FALLOFF_METEOR_BLAST, SpotanimID.WILD_FALLOFF_METEOR_BLAST_RED};
 	private static final int RING_BLAST = SpotanimID.OLM_CRYSTAL_EXPLODE;
+	private static final int PORTAL = SpotanimID.ABYSSAL_PORTAL;
+	private static final int LIGHT_BEAM = SpotanimID.LEGENDS_LIGHTBEAM;
 	private static final int FIREWORKS_KEY = 0x42414E4D;
+	private static final int PORTAL_KEY = 0x42414E4E;
+	private static final int BEAM_KEY = 0x42414E4F;
 
 	/** Client cycles are 20ms. */
 	private static final int SHOWER_CYCLES = 300;
@@ -85,6 +89,7 @@ class Celebration
 		finaleDone = false;
 		pendingBlasts.clear();
 		player.createSpotAnim(FIREWORKS_KEY, SpotanimID.LEVELUP_99_ANIM, 0, 0);
+		player.createSpotAnim(PORTAL_KEY, PORTAL, 0, 0);
 	}
 
 	boolean isRunning()
@@ -129,6 +134,7 @@ class Celebration
 		{
 			finaleDone = true;
 			player.createSpotAnim(FIREWORKS_KEY, SpotanimID.LEVELUP_MAX, 0, 0);
+			player.createSpotAnim(BEAM_KEY, LIGHT_BEAM, 0, 0);
 			for (int i = 0; i < 12; i++)
 			{
 				double angle = Math.PI * 2 * i / 12;
