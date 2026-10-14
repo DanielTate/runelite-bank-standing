@@ -167,7 +167,25 @@ public final class Keywords
 		phrase("6535163e94f8cf6a4da75a055379da8dd4bcf29c8432fe9cb4af5338fd9b14b1", Holiday.HALLOWEEN, "draynor"),
 		phrase("812612409f5e9da77909da67192341fc742286e9c2466d055addf39f1cc7ec71", null).wearing(Items.ids(1333, 23330, 23332, 23334)),
 		phrase("229d295af8b3509c6c6f1ea327f7c5a0bd43cf49fa49bc9c10ad992cdc02dfce", null).wearing(Items.ids(1149)),
-		phrase("50b100fb48ec767a128ba8fc0a8d81b38d5abf797c77dc1cbc06c32afb2a812b", Holiday.CHRISTMAS)
+		phrase("50b100fb48ec767a128ba8fc0a8d81b38d5abf797c77dc1cbc06c32afb2a812b", Holiday.CHRISTMAS),
+		phrase("b8a38d70d0a2069a96bfc6568521f9c995c47ed78c1eafa089bb026437befde6", null, "port-sarim", "port-khazard", "port-roberts", "port-phasmatys", "port-piscarilius", "deepfin-point", "great-conch", "great-conch-dock", "onyx-crest", "charred-island", "sunbleak-island", "bank-boat", "buccaneers-haven", "red-rock", "sangvesti", "wyrmscraig", "pandemonium", "aldarin-dock", "fortis-cothon", "corsair-cove"),
+		phrase("20dd4c9aba28915fa2accbbd607fc0f3d245e495eac0d2b6418457ec75b77401", null, "port-sarim", "port-khazard", "port-roberts", "port-phasmatys", "port-piscarilius", "deepfin-point", "great-conch", "great-conch-dock", "onyx-crest", "charred-island", "sunbleak-island", "bank-boat", "buccaneers-haven", "red-rock", "sangvesti", "wyrmscraig", "pandemonium", "aldarin-dock", "fortis-cothon", "corsair-cove"),
+		phrase("ed5ba4c5e2c9c1ee8793b4020063e45b5071d4e9cf1b30e02079571d7b101122", null, "port-sarim", "port-khazard", "port-roberts", "port-phasmatys", "port-piscarilius", "deepfin-point", "great-conch", "great-conch-dock", "onyx-crest", "charred-island", "sunbleak-island", "bank-boat", "buccaneers-haven", "red-rock", "sangvesti", "wyrmscraig", "pandemonium", "aldarin-dock", "fortis-cothon", "corsair-cove"),
+		phrase("6debdbb29808c215b8c6531c30a2fea3da9db4fd28b94c155204a3dc745c22b4", null, "port-sarim", "port-khazard", "port-roberts", "port-phasmatys", "port-piscarilius", "deepfin-point", "great-conch", "great-conch-dock", "onyx-crest", "charred-island", "sunbleak-island", "bank-boat", "buccaneers-haven", "red-rock", "sangvesti", "wyrmscraig", "pandemonium", "aldarin-dock", "fortis-cothon", "corsair-cove"),
+		phrase("8c61d90145a80b410ac163f091541bfea4187abff81a80dabe9fb1678ce01d79", null, "bank-boat"),
+		phrase("9caa71839e6742168e157b77ec46ada1e37de363f163b8634c8ebde3971671c1", null, "buccaneers-haven"),
+		phrase("57be3b1ed4e12d90ee053e2df0c8bbae0131d68defa69ee1dbd32f1c34fc7802", null, "great-conch", "great-conch-dock"),
+		phrase("2258435f3419ffa2a7168164d2cff26fde4fb8e8ef3908d01d5057a2212fe497", null, "fortis", "fortis-west"),
+		phrase("45fe52eaad7ed84448a2daf802a85df0ca9135a93e80633220b5d6a98bf303db", null, "fortis", "fortis-west"),
+		phrase("12030676ecf692440fccaf63d9db5ec1087f023243a2d2fbda1f0532b13a12e8", null, "hunters-guild"),
+		phrase("070e0bcd0dde1eeb7ae4d4a2c1404ebc3bbaa4058e4c5dcc1f45c2ab6c3240b9", null, "cam-torum"),
+		phrase("d8db0a40f5dfc1678d9d2746ce1eef22a81fb3b0e8d04dbdb11450309f273726", null, "aldarin", "aldarin-dock"),
+		phrase("895c6a330f2f4df62f63e812f8029ed4eee3f2e3935228956f88b085f5ef5b41", null, "arceuus"),
+		phrase("3ca1d15527c5270298ea3d3a97bc372e1c00d811a958fdd49ccb74e1665339da", null, "hosidius"),
+		phrase("6b9e9e9cbc740cf2950474b239ad379196029de1b04643bedcc802406e66740c", null, "unkah"),
+		phrase("c83d9127c6d86c8141b647f46a7b1d9c487f3ae3a31c88b5adc49cbb81e3faa2", null, "guardians-of-the-rift"),
+		phrase("1a2112315793c6122fb25b7621f9f9dda05d30f223668423dc6126e6b631d34f", null, "hallowed-sepulchre"),
+		phrase("bbb94d6f7a44186b95243d552788af23dcd972d665a3048bf5f573639f5f4bfe", null, "prifddinas-north", "prifddinas-south")
 	));
 
 	private final List<Phrase> phrases;
