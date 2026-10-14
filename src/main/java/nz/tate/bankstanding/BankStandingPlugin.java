@@ -55,6 +55,7 @@ import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.SpotanimID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -147,7 +148,13 @@ public class BankStandingPlugin extends Plugin
 	private final XpRoller roller = new XpRoller(new Random());
 
 	/** Development only: `./gradlew run -PxpMultiplier=N` scales every drop. Always 1 for players. */
+	/** Our own slot in the player's spot animations, so the fireworks never replace the game's. */
+	private static final int FIREWORKS_KEY = 0x42414E4B;
+
 	private static final int DEV_XP_MULTIPLIER = Math.max(1, Integer.getInteger("bankstanding.xpMultiplier", 1));
+
+	/** Development only: `./gradlew run -PsetXp=N` overwrites the saved XP on login. Unset for players. */
+	private static final Integer DEV_SET_XP = Integer.getInteger("bankstanding.setXp");
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.HASHES);
 
@@ -353,6 +360,11 @@ public class BankStandingPlugin extends Plugin
 				return;
 			}
 			progress.renameBanks();
+			if (DEV_SET_XP != null)
+			{
+				progress.xp = Math.max(0, Math.min(Experience.MAX_XP, DEV_SET_XP));
+				store.save(progress);
+			}
 			refreshPanel();
 		}
 
@@ -436,6 +448,13 @@ public class BankStandingPlugin extends Plugin
 			.type(ChatMessageType.GAMEMESSAGE)
 			.runeLiteFormattedMessage(message)
 			.build());
+
+		Player player = client.getLocalPlayer();
+		if (player != null)
+		{
+			int fireworks = level >= Experience.MAX_LEVEL ? SpotanimID.LEVELUP_99_ANIM : SpotanimID.LEVELUP_ANIM;
+			player.createSpotAnim(FIREWORKS_KEY, fireworks, 0, 0);
+		}
 	}
 
 	private boolean isUsingBank()
