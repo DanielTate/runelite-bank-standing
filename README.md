@@ -3,7 +3,7 @@
 The skill every OSRS player has secretly been training for years, now with a level.
 
 Stand near a bank and do nothing. After a short while you start earning Bank Standing XP,
-one drop at a time, all the way to 99. Reach the top and you'll be wearing a cape to
+one drop at a time, all the way to 99. Reach the top and you'll wear a cape while you stand to
 prove it.
 
 > **Status:** in development. Not yet on the Plugin Hub.
@@ -25,7 +25,8 @@ The game's own logout timer still applies, so you will need to stay at your keyb
 - XP drops and level-up messages, just like a real skill
 - A side panel with your level, XP, XP per hour, session and daily standing time, and how
   long you've spent at each bank
-- A cape at 99, and XP that keeps counting past it all the way to 200m
+- A cape at 99 that you wear while bank standing, and XP that keeps counting past it all
+  the way to 200m
 
 Progress is saved separately for each of your accounts.
 

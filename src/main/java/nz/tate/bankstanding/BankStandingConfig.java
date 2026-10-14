@@ -36,7 +36,7 @@ public interface BankStandingConfig extends Config
 	@ConfigItem(
 		keyName = "showCape",
 		name = "Show 99 cape",
-		description = "At level 99, show the Bank Standing cape on your character. Only you can see it."
+		description = "At level 99, wear the Bank Standing cape while you bank stand. Only you can see it."
 	)
 	default boolean showCape()
 	{

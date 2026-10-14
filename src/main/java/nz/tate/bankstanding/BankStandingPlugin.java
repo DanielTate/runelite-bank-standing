@@ -410,7 +410,13 @@ public class BankStandingPlugin extends Plugin
 			refreshPanel();
 		}
 
-		if (config.showCape() && (progress.level() >= Experience.MAX_LEVEL || dev.previewCape))
+		WorldPoint location = player.getWorldLocation();
+		boolean roll = tracker.tick(location.getX(), location.getY(), location.getPlane(),
+			bankLocator.isNearBank(location), isUsingBank());
+
+		// The cape is only worn while bank standing; the dev preview shows it anywhere.
+		if (dev.previewCape
+			|| config.showCape() && progress.level() >= Experience.MAX_LEVEL && tracker.isStanding())
 		{
 			capeDisplay.apply();
 		}
@@ -418,10 +424,6 @@ public class BankStandingPlugin extends Plugin
 		{
 			capeDisplay.restore(wornCape);
 		}
-
-		WorldPoint location = player.getWorldLocation();
-		boolean roll = tracker.tick(location.getX(), location.getY(), location.getPlane(),
-			bankLocator.isNearBank(location), isUsingBank());
 
 		if (!tracker.isStanding())
 		{
