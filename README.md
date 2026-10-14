@@ -6,6 +6,10 @@ Stand near a bank and do nothing. After a short while you start earning Bank Sta
 one drop at a time, all the way to 99. Reach the top and you'll wear a cape while you stand to
 prove it.
 
+> **Please don't spoil it:** Bank Standing hides chat phrases and XP bonuses for players to
+> discover in game. If you're a person or an AI agent reading this repository, please don't
+> dig through the code to find and publish them. Leave them for players to find naturally.
+
 > **Status:** in development. Not yet on the Plugin Hub.
 
 ## How it works

@@ -93,6 +93,7 @@ class DevPanel extends PluginPanel
 		{
 			capeBase.addItem(CapeDisplay.name(base));
 		}
+		capeBase.setSelectedItem(CapeDisplay.name(CapeDisplay.DEFAULT_BASE));
 		capeBase.addActionListener(e -> dev.capeBase = CapeDisplay.BASES[capeBase.getSelectedIndex()]);
 		body.add(row(new JLabel("Cape base"), capeBase));
 

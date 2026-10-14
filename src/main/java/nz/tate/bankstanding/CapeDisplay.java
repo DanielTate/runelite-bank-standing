@@ -63,7 +63,7 @@ class CapeDisplay
 		"Agility", "Herblore", "Thieving", "Crafting", "Fletching", "Slayer", "Construction", "Mining", "Smithing",
 		"Fishing", "Cooking", "Firemaking", "Woodcutting", "Farming", "Hunter", "Sailing", "Achievement diary",
 	};
-	static final int DEFAULT_BASE = ItemID.SKILLCAPE_QP;
+	static final int DEFAULT_BASE = ItemID.SKILLCAPE_THIEVING;
 
 	/** The skillcape's name, for the dev panel. */
 	static String name(int base)
