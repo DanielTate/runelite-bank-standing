@@ -52,6 +52,9 @@ public final class Progress
 	public Map<String, CollectionLog.Obtained> collection = new LinkedHashMap<>();
 	public long rolls;
 
+	/** {@link Moments} by key, with when each first happened. */
+	public Map<String, Long> moments = new LinkedHashMap<>();
+
 	public int level()
 	{
 		return Experience.levelForXp(xp);

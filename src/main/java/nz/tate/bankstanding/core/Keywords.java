@@ -30,9 +30,12 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -56,6 +59,22 @@ public final class Keywords
 		LOCATION,
 		DATE,
 		DATE_AND_LOCATION
+	}
+
+	/** How the collection log groups phrases, without saying which is which. */
+	public enum Group
+	{
+		ANYWHERE("Anywhere"),
+		BANK("At certain banks"),
+		HOLIDAY("On holidays"),
+		WORN("While wearing something");
+
+		public final String title;
+
+		Group(String title)
+		{
+			this.title = title;
+		}
 	}
 
 	/**
@@ -86,6 +105,19 @@ public final class Keywords
 		{
 			items = itemIds;
 			return this;
+		}
+
+		Group group()
+		{
+			if (!items.isEmpty())
+			{
+				return Group.WORN;
+			}
+			if (holiday != null)
+			{
+				return Group.HOLIDAY;
+			}
+			return banks.isEmpty() ? Group.ANYWHERE : Group.BANK;
 		}
 
 		Kind kind()
@@ -211,6 +243,59 @@ public final class Keywords
 	public Keywords(List<Phrase> phrases)
 	{
 		this.phrases = phrases;
+	}
+
+	public int count()
+	{
+		return phrases.size();
+	}
+
+	/** How many of the phrases have ever paid out, without saying which. */
+	public int found(Progress p)
+	{
+		int found = 0;
+		for (Phrase phrase : phrases)
+		{
+			if (p.keywordPaid.containsKey(phrase.hash))
+			{
+				found++;
+			}
+		}
+		return found;
+	}
+
+	/** Found and total for each group, as {found, total}. */
+	public Map<Group, int[]> foundByGroup(Progress p)
+	{
+		Map<Group, int[]> counts = new EnumMap<>(Group.class);
+		for (Group group : Group.values())
+		{
+			counts.put(group, new int[2]);
+		}
+		for (Phrase phrase : phrases)
+		{
+			int[] count = counts.get(phrase.group());
+			count[1]++;
+			if (p.keywordPaid.containsKey(phrase.hash))
+			{
+				count[0]++;
+			}
+		}
+		return counts;
+	}
+
+	/** The kinds of phrase that have ever paid out. */
+	public Set<Kind> foundKinds(Progress p)
+	{
+		Set<Kind> kinds = EnumSet.noneOf(Kind.class);
+		for (Phrase phrase : phrases)
+		{
+			if (p.keywordPaid.containsKey(phrase.hash))
+			{
+				kinds.add(phrase.kind());
+			}
+		}
+		return kinds;
 	}
 
 	static Phrase phrase(String hash, Holiday holiday, String... banks)

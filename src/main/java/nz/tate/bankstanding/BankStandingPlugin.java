@@ -26,9 +26,11 @@ package nz.tate.bankstanding;
 
 import com.google.inject.Provides;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +84,7 @@ import nz.tate.bankstanding.core.DailyStreak;
 import nz.tate.bankstanding.core.Emote;
 import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.Keywords;
+import nz.tate.bankstanding.core.Moments;
 import nz.tate.bankstanding.core.Modifiers;
 import nz.tate.bankstanding.core.Progress;
 import nz.tate.bankstanding.core.Session;
@@ -197,6 +200,7 @@ public class BankStandingPlugin extends Plugin
 
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.PHRASES);
+	private final Moments.Watch watch = new Moments.Watch();
 
 	/** An emote's effect lasts this long after it starts. */
 	private static final int EMOTE_TICKS = 100;
@@ -327,6 +331,7 @@ public class BankStandingPlugin extends Plugin
 		{
 			save();
 			tracker.reset();
+			watch.loggedOut();
 			realXp.clear();
 			progress = null;
 			capeDisplay.forget();
@@ -472,6 +477,7 @@ public class BankStandingPlugin extends Plugin
 				return;
 			}
 			progress.renameBanks();
+			Moments.backfill(progress, keywords);
 			applyDevOverrides();
 			progress.records.begin(progress, System.currentTimeMillis());
 			session = new Session();
@@ -502,6 +508,7 @@ public class BankStandingPlugin extends Plugin
 		if (!tracker.isStanding())
 		{
 			progress.records.standEnded();
+			watch.standEnded();
 			return;
 		}
 
@@ -521,6 +528,7 @@ public class BankStandingPlugin extends Plugin
 		}
 		DailyStreak.standingTick(progress, today());
 		progress.records.standingTick(progress, session, System.currentTimeMillis());
+		noteMoments(bankKey, location);
 
 		if (roll)
 		{
@@ -613,7 +621,51 @@ public class BankStandingPlugin extends Plugin
 		devDrops++;
 		boolean showRare = dev.rareEvery > 0 && devDrops % dev.rareEvery == 0;
 		int normalMax = XpRoller.baseMaxHit(level);
-		dropFeed.add(xp, normalMax > 1 && hit == normalMax, showRare || hit > normalMax, phrase, previewSprite());
+		boolean maxHit = normalMax > 1 && hit == normalMax;
+		dropFeed.add(xp, maxHit, showRare || hit > normalMax, phrase, previewSprite());
+
+		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+		Moments.Splat splat = Moments.drop(progress, watch, maxHit, hit > normalMax, phrase, normalMax,
+			System.currentTimeMillis(), odd);
+		if (splat != null)
+		{
+			collected("New hitsplat: ", splat.title, -1, false);
+		}
+		announce(Collections.emptySet(), odd);
+	}
+
+	/** Checks the holidays and odd moments for one standing tick. */
+	private void noteMoments(String bankKey, WorldPoint location)
+	{
+		Moments.Tick tick = new Moments.Tick();
+		tick.now = System.currentTimeMillis();
+		tick.utcDay = today();
+		tick.local = LocalDateTime.now();
+		tick.yaw = client.getCameraYaw();
+		tick.pitch = client.getCameraPitch();
+		tick.namedBank = BankNames.find(location.getX(), location.getY()) != null ? bankKey : null;
+		tick.world = client.getWorld();
+		Set<Moments.HolidayEntry> holidays = EnumSet.noneOf(Moments.HolidayEntry.class);
+		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+		Moments.standingTick(progress, watch, tick, holidays, odd);
+		announce(holidays, odd);
+	}
+
+	private void announce(Set<Moments.HolidayEntry> holidays, Set<Moments.Odd> odd)
+	{
+		for (Moments.HolidayEntry holiday : holidays)
+		{
+			collected("New holiday: ", holiday.title, -1, false);
+		}
+		for (Moments.Odd moment : odd)
+		{
+			collected("New moment: ", moment.title, -1, false);
+		}
+		if (!holidays.isEmpty() || !odd.isEmpty())
+		{
+			dirty = true;
+			save();
+		}
 	}
 
 	/** Development only: the next sprite from {@code -PpreviewSplats}, named in chat. */

@@ -30,9 +30,11 @@ import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
@@ -44,9 +46,12 @@ import nz.tate.bankstanding.core.BankNames;
 import nz.tate.bankstanding.core.BankRegions;
 import nz.tate.bankstanding.core.CollectionLog;
 import nz.tate.bankstanding.core.Experience;
+import nz.tate.bankstanding.core.Keywords;
+import nz.tate.bankstanding.core.Moments;
 import nz.tate.bankstanding.core.Progress;
 import nz.tate.bankstanding.core.Records;
 import nz.tate.bankstanding.core.StatsView;
+import nz.tate.bankstanding.core.Unlocks;
 
 /**
  * The Bank Standing collection log, drawn like the game's own: a steel-framed stone window
@@ -59,7 +64,9 @@ class CollectionLogOverlay extends GameWindow
 	static final int DROPS = 0;
 	static final int BANKS = 1;
 	static final int MILESTONES = 2;
-	private static final String[] TABS = {"Drops", "Banks", "Milestones"};
+	static final int UNLOCKS = 3;
+	static final int MOMENTS = 4;
+	private static final String[] TABS = {"Drops", "Banks", "Milestones", "Unlocks", "Moments"};
 
 	private static final int WIDTH = 500;
 	private static final int HEIGHT = 320;
@@ -96,6 +103,12 @@ class CollectionLogOverlay extends GameWindow
 	private static final int[] LEVEL_MARKS = {10, 20, 30, 40, 50, 60, 70, 80, 90, 99};
 	private static final int[] HOUR_MARKS = {1, 3, 6};
 	private static final int[] XP_MARKS = {100_000_000, Experience.MAX_XP};
+	private static final Keywords PHRASES = new Keywords(Keywords.PHRASES);
+	/** Shown instead of the phrases themselves, which stay secret even once found. */
+	private static final String[] PHRASE_HINT = {
+		"Said in public chat while bank standing.",
+		"Which ones you've found stays a secret."
+	};
 
 	/** One thing in an entry: an item for the grid, or a line of text. */
 	private static final class Slot
@@ -108,6 +121,8 @@ class CollectionLogOverlay extends GameWindow
 		/** Shown on hover. */
 		final String detail;
 		final int count;
+		/** A picture to show instead of an item icon, or null. */
+		BufferedImage image;
 
 		Slot(String name, boolean done, int icon, boolean gold, String detail, int count)
 		{
@@ -120,6 +135,21 @@ class CollectionLogOverlay extends GameWindow
 		}
 	}
 
+	/** A count shown in place of the slots, like "Anywhere: 3/12". */
+	private static final class Row
+	{
+		final String label;
+		final int done;
+		final int total;
+
+		Row(String label, int done, int total)
+		{
+			this.label = label;
+			this.done = done;
+			this.total = total;
+		}
+	}
+
 	/** An entry in the left-hand list. */
 	private static final class Entry
 	{
@@ -128,15 +158,25 @@ class CollectionLogOverlay extends GameWindow
 		/** An extra line under the count, like "Kills" in the game: label and value, or null. */
 		String extraLabel;
 		String extraValue;
+		/** Counts and lines shown in place of the slots, which then only count toward the total. */
+		List<Row> rows;
+		String[] hint;
+		/** Columns for a text list. */
+		int columns = 2;
 
 		Entry(String name)
 		{
 			this.name = name;
 		}
 
+		boolean noted()
+		{
+			return rows != null || hint != null;
+		}
+
 		boolean grid()
 		{
-			return !slots.isEmpty() && slots.get(0).icon > 0;
+			return !slots.isEmpty() && (slots.get(0).icon > 0 || slots.get(0).image != null);
 		}
 
 		int done()
@@ -155,6 +195,7 @@ class CollectionLogOverlay extends GameWindow
 
 	private final BankStandingPlugin plugin;
 	private final TooltipManager tooltipManager;
+	private final HitsplatOverlay hitsplats;
 
 	private volatile int tab;
 	private volatile int entry;
@@ -163,11 +204,13 @@ class CollectionLogOverlay extends GameWindow
 	private volatile int visibleContentRows = 1;
 
 	@Inject
-	CollectionLogOverlay(BankStandingPlugin plugin, Client client, GuideArt art, TooltipManager tooltipManager)
+	CollectionLogOverlay(BankStandingPlugin plugin, Client client, GuideArt art, TooltipManager tooltipManager,
+		HitsplatOverlay hitsplats)
 	{
 		super(client, art);
 		this.plugin = plugin;
 		this.tooltipManager = tooltipManager;
+		this.hitsplats = hitsplats;
 	}
 
 	@Override
@@ -328,9 +371,36 @@ class CollectionLogOverlay extends GameWindow
 		graphics.setColor(SEPARATOR);
 		graphics.drawLine(x + LIST_RIGHT + 4, y + CONTENT_TOP - 5, x + RIGHT_END, y + CONTENT_TOP - 5);
 
+		if (shown.noted())
+		{
+			contentRows = 0;
+			scroll = 0;
+			int lineY = y + CONTENT_TOP + 2;
+			if (shown.rows != null)
+			{
+				for (Row row : shown.rows)
+				{
+					int valueX = art.plain.drawShadowed(graphics, row.label + ": ", left, lineY, ORANGE);
+					Color colour = row.done == 0 ? RED : row.done == row.total ? GREEN : YELLOW;
+					art.plain.drawShadowed(graphics, row.done + "/" + row.total, valueX, lineY, colour);
+					lineY += LINE + 2;
+				}
+				lineY += LINE / 2;
+			}
+			if (shown.hint != null)
+			{
+				for (String line : shown.hint)
+				{
+					art.small.drawShadowed(graphics, line, left, lineY, GREY);
+					lineY += LINE;
+				}
+			}
+			return;
+		}
+
 		Point mouse = client.getMouseCanvasPosition();
 		boolean grid = shown.grid();
-		int perRow = grid ? (SCROLLBAR_X - RIGHT + SLOT_STEP - SLOT) / SLOT_STEP : 2;
+		int perRow = grid ? (SCROLLBAR_X - RIGHT + SLOT_STEP - SLOT) / SLOT_STEP : shown.columns;
 		int rowHeight = grid ? SLOT_STEP : LINE;
 		contentRows = (total + perRow - 1) / perRow;
 		visibleContentRows = Math.max(1, (BODY_BOTTOM - CONTENT_TOP) / rowHeight);
@@ -380,7 +450,7 @@ class CollectionLogOverlay extends GameWindow
 			// Like the game's log: what you haven't got is faded.
 			graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
 		}
-		GuideArt.drawIcon(graphics, art.itemIcon(slot.icon, slot.gold), x, y, SLOT);
+		GuideArt.drawIcon(graphics, slot.image != null ? slot.image : art.itemIcon(slot.icon, slot.gold), x, y, SLOT);
 		graphics.setComposite(before);
 		if (slot.count > 1)
 		{
@@ -403,7 +473,7 @@ class CollectionLogOverlay extends GameWindow
 		return entries(progress, tab);
 	}
 
-	private static List<Entry> entries(Progress progress, int tab)
+	private List<Entry> entries(Progress progress, int tab)
 	{
 		List<Entry> entries = new ArrayList<>();
 		NumberFormat format = NumberFormat.getIntegerInstance();
@@ -425,6 +495,15 @@ class CollectionLogOverlay extends GameWindow
 				each.extraValue = format.format(progress.rolls);
 				entries.add(each);
 			}
+			Entry splats = new Entry("Hitsplats");
+			for (Moments.Splat splat : Moments.Splat.values())
+			{
+				Long at = progress.moments.get(splat.key);
+				Slot slot = new Slot(splat.title, at != null, -1, false, at == null ? "Not seen yet" : first(at), 0);
+				slot.image = hitsplats.icon(splat);
+				splats.slots.add(slot);
+			}
+			entries.add(splats);
 		}
 		else if (tab == BANKS)
 		{
@@ -441,7 +520,7 @@ class CollectionLogOverlay extends GameWindow
 				entries.add(banks);
 			}
 		}
-		else
+		else if (tab == MILESTONES)
 		{
 			Records records = progress.records;
 			Entry levels = new Entry("Levels");
@@ -460,11 +539,65 @@ class CollectionLogOverlay extends GameWindow
 			{
 				experience.slots.add(milestone(format.format(mark) + " XP", progress.xp >= mark, records.find("xp", mark)));
 			}
+			Entry phrases = new Entry("Secret phrases");
+			phrases.rows = new ArrayList<>();
+			for (Map.Entry<Keywords.Group, int[]> group : PHRASES.foundByGroup(progress).entrySet())
+			{
+				int[] count = group.getValue();
+				phrases.rows.add(new Row(group.getKey().title, count[0], count[1]));
+				for (int i = 0; i < count[1]; i++)
+				{
+					phrases.slots.add(new Slot("Secret phrase", i < count[0], -1, false, "", 0));
+				}
+			}
+			phrases.hint = PHRASE_HINT;
 			entries.add(levels);
 			entries.add(stands);
 			entries.add(experience);
+			entries.add(phrases);
+		}
+		else if (tab == UNLOCKS)
+		{
+			int level = progress.level();
+			for (Unlocks.Category category : Unlocks.Category.values())
+			{
+				Entry unlocks = new Entry(category.title);
+				unlocks.columns = 1;
+				for (Unlocks.Unlock unlock : Unlocks.in(category))
+				{
+					boolean done = level >= unlock.level;
+					unlocks.slots.add(new Slot("Level " + unlock.level + ": " + unlock.text, done, -1, false,
+						done ? "Unlocked" : "Unlocks at level " + unlock.level, 0));
+				}
+				entries.add(unlocks);
+			}
+		}
+		else
+		{
+			Entry holidays = new Entry("Holidays");
+			holidays.columns = 1;
+			for (Moments.HolidayEntry holiday : Moments.HolidayEntry.values())
+			{
+				Long at = progress.moments.get(holiday.key());
+				holidays.slots.add(new Slot(holiday.title, at != null, -1, false,
+					holiday.when + "</br>" + (at == null ? "Not stood through yet" : first(at)), 0));
+			}
+			Entry odd = new Entry("Odd moments");
+			for (Moments.Odd moment : Moments.Odd.values())
+			{
+				Long at = progress.moments.get(moment.key);
+				odd.slots.add(new Slot(moment.title, at != null, -1, false,
+					moment.description + (at == null ? "" : "</br>" + first(at)), 0));
+			}
+			entries.add(holidays);
+			entries.add(odd);
 		}
 		return entries;
+	}
+
+	private static String first(long at)
+	{
+		return at == Moments.BEFORE_TRACKING ? "Before the log tracked it" : "First: " + StatsView.date(at);
 	}
 
 	private static Slot milestone(String name, boolean done, Records.Milestone when)

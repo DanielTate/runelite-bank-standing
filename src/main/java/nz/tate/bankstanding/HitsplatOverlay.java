@@ -33,6 +33,7 @@ import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.Point;
@@ -42,6 +43,7 @@ import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import nz.tate.bankstanding.core.Keywords;
+import nz.tate.bankstanding.core.Moments;
 
 /**
  * Draws each drop as a hitsplat on the player, using the game's own splat sprites. The API
@@ -53,6 +55,7 @@ import nz.tate.bankstanding.core.Keywords;
  * what the phrase is tied to: plain for anywhere, blue for a bank, green for a date, gold for
  * both.
  */
+@Singleton
 class HitsplatOverlay extends Overlay
 {
 	private static final int DAMAGE_SPRITE = 1359;
@@ -145,6 +148,24 @@ class HitsplatOverlay extends Overlay
 			splat = maxHitSplat();
 		}
 		return splat != null ? splat : scaled(DAMAGE_SPRITE);
+	}
+
+	/** The splat for one kind of drop, as the collection log shows it; null until the sprites load. */
+	BufferedImage icon(Moments.Splat splat)
+	{
+		if (splat.phrase != null)
+		{
+			return sanitySplat(splat.phrase);
+		}
+		switch (splat)
+		{
+			case BOOSTED:
+				return scaled(BOOSTED_SPRITE);
+			case MAX_HIT:
+				return maxHitSplat();
+			default:
+				return scaled(DAMAGE_SPRITE);
+		}
 	}
 
 	private BufferedImage sanitySplat(Keywords.Kind kind)

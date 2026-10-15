@@ -85,6 +85,39 @@ public class KeywordsTest
 	}
 
 	@Test
+	public void foundCountsEachPhraseOnce()
+	{
+		Progress p = new Progress();
+		assertEquals(0, keywords.found(p));
+		claim(p, "test phrase", 0, DAY);
+		claim(p, "test phrase", 2 * HOUR, DAY);
+		claim(p, "other phrase", 0, DAY);
+		claim(p, "not a phrase", 0, DAY);
+		assertEquals(2, keywords.found(p));
+		assertEquals(6, keywords.count());
+	}
+
+	@Test
+	public void groupsCountEveryPhraseOnce()
+	{
+		Progress p = new Progress();
+		claim(p, "test phrase", 0, DAY);
+		java.util.Map<Keywords.Group, int[]> groups = keywords.foundByGroup(p);
+		assertEquals(1, groups.get(Keywords.Group.ANYWHERE)[0]);
+		assertEquals(2, groups.get(Keywords.Group.ANYWHERE)[1]);
+		assertEquals(1, groups.get(Keywords.Group.BANK)[1]);
+		assertEquals(2, groups.get(Keywords.Group.HOLIDAY)[1]);
+		assertEquals(1, groups.get(Keywords.Group.WORN)[1]);
+
+		int total = 0;
+		for (int[] count : new Keywords(Keywords.PHRASES).foundByGroup(p).values())
+		{
+			total += count[1];
+		}
+		assertEquals(Keywords.PHRASES.size(), total);
+	}
+
+	@Test
 	public void holidayPhrasesOnlyWorkOnTheHoliday()
 	{
 		assertFalse(claim(new Progress(), "spooky phrase", 0, DAY));
