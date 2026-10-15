@@ -108,6 +108,12 @@ public final class StandTracker
 		hasPosition = false;
 	}
 
+	/** While a Quick peek is holding the stand open: ticks left before it ends, else 0. */
+	public int peekTicksLeft()
+	{
+		return bankTicks > 0 && isStanding() ? peekTicks - bankTicks + 1 : 0;
+	}
+
 	/** True once the start delay has passed and drops are being rolled. */
 	public boolean isStanding()
 	{

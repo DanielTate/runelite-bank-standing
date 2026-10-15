@@ -96,6 +96,29 @@ public class StandTrackerTest
 	}
 
 	@Test
+	public void quickPeekCountsDownUntilTheStandEnds()
+	{
+		tracker.setUnlocks(StandTracker.START_DELAY_TICKS, Unlocks.PEEK_TICKS);
+		stand(60);
+		assertEquals(0, tracker.peekTicksLeft());
+		for (int i = Unlocks.PEEK_TICKS; i >= 1; i--)
+		{
+			tracker.tick(3185, 3436, 0, true, true);
+			assertEquals(i, tracker.peekTicksLeft());
+		}
+		tracker.tick(3185, 3436, 0, true, true);
+		assertEquals(0, tracker.peekTicksLeft());
+	}
+
+	@Test
+	public void noCountdownWithoutQuickPeek()
+	{
+		stand(60);
+		tracker.tick(3185, 3436, 0, true, true);
+		assertEquals(0, tracker.peekTicksLeft());
+	}
+
+	@Test
 	public void higherLevelsStartSooner()
 	{
 		tracker.setUnlocks(Unlocks.startDelayTicks(99), 0);

@@ -185,6 +185,9 @@ public class BankStandingPlugin extends Plugin
 	@Inject
 	private ClientThread clientThread;
 
+	@Inject
+	private PeekTimer peekTimer;
+
 	private BankStandingPanel panel;
 	private NavigationButton navButton;
 	private NavigationButton devButton;
@@ -256,6 +259,7 @@ public class BankStandingPlugin extends Plugin
 		skillTileOverlay.addMenuEntry(MenuAction.RUNELITE_OVERLAY, "View", "Collection log", e -> openCollectionLog());
 		overlayManager.add(xpDropOverlay);
 		overlayManager.add(hitsplatOverlay);
+		overlayManager.add(peekTimer);
 
 		panel = new BankStandingPanel(icons, this::capeEmote, this::openCollectionLog);
 		navButton = NavigationButton.builder()
@@ -319,6 +323,8 @@ public class BankStandingPlugin extends Plugin
 		collectionPopup.clear();
 		overlayManager.remove(xpDropOverlay);
 		overlayManager.remove(hitsplatOverlay);
+		overlayManager.remove(peekTimer);
+		peekTimer.ticksLeft(0);
 		dropFeed.clear();
 		celebration.stop();
 		clientToolbar.removeNavigation(navButton);
@@ -352,6 +358,7 @@ public class BankStandingPlugin extends Plugin
 		{
 			save();
 			tracker.reset();
+			peekTimer.ticksLeft(0);
 			watch.loggedOut();
 			realXp.clear();
 			progress = null;
@@ -560,6 +567,7 @@ public class BankStandingPlugin extends Plugin
 		tracker.setUnlocks(Unlocks.startDelayTicks(currentLevel), Unlocks.peekTicks(currentLevel));
 		boolean roll = tracker.tick(location.getX(), location.getY(), location.getPlane(),
 			bankLocator.isNearBank(location, Unlocks.bankRange(currentLevel)), isUsingBank());
+		peekTimer.ticksLeft(tracker.peekTicksLeft());
 
 		// The cape and the other unlocks only show while bank standing; the dev options show
 		// them anywhere.
