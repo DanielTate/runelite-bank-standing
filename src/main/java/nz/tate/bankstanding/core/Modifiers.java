@@ -25,6 +25,13 @@
 package nz.tate.bankstanding.core;
 
 import java.time.Month;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -51,12 +58,107 @@ public final class Modifiers
 	{
 		public double boost;
 		public int bonusHit;
+		/** Keys of the outfits, diary items and full inventories that counted, for the collection log. */
+		public final Set<String> found = new LinkedHashSet<>();
 
 		void gear()
 		{
 			bonusHit++;
 			boost += GEAR;
 		}
+	}
+
+	static final String OUTFIT = "outfit:";
+	static final String DIARY = "diary:";
+	static final String HAUL = "haul:";
+	static final int INVENTORY_SLOTS = 28;
+
+	/** A bank where standing with every inventory slot full of the right things counts. */
+	static final class Haul
+	{
+		final String bankKey;
+		final Set<Integer> items;
+
+		Haul(String bankKey, Set<Integer> items)
+		{
+			this.bankKey = bankKey;
+			this.items = items;
+		}
+
+		boolean carriedBy(StandContext c)
+		{
+			if (!c.at(bankKey) || c.inventory.length < INVENTORY_SLOTS)
+			{
+				return false;
+			}
+			for (int i = 0; i < INVENTORY_SLOTS; i++)
+			{
+				if (!items.contains(c.inventory[i]))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	static final List<Haul> HAULS = Collections.unmodifiableList(Arrays.asList(
+		new Haul("fishing-guild", Items.RAW_FISH),
+		new Haul("woodcutting-guild", Items.LOGS),
+		new Haul("motherlode", Items.ids(12011)),
+		new Haul("mining-guild", Items.ORES),
+		new Haul("blast-furnace", Items.BARS),
+		new Haul("ourania", Items.RUNE_ESSENCE),
+		new Haul("guardians-of-the-rift", Items.ids(26879)),
+		new Haul("arceuus", Items.ids(13445)),
+		new Haul("wintertodt", Items.ids(20695, 20696)),
+		new Haul("farming-guild", Items.HERBS),
+		new Haul("crafting-guild", Items.GEMS),
+		new Haul("seers", Items.ids(1779, 1777)),
+		new Haul("vinery", Items.ids(1987, 1993)),
+		new Haul("al-kharid", Items.ids(1971)),
+		new Haul("ape-atoll", Items.ids(1963)),
+		new Haul("draynor", Items.ids(1550)),
+		new Haul("port-phasmatys", Items.BONES),
+		new Haul("sulphur-mine", Items.ids(13571))
+	));
+
+	/** For the collection log: how many of each kind have counted at least once, as {found, total}. */
+	public static Map<String, int[]> foundByGroup(Map<String, Long> moments)
+	{
+		Map<String, int[]> counts = new LinkedHashMap<>();
+		counts.put("Outfits", count(moments, OUTFIT, keys(Items.OUTFITS)));
+		counts.put("Diary items", count(moments, DIARY, keys(Items.DIARY)));
+		List<String> hauls = new ArrayList<>();
+		for (Haul haul : HAULS)
+		{
+			hauls.add(haul.bankKey);
+		}
+		counts.put("Full inventories", count(moments, HAUL, hauls));
+		return counts;
+	}
+
+	private static List<String> keys(List<Outfit> outfits)
+	{
+		List<String> keys = new ArrayList<>();
+		for (Outfit outfit : outfits)
+		{
+			keys.add(outfit.key());
+		}
+		return keys;
+	}
+
+	private static int[] count(Map<String, Long> moments, String prefix, List<String> keys)
+	{
+		int found = 0;
+		for (String key : keys)
+		{
+			if (moments.containsKey(prefix + key))
+			{
+				found++;
+			}
+		}
+		return new int[]{found, keys.size()};
 	}
 
 	private Modifiers()
@@ -80,9 +182,26 @@ public final class Modifiers
 
 		for (Outfit outfit : Items.OUTFITS)
 		{
-			if (c.at(outfit.bankKey()) && outfit.wornBy(c))
+			if (c.at(outfit.bankKeys()) && outfit.wornBy(c))
 			{
 				e.gear();
+				e.found.add(OUTFIT + outfit.key());
+			}
+		}
+		for (Outfit diary : Items.DIARY)
+		{
+			if (c.at(diary.bankKeys()) && diary.wornBy(c))
+			{
+				e.gear();
+				e.found.add(DIARY + diary.key());
+			}
+		}
+		for (Haul haul : HAULS)
+		{
+			if (haul.carriedBy(c))
+			{
+				e.gear();
+				e.found.add(HAUL + haul.bankKey);
 			}
 		}
 

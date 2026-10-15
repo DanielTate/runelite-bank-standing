@@ -69,6 +69,101 @@ public class ModifiersTest
 	}
 
 	@Test
+	public void fullLunarAtLunarIsle()
+	{
+		assertEquals(1, Modifiers.evaluate(at("lunar-isle", 9096, 9097, 9098, 9099, 9100, 9101)).bonusHit);
+		assertEquals(0, Modifiers.evaluate(at("lunar-isle", 9096, 9097, 9098, 9099, 9100)).bonusHit);
+		assertEquals(0, Modifiers.evaluate(at("ge", 9096, 9097, 9098, 9099, 9100, 9101)).bonusHit);
+	}
+
+	@Test
+	public void outfitsCanBelongToSeveralBanks()
+	{
+		assertEquals(1, Modifiers.evaluate(at("tzhaar", 21298, 21301, 21304)).bonusHit);
+		assertEquals(1, Modifiers.evaluate(at("mor-ul-rek", 21298, 21301, 21304)).bonusHit);
+		assertEquals(1, Modifiers.evaluate(at("falador-west", 6623, 6617, 6627)).bonusHit);
+	}
+
+	@Test
+	public void mixedMoonPiecesCount()
+	{
+		assertEquals(1, Modifiers.evaluate(at("cam-torum", 29010, 29013, 29025)).bonusHit);
+	}
+
+	@Test
+	public void diaryItemsCountInTheirRegion()
+	{
+		assertEquals(1, Modifiers.evaluate(at("ardougne-north", 13124)).bonusHit);
+		assertEquals(1, Modifiers.evaluate(at("hosidius", 22941)).bonusHit);
+		assertEquals(0, Modifiers.evaluate(at("ge", 13124)).bonusHit);
+		assertTrue(Modifiers.evaluate(at("seers", 13137)).found.contains("diary:seers"));
+	}
+
+	@Test
+	public void clanCloakAndVexillumAtTheClanHall()
+	{
+		assertEquals(1, Modifiers.evaluate(at("clan-hall", 25716, 25725)).bonusHit);
+		assertEquals(0, Modifiers.evaluate(at("clan-hall", 25716)).bonusHit);
+	}
+
+	@Test
+	public void jesterAtJatizso()
+	{
+		assertEquals(1, Modifiers.evaluate(at("jatizso", 10836, 10837, 10838, 10839, 10840)).bonusHit);
+	}
+
+	@Test
+	public void fullInventoryOfFishAtTheFishingGuild()
+	{
+		StandContext c = at("fishing-guild", 4151);
+		c.inventory = new int[28];
+		java.util.Arrays.fill(c.inventory, 383);
+		c.inventory[0] = 371;
+		assertEquals(1, Modifiers.evaluate(c).bonusHit);
+		assertTrue(Modifiers.evaluate(c).found.contains("haul:fishing-guild"));
+		c.inventory[5] = -1;
+		assertEquals(0, Modifiers.evaluate(c).bonusHit);
+
+		c = at("woodcutting-guild", 4151);
+		c.inventory = new int[28];
+		java.util.Arrays.fill(c.inventory, 1515);
+		assertEquals(1, Modifiers.evaluate(c).bonusHit);
+		c.bankKey = "ge";
+		assertEquals(0, Modifiers.evaluate(c).bonusHit);
+	}
+
+	@Test
+	public void collectionLogKeysAreUnique()
+	{
+		java.util.Set<String> keys = new HashSet<>();
+		for (Outfit outfit : Items.OUTFITS)
+		{
+			assertTrue(outfit.key(), keys.add("outfit:" + outfit.key()));
+		}
+		for (Outfit diary : Items.DIARY)
+		{
+			assertTrue(diary.key(), keys.add("diary:" + diary.key()));
+		}
+		for (Modifiers.Haul haul : Modifiers.HAULS)
+		{
+			assertTrue(haul.bankKey, keys.add("haul:" + haul.bankKey));
+		}
+	}
+
+	@Test
+	public void foundByGroupCountsOnlyKnownKeys()
+	{
+		java.util.Map<String, Long> moments = new java.util.HashMap<>();
+		moments.put("outfit:lunar-isle", 1L);
+		moments.put("outfit:not-a-bank", 1L);
+		java.util.Map<String, int[]> groups = Modifiers.foundByGroup(moments);
+		assertEquals(1, groups.get("Outfits")[0]);
+		assertEquals(Items.OUTFITS.size(), groups.get("Outfits")[1]);
+		assertEquals(0, groups.get("Diary items")[0]);
+		assertEquals(Modifiers.HAULS.size(), groups.get("Full inventories")[1]);
+	}
+
+	@Test
 	public void bossItemOnlyCountsAtItsBank()
 	{
 		assertEquals(1, Modifiers.evaluate(at("canifis", 4151)).bonusHit);

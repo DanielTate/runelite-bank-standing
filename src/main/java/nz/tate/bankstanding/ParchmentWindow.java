@@ -49,6 +49,8 @@ abstract class ParchmentWindow extends GameWindow
 	private static final Rectangle CLOSE_BUTTON = new Rectangle(WIDTH - 28, 6, 26, 23);
 	private static final int TAB_TOP = 36;
 	private static final int TAB_ROW = 24;
+	/** A link at the foot of the sidebar, under the tabs. */
+	private static final Rectangle LINK = new Rectangle(SIDEBAR.x + 10, SIDEBAR.y + SIDEBAR.height - 34, 120, 20);
 
 	protected volatile int tab;
 	/** The first row shown. */
@@ -72,6 +74,16 @@ abstract class ParchmentWindow extends GameWindow
 
 	/** Draws one row with its top left corner at (x, y), at most {@link #LIST_WIDTH} wide. */
 	abstract void drawRow(Graphics2D graphics, int row, int x, int y);
+
+	/** Text for the sidebar's link, or null for none. */
+	String link()
+	{
+		return null;
+	}
+
+	void linkClicked()
+	{
+	}
 
 	void showTab(int index)
 	{
@@ -103,6 +115,11 @@ abstract class ParchmentWindow extends GameWindow
 		if (CLOSE_BUTTON.contains(x, y))
 		{
 			close();
+			return;
+		}
+		if (link() != null && LINK.contains(x, y))
+		{
+			linkClicked();
 			return;
 		}
 		if (SIDEBAR.contains(x, y))
@@ -153,6 +170,17 @@ abstract class ParchmentWindow extends GameWindow
 			art.largeBold.draw(graphics, tabs[i], x + SIDEBAR.x + 22, tabY - art.largeBold.height() + 4,
 				i == tab ? GuideArt.SELECTED : GuideArt.INK);
 			tabY += TAB_ROW;
+		}
+
+		String link = link();
+		if (link != null)
+		{
+			int linkX = x + LINK.x + (LINK.width - art.bold.width(link)) / 2;
+			int linkY = y + LINK.y + 4;
+			art.bold.draw(graphics, link, linkX, linkY, GuideArt.SELECTED);
+			graphics.setColor(GuideArt.SELECTED);
+			int underline = linkY + art.bold.height();
+			graphics.drawLine(linkX, underline, linkX + art.bold.width(link) - 1, underline);
 		}
 
 		visibleRows = Math.max(1, (LIST_BOTTOM - LIST_TOP) / rowHeight());

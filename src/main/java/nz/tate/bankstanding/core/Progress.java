@@ -26,6 +26,8 @@ package nz.tate.bankstanding.core;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /** Everything saved for one account. Field names are permanent: they are the save format. */
 public final class Progress
@@ -54,6 +56,10 @@ public final class Progress
 
 	/** {@link Moments} by key, with when each first happened. */
 	public Map<String, Long> moments = new LinkedHashMap<>();
+	/** When the Sit emote last paid out a boosted roll, in epoch milliseconds. */
+	public long lastSitRoll;
+	/** Every local date (ISO) with some standing, for the calendar moments. */
+	public Set<String> daysStood = new TreeSet<>();
 
 	public int level()
 	{

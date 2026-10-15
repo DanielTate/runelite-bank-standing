@@ -118,6 +118,23 @@ public class KeywordsTest
 	}
 
 	@Test
+	public void clanPhraseEndsWithYourClanAtTheClanHall()
+	{
+		Keywords clan = new Keywords(Arrays.asList(Keywords.phrase(Keywords.hash("hello"), null, "clan-hall").beforeClanName()));
+		assertEquals(Keywords.Kind.LOCATION, clan.claim(new Progress(), "Hello Iron\u00A0Squad", 0, DAY, "clan-hall",
+			Collections.emptySet(), "Iron Squad"));
+		assertEquals(null, clan.claim(new Progress(), "hello other clan", 0, DAY, "clan-hall",
+			Collections.emptySet(), "Iron Squad"));
+		assertEquals(null, clan.claim(new Progress(), "hello iron squad", 0, DAY, "ge",
+			Collections.emptySet(), "Iron Squad"));
+		assertEquals(null, clan.claim(new Progress(), "hello", 0, DAY, "clan-hall", Collections.emptySet(), null));
+
+		Progress p = new Progress();
+		clan.claim(p, "hello iron squad", 0, DAY, "clan-hall", Collections.emptySet(), "Iron Squad");
+		assertEquals(1, clan.found(p));
+	}
+
+	@Test
 	public void holidayPhrasesOnlyWorkOnTheHoliday()
 	{
 		assertFalse(claim(new Progress(), "spooky phrase", 0, DAY));
@@ -141,7 +158,7 @@ public class KeywordsTest
 		{
 			assertTrue(hashes.add(phrase.hash));
 		}
-		assertEquals(98, hashes.size());
+		assertEquals(99, hashes.size());
 	}
 
 	@Test

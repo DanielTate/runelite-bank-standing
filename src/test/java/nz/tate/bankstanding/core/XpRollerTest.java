@@ -92,4 +92,19 @@ public class XpRollerTest
 		}
 		return sum / (double) n;
 	}
+
+	@Test
+	public void boostedRollsAreAlwaysAboveTheNormalMax()
+	{
+		XpRoller roller = new XpRoller(new java.util.Random(3));
+		for (int level : new int[]{1, 50, 99})
+		{
+			for (int i = 0; i < 1000; i++)
+			{
+				int hit = roller.boostedRoll(level);
+				org.junit.Assert.assertTrue(hit > XpRoller.baseMaxHit(level));
+				org.junit.Assert.assertTrue(hit <= XpRoller.baseMaxHit(level) + XpRoller.HIT_PER_BONUS);
+			}
+		}
+	}
 }

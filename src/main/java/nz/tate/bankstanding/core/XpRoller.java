@@ -85,6 +85,12 @@ public final class XpRoller
 		return sample(maxHit(level, bonusHit), KEYWORD_RATIO);
 	}
 
+	/** A hit above the normal max for the level, as one gear bonus would allow. */
+	public int boostedRoll(int level)
+	{
+		return baseMaxHit(level) + 1 + random.nextInt(HIT_PER_BONUS);
+	}
+
 	int sample(int max, double ratio)
 	{
 		double total = 0;

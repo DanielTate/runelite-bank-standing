@@ -45,8 +45,12 @@ import nz.tate.bankstanding.core.BankArea;
 import nz.tate.bankstanding.core.BankNames;
 import nz.tate.bankstanding.core.BankRegions;
 import nz.tate.bankstanding.core.CollectionLog;
+import nz.tate.bankstanding.core.Companions;
 import nz.tate.bankstanding.core.Experience;
+import nz.tate.bankstanding.core.GearSets;
+import nz.tate.bankstanding.core.Holiday;
 import nz.tate.bankstanding.core.Keywords;
+import nz.tate.bankstanding.core.Modifiers;
 import nz.tate.bankstanding.core.Moments;
 import nz.tate.bankstanding.core.Progress;
 import nz.tate.bankstanding.core.Records;
@@ -66,7 +70,8 @@ class CollectionLogOverlay extends GameWindow
 	static final int MILESTONES = 2;
 	static final int UNLOCKS = 3;
 	static final int MOMENTS = 4;
-	private static final String[] TABS = {"Drops", "Banks", "Milestones", "Unlocks", "Moments"};
+	static final int GEAR = 5;
+	private static final String[] TABS = {"Drops", "Banks", "Milestones", "Unlocks", "Moments", "Gear"};
 
 	private static final int WIDTH = 500;
 	private static final int HEIGHT = 320;
@@ -107,6 +112,10 @@ class CollectionLogOverlay extends GameWindow
 	/** Shown instead of the phrases themselves, which stay secret even once found. */
 	private static final String[] PHRASE_HINT = {
 		"Said in public chat while bank standing.",
+		"Which ones you've found stays a secret."
+	};
+	private static final String[] DRESSED_HINT = {
+		"Worn, or played, at the right bank while standing.",
 		"Which ones you've found stays a secret."
 	};
 
@@ -479,18 +488,25 @@ class CollectionLogOverlay extends GameWindow
 		NumberFormat format = NumberFormat.getIntegerInstance();
 		if (tab == DROPS)
 		{
-			Entry rare = new Entry("Rare drops");
-			Entry pets = new Entry("Pet");
-			for (CollectionLog.Drop drop : CollectionLog.DROPS)
+			for (CollectionLog.Group group : CollectionLog.Group.values())
 			{
-				CollectionLog.Obtained obtained = progress.collection.get(drop.key);
-				String detail = obtained == null ? "Not obtained yet" : "Obtained: " + format.format(obtained.count)
-					+ "</br>First: " + StatsView.date(obtained.firstAt) + ", after " + format.format(obtained.firstRolls) + " rolls";
-				(drop.pet ? pets : rare).slots.add(new Slot(drop.name, obtained != null, drop.icon, drop.gold, detail,
-					obtained == null ? 0 : obtained.count));
-			}
-			for (Entry each : new Entry[]{rare, pets})
-			{
+				Entry each = new Entry(group.title);
+				for (CollectionLog.Drop drop : CollectionLog.DROPS)
+				{
+					if (drop.group != group)
+					{
+						continue;
+					}
+					CollectionLog.Obtained obtained = progress.collection.get(drop.key);
+					String detail = obtained == null ? "Not obtained yet" : "Obtained: " + format.format(obtained.count)
+						+ "</br>First: " + StatsView.date(obtained.firstAt) + ", after " + format.format(obtained.firstRolls) + " rolls";
+					if (obtained == null && drop.holiday != null)
+					{
+						detail += "</br>Only drops at " + holidayName(drop.holiday);
+					}
+					each.slots.add(new Slot(drop.name, obtained != null, drop.icon, drop.gold, detail,
+						obtained == null ? 0 : obtained.count));
+				}
 				each.extraLabel = "Rolls";
 				each.extraValue = format.format(progress.rolls);
 				entries.add(each);
@@ -551,10 +567,23 @@ class CollectionLogOverlay extends GameWindow
 				}
 			}
 			phrases.hint = PHRASE_HINT;
+			Entry dressed = new Entry("Dressed for it");
+			dressed.rows = new ArrayList<>();
+			for (Map.Entry<String, int[]> group : Modifiers.foundByGroup(progress.moments).entrySet())
+			{
+				int[] count = group.getValue();
+				dressed.rows.add(new Row(group.getKey(), count[0], count[1]));
+				for (int i = 0; i < count[1]; i++)
+				{
+					dressed.slots.add(new Slot("Secret", i < count[0], -1, false, "", 0));
+				}
+			}
+			dressed.hint = DRESSED_HINT;
 			entries.add(levels);
 			entries.add(stands);
 			entries.add(experience);
 			entries.add(phrases);
+			entries.add(dressed);
 		}
 		else if (tab == UNLOCKS)
 		{
@@ -572,6 +601,20 @@ class CollectionLogOverlay extends GameWindow
 				entries.add(unlocks);
 			}
 		}
+		else if (tab == GEAR)
+		{
+			for (GearSets.GearSet set : GearSets.SETS)
+			{
+				Entry gear = new Entry(set.title);
+				for (GearSets.Tier tier : set.tiers)
+				{
+					Long at = progress.moments.get(set.momentKey(tier));
+					gear.slots.add(new Slot(tier.name, at != null, tier.icon, false,
+						at == null ? "Stand at the " + BankNames.displayName(set.banks.get(0), null) + " with one" : first(at), 0));
+				}
+				entries.add(gear);
+			}
+		}
 		else
 		{
 			Entry holidays = new Entry("Holidays");
@@ -582,17 +625,47 @@ class CollectionLogOverlay extends GameWindow
 				holidays.slots.add(new Slot(holiday.title, at != null, -1, false,
 					holiday.when + "</br>" + (at == null ? "Not stood through yet" : first(at)), 0));
 			}
-			Entry odd = new Entry("Odd moments");
-			for (Moments.Odd moment : Moments.Odd.values())
-			{
-				Long at = progress.moments.get(moment.key);
-				odd.slots.add(new Slot(moment.title, at != null, -1, false,
-					moment.description + (at == null ? "" : "</br>" + first(at)), 0));
-			}
 			entries.add(holidays);
-			entries.add(odd);
+			for (Moments.Category category : Moments.Category.values())
+			{
+				Entry moments = new Entry(category.title);
+				for (Moments.Odd moment : Moments.Odd.values())
+				{
+					if (moment.category != category)
+					{
+						continue;
+					}
+					Long at = progress.moments.get(moment.key);
+					moments.slots.add(new Slot(moment.title, at != null, -1, false,
+						moment.description + (at == null ? "" : "</br>" + first(at)), 0));
+				}
+				entries.add(moments);
+			}
+			for (Companions.Group group : Companions.GROUPS)
+			{
+				Entry pets = new Entry(group.title);
+				for (Companions.Kind kind : group.kinds)
+				{
+					Long at = progress.moments.get(group.momentKey(kind));
+					pets.slots.add(new Slot(kind.name, at != null, kind.icon, false,
+						at == null ? "Stand at any bank with one following you" : first(at), 0));
+				}
+				entries.add(pets);
+			}
 		}
 		return entries;
+	}
+
+	private static String holidayName(Holiday holiday)
+	{
+		for (Moments.HolidayEntry entry : Moments.HolidayEntry.values())
+		{
+			if (entry.holiday == holiday)
+			{
+				return entry.title;
+			}
+		}
+		return holiday.name();
 	}
 
 	private static String first(long at)

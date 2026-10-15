@@ -87,6 +87,8 @@ public final class Keywords
 		final Holiday holiday;
 		final Set<String> banks;
 		Set<Integer> items = Collections.emptySet();
+		/** The hash is of what comes before your clan's name, which must end the message. */
+		boolean beforeClanName;
 
 		Phrase(String hash, Holiday holiday, String... banks)
 		{
@@ -98,6 +100,13 @@ public final class Keywords
 		Phrase wearing(int itemId)
 		{
 			return wearing(Collections.singleton(itemId));
+		}
+
+		/** The message must end with your clan's name; the hash is of the rest. */
+		Phrase beforeClanName()
+		{
+			beforeClanName = true;
+			return this;
 		}
 
 		/** Works while wearing any one of these. */
@@ -235,7 +244,8 @@ public final class Keywords
 		phrase("6b9e9e9cbc740cf2950474b239ad379196029de1b04643bedcc802406e66740c", null, "unkah"),
 		phrase("c83d9127c6d86c8141b647f46a7b1d9c487f3ae3a31c88b5adc49cbb81e3faa2", null, "guardians-of-the-rift"),
 		phrase("1a2112315793c6122fb25b7621f9f9dda05d30f223668423dc6126e6b631d34f", null, "hallowed-sepulchre"),
-		phrase("bbb94d6f7a44186b95243d552788af23dcd972d665a3048bf5f573639f5f4bfe", null, "prifddinas-north", "prifddinas-south")
+		phrase("bbb94d6f7a44186b95243d552788af23dcd972d665a3048bf5f573639f5f4bfe", null, "prifddinas-north", "prifddinas-south"),
+		phrase("337e35b8b2c7aa2f4cc5e6faab267ad986ad86b0811c4db0e0c4dfe2d37fb2d9", null, "clan-hall").beforeClanName()
 	));
 
 	private final List<Phrase> phrases;
@@ -309,11 +319,26 @@ public final class Keywords
 	 */
 	public Kind claim(Progress p, String message, long nowMillis, LocalDate today, String bankKey, Set<Integer> worn)
 	{
-		String hash = hash(normalise(message));
+		return claim(p, message, nowMillis, today, bankKey, worn, null);
+	}
+
+	/** As above, with the name of your clan, or null if you aren't in one. */
+	public Kind claim(Progress p, String message, long nowMillis, LocalDate today, String bankKey, Set<Integer> worn,
+		String clanName)
+	{
+		String said = normalise(message);
+		String hash = hash(said);
+		String clanHash = null;
+		String clan = clanName == null ? "" : normalise(clanName);
+		if (!clan.isEmpty() && said.endsWith(" " + clan))
+		{
+			clanHash = hash(said.substring(0, said.length() - clan.length() - 1).trim());
+		}
 		Phrase match = null;
 		for (Phrase phrase : phrases)
 		{
-			if (phrase.hash.equals(hash) && phrase.works(bankKey, today, worn))
+			String compared = phrase.beforeClanName ? clanHash : hash;
+			if (phrase.hash.equals(compared) && phrase.works(bankKey, today, worn))
 			{
 				match = phrase;
 				break;
@@ -323,6 +348,7 @@ public final class Keywords
 		{
 			return null;
 		}
+		hash = match.hash;
 
 		Long last = p.keywordPaid.get(hash);
 		if (last != null && nowMillis - last < COOLDOWN_MILLIS)
@@ -348,7 +374,7 @@ public final class Keywords
 
 	static String normalise(String message)
 	{
-		return message.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ENGLISH);
+		return message.replace('\u00A0', ' ').trim().replaceAll("\\s+", " ").toLowerCase(Locale.ENGLISH);
 	}
 
 	static String hash(String phrase)

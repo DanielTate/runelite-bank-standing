@@ -31,8 +31,10 @@ import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -46,8 +48,12 @@ import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
+import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.WorldType;
+import net.runelite.api.clan.ClanSettings;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
@@ -58,9 +64,11 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.StatChanged;
+import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.SpotanimID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -82,7 +90,9 @@ import nz.tate.bankstanding.core.BankRecord;
 import nz.tate.bankstanding.core.CollectionLog;
 import nz.tate.bankstanding.core.DailyStreak;
 import nz.tate.bankstanding.core.Emote;
+import nz.tate.bankstanding.core.Companions;
 import nz.tate.bankstanding.core.Experience;
+import nz.tate.bankstanding.core.GearSets;
 import nz.tate.bankstanding.core.Keywords;
 import nz.tate.bankstanding.core.Moments;
 import nz.tate.bankstanding.core.Modifiers;
@@ -201,11 +211,16 @@ public class BankStandingPlugin extends Plugin
 	private final Map<Skill, Integer> realXp = new EnumMap<>(Skill.class);
 	private final Keywords keywords = new Keywords(Keywords.PHRASES);
 	private final Moments.Watch watch = new Moments.Watch();
+	/** Players beside you: x, y and ticks still, by name. */
+	private Map<String, long[]> neighbours = new HashMap<>();
+	private static final int NEIGHBOUR_TILES = 3;
+	private boolean wearingPoison;
 
 	/** An emote's effect lasts this long after it starts. */
 	private static final int EMOTE_TICKS = 100;
 
 	private Set<Integer> worn = Collections.emptySet();
+	private int[] inventory = new int[0];
 	private long wornValue;
 	private int wornCape = -1;
 	private Emote emote = Emote.NONE;
@@ -269,6 +284,11 @@ public class BankStandingPlugin extends Plugin
 			{
 				readEquipment(equipment);
 			}
+			ItemContainer carried = client.getItemContainer(InventoryID.INV);
+			if (carried != null)
+			{
+				readInventory(carried);
+			}
 			if (client.getGameState() == GameState.LOGGED_IN)
 			{
 				bankLocator.scan(client.getTopLevelWorldView().getScene());
@@ -313,6 +333,7 @@ public class BankStandingPlugin extends Plugin
 		realXp.clear();
 		progress = null;
 		worn = Collections.emptySet();
+		inventory = new int[0];
 		wornValue = 0;
 		wornCape = -1;
 		emote = Emote.NONE;
@@ -371,11 +392,35 @@ public class BankStandingPlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
+		if (event.getContainerId() == InventoryID.INV)
+		{
+			readInventory(event.getItemContainer());
+		}
 		if (event.getContainerId() != InventoryID.WORN)
 		{
 			return;
 		}
 		readEquipment(event.getItemContainer());
+	}
+
+	/** Poisoned weapons and ammunition, and the toxic and serpentine items. */
+	static boolean isPoisonous(String name)
+	{
+		String lower = name == null ? "" : name.toLowerCase(Locale.ENGLISH);
+		return lower.contains("(p)") || lower.contains("(p+)") || lower.contains("(p++)") || lower.contains("(kp)")
+			|| lower.startsWith("toxic ") || lower.startsWith("serpentine helm") || lower.startsWith("tanzanite helm")
+			|| lower.startsWith("magma helm");
+	}
+
+	private void readInventory(ItemContainer container)
+	{
+		int[] slots = new int[container.size()];
+		for (int i = 0; i < slots.length; i++)
+		{
+			Item item = container.getItem(i);
+			slots[i] = item == null ? -1 : item.getId();
+		}
+		inventory = slots;
 	}
 
 	private void readEquipment(ItemContainer container)
@@ -392,6 +437,11 @@ public class BankStandingPlugin extends Plugin
 		}
 		worn = ids;
 		wornValue = value;
+		wearingPoison = false;
+		for (int id : ids)
+		{
+			wearingPoison |= isPoisonous(itemManager.getItemComposition(id).getName());
+		}
 		Item cape = container.getItem(EquipmentInventorySlot.CAPE.getSlotIdx());
 		wornCape = cape == null ? -1 : cape.getId();
 	}
@@ -423,6 +473,26 @@ public class BankStandingPlugin extends Plugin
 			emote = started;
 			emoteUntilTick = client.getTickCount() + EMOTE_TICKS;
 		}
+		if (animation == AnimationID.EMOTE_SIT && progress != null && tracker.isStanding())
+		{
+			sitDown((Player) event.getActor());
+		}
+	}
+
+	/** The Sit emote during a stand: a moment for the log, and a boosted roll once an hour. */
+	private void sitDown(Player player)
+	{
+		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+		if (Moments.sat(progress, System.currentTimeMillis(), odd))
+		{
+			WorldPoint location = mapLocation(player);
+			String bankKey = BankNames.keyFor(location.getX(), location.getY());
+			BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
+			int level = progress.level();
+			drop(roller.boostedRoll(level), bank, level, null);
+		}
+		dirty = true;
+		announce(Collections.emptySet(), odd);
 	}
 
 	@Subscribe
@@ -436,15 +506,16 @@ public class BankStandingPlugin extends Plugin
 			return;
 		}
 
-		WorldPoint location = player.getWorldLocation();
+		WorldPoint location = mapLocation(player);
 		String bankKey = BankNames.keyFor(location.getX(), location.getY());
+		ClanSettings clan = client.getClanSettings();
 		Keywords.Kind phrase = keywords.claim(progress, Text.removeTags(event.getMessage()),
-			System.currentTimeMillis(), today(), bankKey, worn);
+			System.currentTimeMillis(), today(), bankKey, worn, clan == null ? null : clan.getName());
 		if (phrase != null)
 		{
 			BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
 			int level = progress.level();
-			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
+			Modifiers.Effect effect = evaluate(bank, location);
 			drop(roller.keywordRoll(level, effect.bonusHit), bank, level, phrase);
 		}
 	}
@@ -512,6 +583,7 @@ public class BankStandingPlugin extends Plugin
 			return;
 		}
 
+		location = mapLocation(player);
 		String bankKey = BankNames.keyFor(location.getX(), location.getY());
 		boolean newBank = !progress.banks.containsKey(bankKey) && BankNames.find(location.getX(), location.getY()) != null;
 		BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
@@ -528,18 +600,32 @@ public class BankStandingPlugin extends Plugin
 		}
 		DailyStreak.standingTick(progress, today());
 		progress.records.standingTick(progress, session, System.currentTimeMillis());
-		noteMoments(bankKey, location);
+		noteMoments(bankKey, location, bank);
 
 		if (roll)
 		{
 			int level = progress.level();
-			Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
+			Modifiers.Effect effect = evaluate(bank, location);
 			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level, null);
 			progress.rolls++;
-			CollectionLog.Drop found = CollectionLog.roll(collectionRandom);
+			CollectionLog.Drop found = CollectionLog.roll(collectionRandom, today());
 			if (found != null)
 			{
 				obtain(found);
+			}
+			for (GearSets.Tier tier : GearSets.collect(progress, bankKey, worn, inventory, System.currentTimeMillis()))
+			{
+				collected("New item: ", tier.name, tier.icon, false);
+				dirty = true;
+			}
+			NPC follower = client.getFollower();
+			Companions.Kind companion = Companions.collect(progress,
+				follower == null || follower.getName() == null ? null : Text.removeTags(follower.getName()),
+				System.currentTimeMillis());
+			if (companion != null)
+			{
+				collected("New companion: ", companion.name, companion.icon, false);
+				dirty = true;
 			}
 		}
 	}
@@ -559,6 +645,12 @@ public class BankStandingPlugin extends Plugin
 	/** Adds a drop to the log: the popup the first time, a chat line every time. Client thread. */
 	private void obtain(CollectionLog.Drop drop)
 	{
+		if (drop.rare())
+		{
+			Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+			Moments.rareDrop(progress, watch, System.currentTimeMillis(), odd);
+			announce(Collections.emptySet(), odd);
+		}
 		if (CollectionLog.collect(progress, drop, System.currentTimeMillis()))
 		{
 			collected("New item: ", drop.name, drop.icon, drop.gold);
@@ -590,6 +682,35 @@ public class BankStandingPlugin extends Plugin
 			.build());
 	}
 
+	/**
+	 * Where the player is on the real map: inside an instance, like a clan hall, the game's
+	 * own coordinates are made up, so the instance's template is used to name the bank.
+	 */
+	private WorldPoint mapLocation(Player player)
+	{
+		LocalPoint local = player.getLocalLocation();
+		if (local != null && client.getTopLevelWorldView().isInstance())
+		{
+			return WorldPoint.fromLocalInstance(client, local);
+		}
+		return player.getWorldLocation();
+	}
+
+	/** The modifiers for one roll; anything that counts for the first time goes in the log. */
+	private Modifiers.Effect evaluate(BankRecord bank, WorldPoint location)
+	{
+		Modifiers.Effect effect = Modifiers.evaluate(context(bank, location));
+		for (String key : effect.found)
+		{
+			if (Moments.record(progress, key, System.currentTimeMillis()))
+			{
+				collected("Dressed for it: ", key.startsWith("diary:") ? "diary item" : key.startsWith("haul:") ? "full inventory" : "outfit", -1, false);
+				dirty = true;
+			}
+		}
+		return effect;
+	}
+
 	private StandContext context(BankRecord bank, WorldPoint location)
 	{
 		StandContext context = new StandContext();
@@ -602,6 +723,7 @@ public class BankStandingPlugin extends Plugin
 		context.follower = client.getFollower() != null;
 		context.streakDays = DailyStreak.current(progress, context.today);
 		context.hoursAtBank = bank.hours();
+		context.inventory = inventory;
 		return context;
 	}
 
@@ -625,8 +747,8 @@ public class BankStandingPlugin extends Plugin
 		dropFeed.add(xp, maxHit, showRare || hit > normalMax, phrase, previewSprite());
 
 		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
-		Moments.Splat splat = Moments.drop(progress, watch, maxHit, hit > normalMax, phrase, normalMax,
-			System.currentTimeMillis(), odd);
+		Moments.Splat splat = Moments.drop(progress, watch, hit, maxHit, hit > normalMax, phrase, normalMax,
+			today(), System.currentTimeMillis(), odd);
 		if (splat != null)
 		{
 			collected("New hitsplat: ", splat.title, -1, false);
@@ -635,7 +757,7 @@ public class BankStandingPlugin extends Plugin
 	}
 
 	/** Checks the holidays and odd moments for one standing tick. */
-	private void noteMoments(String bankKey, WorldPoint location)
+	private void noteMoments(String bankKey, WorldPoint location, BankRecord bank)
 	{
 		Moments.Tick tick = new Moments.Tick();
 		tick.now = System.currentTimeMillis();
@@ -643,12 +765,55 @@ public class BankStandingPlugin extends Plugin
 		tick.local = LocalDateTime.now();
 		tick.yaw = client.getCameraYaw();
 		tick.pitch = client.getCameraPitch();
+		tick.prayer = client.getBoostedSkillLevel(Skill.PRAYER);
 		tick.namedBank = BankNames.find(location.getX(), location.getY()) != null ? bankKey : null;
 		tick.world = client.getWorld();
+		tick.standTicks = progress.records.standTicks();
+		tick.bankTicks = bank.ticks;
+		EnumSet<WorldType> types = client.getWorldType();
+		tick.pvpWorld = types.contains(WorldType.PVP);
+		tick.skillTotalWorld = types.contains(WorldType.SKILL_TOTAL);
+		tick.poisoned = client.getVarpValue(VarPlayerID.POISON) > 0;
+		tick.wearingPoison = wearingPoison;
+		watchNeighbours(tick);
 		Set<Moments.HolidayEntry> holidays = EnumSet.noneOf(Moments.HolidayEntry.class);
 		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
 		Moments.standingTick(progress, watch, tick, holidays, odd);
 		announce(holidays, odd);
+	}
+
+	/**
+	 * Counts the other players in the scene, and how long the stillest one standing within a
+	 * few tiles has stayed put without animating.
+	 */
+	private void watchNeighbours(Moments.Tick tick)
+	{
+		Player me = client.getLocalPlayer();
+		WorldPoint here = me.getWorldLocation();
+		Map<String, long[]> seen = new HashMap<>();
+		int around = 0;
+		long stillest = 0;
+		for (Player other : client.getTopLevelWorldView().players())
+		{
+			if (other == null || other == me || other.getName() == null)
+			{
+				continue;
+			}
+			around++;
+			WorldPoint at = other.getWorldLocation();
+			if (at.getPlane() != here.getPlane() || at.distanceTo2D(here) > NEIGHBOUR_TILES)
+			{
+				continue;
+			}
+			long[] before = neighbours.get(other.getName());
+			boolean still = other.getAnimation() == -1 && before != null && before[0] == at.getX() && before[1] == at.getY();
+			long ticks = still ? before[2] + 1 : 0;
+			seen.put(other.getName(), new long[]{at.getX(), at.getY(), ticks});
+			stillest = Math.max(stillest, ticks);
+		}
+		neighbours = seen;
+		tick.playersAround = around;
+		tick.stillestNeighbourTicks = stillest;
 	}
 
 	private void announce(Set<Moments.HolidayEntry> holidays, Set<Moments.Odd> odd)

@@ -129,6 +129,12 @@ public final class Records
 		}
 	}
 
+	/** Ticks in the stand under way. */
+	public long standTicks()
+	{
+		return standTicks;
+	}
+
 	/** Call when a stand ends, for any reason. */
 	public void standEnded()
 	{

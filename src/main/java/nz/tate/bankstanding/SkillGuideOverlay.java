@@ -131,6 +131,18 @@ class SkillGuideOverlay extends ParchmentWindow
 	}
 
 	@Override
+	String link()
+	{
+		return "Collection log";
+	}
+
+	@Override
+	void linkClicked()
+	{
+		plugin.openCollectionLog();
+	}
+
+	@Override
 	int rowHeight()
 	{
 		return ROW;

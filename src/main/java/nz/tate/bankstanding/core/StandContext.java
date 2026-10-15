@@ -43,6 +43,8 @@ public final class StandContext
 	public boolean follower;
 	public int streakDays;
 	public double hoursAtBank;
+	/** Item IDs in each inventory slot, -1 for an empty slot. */
+	public int[] inventory = new int[0];
 
 	boolean wearing(int id)
 	{

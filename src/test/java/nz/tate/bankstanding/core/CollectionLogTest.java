@@ -24,6 +24,7 @@
  */
 package nz.tate.bankstanding.core;
 
+import java.time.LocalDate;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -38,29 +39,55 @@ public class CollectionLogTest
 	public void keysAreUniqueAndRatesGetRarer()
 	{
 		Set<String> keys = new HashSet<>();
-		int last = 0;
 		for (CollectionLog.Drop drop : CollectionLog.DROPS)
 		{
 			assertTrue(keys.add(drop.key));
-			assertTrue(drop.rate > last);
-			last = drop.rate;
+			assertTrue(drop.rate >= 500);
+			assertEquals(drop.group == CollectionLog.Group.SEASONAL, drop.holiday != null);
 		}
 	}
 
 	@Test
-	public void dropsAreRare()
+	public void rareDropsAreRareAndJunkIsCommon()
 	{
 		Random random = new Random(1);
-		int drops = 0;
+		LocalDate ordinaryDay = LocalDate.of(2026, 8, 1);
+		int rare = 0;
+		int junk = 0;
 		for (int i = 0; i < 1_000_000; i++)
 		{
-			if (CollectionLog.roll(random) != null)
+			CollectionLog.Drop drop = CollectionLog.roll(random, ordinaryDay);
+			if (drop == null)
 			{
-				drops++;
+				continue;
+			}
+			assertTrue(drop.holiday == null);
+			if (drop.rare())
+			{
+				rare++;
+			}
+			else
+			{
+				junk++;
 			}
 		}
-		// About 20 + 4 + 1 + ... per million rolls.
-		assertTrue(drops > 10 && drops < 50);
+		// Rare: about 20 + 4 + 1 + 27 (outfit) per million rolls. Junk: about 4,000.
+		assertTrue(rare > 25 && rare < 90);
+		assertTrue(junk > 3_000 && junk < 5_000);
+	}
+
+	@Test
+	public void seasonalDropsOnlyOnTheirHoliday()
+	{
+		Random random = new Random(2);
+		boolean cobweb = false;
+		for (int i = 0; i < 200_000; i++)
+		{
+			CollectionLog.Drop drop = CollectionLog.roll(random, LocalDate.of(2026, 10, 31));
+			cobweb |= drop != null && drop.key.equals("cobweb");
+			assertTrue(drop == null || drop.holiday == null || drop.holiday == Holiday.HALLOWEEN);
+		}
+		assertTrue(cobweb);
 	}
 
 	@Test

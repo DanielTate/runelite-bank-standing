@@ -31,12 +31,12 @@ import java.util.Set;
 /** A full set: one item from every piece must be worn. */
 final class Outfit
 {
-	private final String bankKey;
+	private final String[] bankKeys;
 	private final List<Set<Integer>> pieces = new ArrayList<>();
 
-	Outfit(String bankKey)
+	Outfit(String... bankKeys)
 	{
-		this.bankKey = bankKey;
+		this.bankKeys = bankKeys;
 	}
 
 	Outfit piece(Integer... ids)
@@ -45,9 +45,15 @@ final class Outfit
 		return this;
 	}
 
-	String bankKey()
+	String[] bankKeys()
 	{
-		return bankKey;
+		return bankKeys;
+	}
+
+	/** Saved in the collection log, so it must never change: the first bank's key. */
+	String key()
+	{
+		return bankKeys[0];
 	}
 
 	boolean wornBy(StandContext context)
