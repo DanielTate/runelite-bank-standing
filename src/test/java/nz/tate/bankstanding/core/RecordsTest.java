@@ -79,8 +79,8 @@ public class RecordsTest
 		long now = stand(START, 20_000, 10);
 		assertTrue(progress.records.check(progress, now).isEmpty());
 		assertNotNull(progress.records.find("level", 10));
-		assertNotNull(progress.records.find("stand", 1));
-		assertNotNull(progress.records.find("stand", 3));
+		assertNotNull(progress.records.findStand(60));
+		assertNotNull(progress.records.findStand(180));
 		assertEquals(20_000, progress.records.longestStandTicks);
 		assertTrue(progress.records.bestXpPerHour > 0);
 		assertEquals(20_000, progress.records.bestDayTicks);
@@ -98,6 +98,30 @@ public class RecordsTest
 	}
 
 	@Test
+	public void theLongestStandFitsBeforeTheSixHourLogout()
+	{
+		progress.records.begin(progress, START);
+		stand(START, 35_000, 1);
+		assertNotNull(progress.records.findStand(350));
+		assertTrue(350 * Records.TICKS_PER_MINUTE < 6 * Records.TICKS_PER_HOUR - 50);
+	}
+
+	@Test
+	public void olderSavesKeepTheirHourMilestones()
+	{
+		progress.records.begin(progress, START);
+		progress.records.milestones.add(new Records.Milestone("stand", 1, START, 6000, 0));
+		stand(START, 6000, 1);
+		assertNotNull(progress.records.findStand(60));
+		int stands = 0;
+		for (Records.Milestone milestone : progress.records.milestones)
+		{
+			stands += milestone.kind.equals("stand") ? 1 : 0;
+		}
+		assertEquals(1, stands);
+	}
+
+	@Test
 	public void editedXpIsCaught()
 	{
 		progress.records.begin(progress, START);
@@ -111,7 +135,7 @@ public class RecordsTest
 	{
 		progress.records.begin(progress, START);
 		long now = stand(START, 6000, 5);
-		Records.Milestone hour = progress.records.find("stand", 1);
+		Records.Milestone hour = progress.records.findStand(60);
 		hour.at = START + 60_000;
 		assertFalse(progress.records.check(progress, now).isEmpty());
 	}

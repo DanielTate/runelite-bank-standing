@@ -39,8 +39,12 @@ import java.util.List;
 public final class Records
 {
 	public static final long TICKS_PER_HOUR = 6000;
-	/** Single stands this long, in hours, are milestones. */
-	static final int[] STAND_HOURS = {1, 3, 6};
+	public static final long TICKS_PER_MINUTE = TICKS_PER_HOUR / 60;
+	/**
+	 * Single stands this long, in minutes, are milestones. The game logs you out after six
+	 * hours, so the longest leaves room for logging in and the start delay.
+	 */
+	public static final int[] STAND_MINUTES = {60, 180, 350};
 	/** XP totals that are milestones. */
 	static final int[] XP_MARKS = {100_000_000, Experience.MAX_XP};
 	/** Sessions shorter than this don't count for the best XP per hour. */
@@ -52,7 +56,7 @@ public final class Records
 	public static final class Milestone
 	{
 		public String kind;
-		/** The level, the stand length in hours, or the XP total. */
+		/** The level, the stand length in minutes (hours in saves from 1.1 and before), or the XP total. */
 		public int value;
 		/** Wall-clock time, in epoch milliseconds. */
 		public long at;
@@ -111,11 +115,11 @@ public final class Records
 		{
 			longestStandTicks = standTicks;
 		}
-		for (int hours : STAND_HOURS)
+		for (int minutes : STAND_MINUTES)
 		{
-			if (standTicks == hours * TICKS_PER_HOUR && !has("stand", hours))
+			if (standTicks == minutes * TICKS_PER_MINUTE && findStand(minutes) == null)
 			{
-				milestones.add(new Milestone("stand", hours, now, totalTicks, progress.xp));
+				milestones.add(new Milestone("stand", minutes, now, totalTicks, progress.xp));
 			}
 		}
 		if (progress.todayTicks > bestDayTicks)
@@ -172,9 +176,15 @@ public final class Records
 		return null;
 	}
 
-	private boolean has(String kind, int value)
+	/** The milestone for a single stand this many minutes long; older saves stored hours. */
+	public Milestone findStand(int minutes)
 	{
-		return find(kind, value) != null;
+		Milestone found = find("stand", minutes);
+		if (found == null && minutes % 60 == 0)
+		{
+			found = find("stand", minutes / 60);
+		}
+		return found;
 	}
 
 	/**

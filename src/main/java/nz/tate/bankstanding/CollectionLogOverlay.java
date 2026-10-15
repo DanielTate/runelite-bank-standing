@@ -106,7 +106,6 @@ class CollectionLogOverlay extends GameWindow
 	private static final Color SELECTED_ROW = new Color(0x5a, 0x4f, 0x3e);
 	private static final Color BAR_BACK = new Color(0x2b, 0x25, 0x1d);
 	private static final int[] LEVEL_MARKS = {10, 20, 30, 40, 50, 60, 70, 80, 90, 99};
-	private static final int[] HOUR_MARKS = {1, 3, 6};
 	private static final int[] XP_MARKS = {100_000_000, Experience.MAX_XP};
 	private static final Keywords PHRASES = new Keywords(Keywords.PHRASES);
 	/** Shown instead of the phrases themselves, which stay secret even once found. */
@@ -545,10 +544,10 @@ class CollectionLogOverlay extends GameWindow
 				levels.slots.add(milestone("Level " + level, progress.level() >= level, records.find("level", level)));
 			}
 			Entry stands = new Entry("Long stands");
-			for (int hours : HOUR_MARKS)
+			for (int minutes : Records.STAND_MINUTES)
 			{
-				stands.slots.add(milestone(hours + (hours == 1 ? " hour" : " hours") + " in one stand",
-					records.longestStandTicks >= hours * Records.TICKS_PER_HOUR, records.find("stand", hours)));
+				stands.slots.add(milestone(standLength(minutes) + " in one stand",
+					records.longestStandTicks >= minutes * Records.TICKS_PER_MINUTE, records.findStand(minutes)));
 			}
 			Entry experience = new Entry("Experience");
 			for (int mark : XP_MARKS)
@@ -654,6 +653,14 @@ class CollectionLogOverlay extends GameWindow
 			}
 		}
 		return entries;
+	}
+
+	/** "1 hour", "3 hours", "5 hours 50 minutes". */
+	private static String standLength(int minutes)
+	{
+		int hours = minutes / 60;
+		String text = hours + (hours == 1 ? " hour" : " hours");
+		return minutes % 60 == 0 ? text : text + " " + minutes % 60 + " minutes";
 	}
 
 	private static String holidayName(Holiday holiday)
