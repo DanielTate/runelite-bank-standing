@@ -655,12 +655,14 @@ class CollectionLogOverlay extends GameWindow
 		return entries;
 	}
 
-	/** "1 hour", "3 hours", "5 hours 50 minutes". */
+	/**
+	 * The stand length shown in the log, in whole hours: the longest stand is called 6 hours
+	 * though it counts at 5:50, since the game logs you out at 6.
+	 */
 	private static String standLength(int minutes)
 	{
-		int hours = minutes / 60;
-		String text = hours + (hours == 1 ? " hour" : " hours");
-		return minutes % 60 == 0 ? text : text + " " + minutes % 60 + " minutes";
+		int hours = (minutes + 59) / 60;
+		return hours + (hours == 1 ? " hour" : " hours");
 	}
 
 	private static String holidayName(Holiday holiday)

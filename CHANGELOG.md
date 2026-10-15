@@ -5,8 +5,8 @@
 - Fixed the Sit emote not adding "Take a seat" to the collection log.
 - The max hit splat now only counts for the collection log once your max hit is 10 or more
   (level 19). At low levels it was coming up every other drop.
-- The longest stand milestone is now 5 hours 50 minutes instead of 6 hours. The game logs
-  you out at 6 hours, so 6 hours in one stand was impossible.
+- The 6 hour stand milestone can now actually be earned. The game logs you out at 6 hours,
+  so it used to be impossible.
 
 ## 1.1
 
