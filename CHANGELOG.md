@@ -3,6 +3,8 @@
 ## 1.1.1
 
 - Fixed the Sit emote not adding "Take a seat" to the collection log.
+- The max hit splat now only counts for the collection log once your max hit is 10 or more
+  (level 19). At low levels it was coming up every other drop.
 
 ## 1.1
 

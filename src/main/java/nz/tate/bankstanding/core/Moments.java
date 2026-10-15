@@ -43,6 +43,8 @@ public final class Moments
 	public static final long BEFORE_TRACKING = 0;
 
 	static final int BACK_TO_BACK_MIN_MAX_HIT = 10;
+	/** Below this a max hit is too easy to count for the log: at a max of 2 it's every other drop. */
+	static final int MAX_HIT_LOG_MIN_MAX_HIT = 10;
 	static final long STATUE_TICKS = Records.TICKS_PER_HOUR;
 	static final long OUT_OF_FAITH_TICKS = Records.TICKS_PER_HOUR;
 	static final long OVERTIME_TICKS = 12 * Records.TICKS_PER_HOUR;
@@ -284,6 +286,7 @@ public final class Moments
 	public static Splat drop(Progress p, Watch w, int hit, boolean maxHit, boolean boosted, Keywords.Kind phrase,
 		int normalMax, LocalDate utcDay, long now, Set<Odd> odd)
 	{
+		boolean logMax = maxHit && normalMax >= MAX_HIT_LOG_MIN_MAX_HIT;
 		if (phrase == null)
 		{
 			w.maxHitsInARow = maxHit && normalMax >= BACK_TO_BACK_MIN_MAX_HIT ? w.maxHitsInARow + 1 : 0;
@@ -299,13 +302,13 @@ public final class Moments
 			if (utcDay != null && !utcDay.equals(w.lastRollDay))
 			{
 				w.lastRollDay = utcDay;
-				if (maxHit)
+				if (logMax)
 				{
 					note(p, Odd.FIRST_TRY, now, odd);
 				}
 			}
 		}
-		Splat splat = Splat.of(maxHit, boosted, phrase);
+		Splat splat = Splat.of(logMax, boosted, phrase);
 		return record(p, splat.key, now) ? splat : null;
 	}
 

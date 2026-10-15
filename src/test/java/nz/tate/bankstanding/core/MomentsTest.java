@@ -46,6 +46,19 @@ public class MomentsTest
 	}
 
 	@Test
+	public void maxHitOnlyCountsForTheLogFromAMaxOfTen()
+	{
+		Progress p = new Progress();
+		Moments.Watch w = new Moments.Watch();
+		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+		assertEquals(Moments.Splat.HIT, Moments.drop(p, w, 2, true, false, null, 2, DAY, 0, odd));
+		assertNull(Moments.drop(p, w, 9, true, false, null, 9, DAY.plusDays(1), 1, odd));
+		assertFalse(Moments.has(p, Moments.Splat.MAX_HIT.key));
+		assertTrue(odd.isEmpty());
+		assertEquals(Moments.Splat.MAX_HIT, Moments.drop(p, w, 10, true, false, null, 10, DAY, 2, odd));
+	}
+
+	@Test
 	public void backToBackNeedsTwoMaxHitsInARowAtTenOrMore()
 	{
 		Progress p = new Progress();
