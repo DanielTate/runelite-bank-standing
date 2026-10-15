@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Fixed the Sit emote not adding "Take a seat" to the collection log.
+
 ## 1.1
 
 The collection log is much bigger. Some of what's new is hidden on purpose: please don't

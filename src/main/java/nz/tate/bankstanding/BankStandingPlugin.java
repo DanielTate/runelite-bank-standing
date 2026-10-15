@@ -473,7 +473,7 @@ public class BankStandingPlugin extends Plugin
 			emote = started;
 			emoteUntilTick = client.getTickCount() + EMOTE_TICKS;
 		}
-		if (animation == AnimationID.EMOTE_SIT && progress != null && tracker.isStanding())
+		if ((animation == AnimationID.EMOTE_SIT || animation == AnimationID.EMOTE_SIT_LOOP) && progress != null && tracker.isStanding())
 		{
 			sitDown((Player) event.getActor());
 		}
