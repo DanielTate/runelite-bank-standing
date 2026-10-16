@@ -25,7 +25,6 @@
 package nz.tate.bankstanding;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonParseException;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -72,9 +71,12 @@ class ProgressStore
 			Progress progress = gson.fromJson(json, Progress.class);
 			return progress != null ? progress : new Progress();
 		}
-		catch (JsonParseException e)
+		catch (RuntimeException e)
 		{
-			log.warn("Unreadable Bank Standing progress, starting fresh", e);
+			// Keep the unreadable save beside the fresh one, since the next save replaces it.
+			String backup = KEY + "-unreadable-" + System.currentTimeMillis();
+			configManager.setConfiguration(BankStandingConfig.GROUP, profile(), backup, json);
+			log.warn("Unreadable Bank Standing progress, starting fresh; the old save is kept as {}", backup, e);
 			return new Progress();
 		}
 	}

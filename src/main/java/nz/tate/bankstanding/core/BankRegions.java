@@ -31,7 +31,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** The named banks grouped by region, for the collection log's Banks tab. */
+/**
+ * The named banks grouped by region, for the collection log's Banks tab. Tutorial Island is
+ * left out on purpose: it's a secret place instead.
+ */
 public final class BankRegions
 {
 	private static final Map<String, List<String>> REGIONS = new LinkedHashMap<>();
@@ -39,7 +42,7 @@ public final class BankRegions
 	static
 	{
 		region("Misthalin", "varrock-west", "varrock-east", "ge", "edgeville", "edgeville-pvp", "draynor",
-			"lumbridge", "lumbridge-pvp", "cooking-guild", "tutorial-island");
+			"lumbridge", "lumbridge-pvp", "cooking-guild");
 		region("Asgarnia", "falador-west", "falador-east", "falador-pvp", "port-sarim", "crafting-guild",
 			"warriors-guild", "mining-guild", "rogues-den", "motherlode", "camdozaal", "nex");
 		region("Kandarin", "seers", "catherby", "camelot-pvp", "ardougne-north", "ardougne-south",
@@ -82,6 +85,19 @@ public final class BankRegions
 	public static List<String> names()
 	{
 		return new ArrayList<>(REGIONS.keySet());
+	}
+
+	/** The region a bank is listed under, or null if it isn't listed. */
+	public static String regionOf(String key)
+	{
+		for (Map.Entry<String, List<String>> region : REGIONS.entrySet())
+		{
+			if (region.getValue().contains(key))
+			{
+				return region.getKey();
+			}
+		}
+		return null;
 	}
 
 	/** The bank keys in a region, in the order listed. */

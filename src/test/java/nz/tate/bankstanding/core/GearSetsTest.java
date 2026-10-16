@@ -1,5 +1,6 @@
 package nz.tate.bankstanding.core;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -38,5 +39,20 @@ public class GearSetsTest
 				}
 			}
 		}
+	}
+
+	@Test
+	public void outfitsNeedEveryPieceWorn()
+	{
+		Set<Integer> mime = new HashSet<>(Arrays.asList(3057, 3058, 3059, 3060, 3061));
+		Progress p = new Progress();
+		assertTrue(GearSets.collect(p, "ge", new HashSet<>(Arrays.asList(3057, 3058)), new int[]{3059, 3060, 3061}, 0)
+			.isEmpty());
+		List<GearSets.Tier> found = GearSets.collect(p, "ge", mime, new int[0], 0);
+		assertEquals(1, found.size());
+		assertEquals("Mime outfit", found.get(0).name);
+		Progress royal = new Progress();
+		assertEquals("Prince or princess outfit",
+			GearSets.collect(royal, "draynor", new HashSet<>(Arrays.asList(6186, 6187)), new int[0], 0).get(0).name);
 	}
 }

@@ -28,8 +28,11 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -58,6 +61,21 @@ public final class Moments
 	static final int RUSH_HOUR_PLAYERS = 50;
 	static final long GOOD_COMPANY_TICKS = 1000;
 	static final int ORIGINAL_WORLD = 301;
+	static final long DROP_PARTY_TICKS = 100;
+	static final long PERSONAL_SPACE_TICKS = 1000;
+	static final int CLUE_TIERS = 6;
+	static final long TOURIST_TICKS = 1000;
+	static final int CROWD_PLEASER_PLAYERS = 20;
+	static final long FREQUENT_FLYER_MILLIS = 2 * 60 * 1000L;
+	static final long BILLION = 1_000_000_000L;
+	static final int QUICK_CHANGE_OUTFITS = 5;
+	static final List<String> MOLE_BANKS = Arrays.asList("keldagrim", "dorgesh-kaan", "tzhaar", "camdozaal");
+	static final int MOLE_PEOPLE_BANKS = 3;
+	static final List<String> ISLAND_BANKS = Arrays.asList("lunar-isle", "neitiznot", "jatizso", "ape-atoll",
+		"fossil-island", "mos-le-harmless", "isle-of-souls", "etceteria");
+	static final int ISLAND_HOPPER_BANKS = 5;
+	static final List<String> KOUREND_BANKS = Arrays.asList("hosidius", "arceuus", "lovakengj", "shayzien",
+		"port-piscarilius");
 
 	/** The hitsplats a drop can show. */
 	public enum Splat
@@ -135,7 +153,8 @@ public final class Moments
 		LUCK("Luck"),
 		CROWDS("Crowds"),
 		WORLDS("Worlds"),
-		POISON("Poison");
+		POISON("Poison"),
+		PLACES("Places");
 
 		public final String title;
 
@@ -145,10 +164,13 @@ public final class Moments
 		}
 	}
 
-	/** The moments. Their descriptions are shown, so none of them may touch a bonus. */
+	/**
+	 * The moments. Their descriptions are shown, so none of them may touch a bonus. A hidden
+	 * one shows as a secret, with only its hint, until it's found.
+	 */
 	public enum Odd
 	{
-		MIDNIGHT("odd:midnight", "Midnight", "Be standing as the day ticks over (UTC)", Category.ODD),
+		MIDNIGHT("odd:midnight", "Midnight", "Be standing as the day ticks over", Category.ODD),
 		NIGHT_SHIFT("odd:night-shift", "Night shift", "Stand between 3 and 4 in the morning, your time", Category.ODD),
 		BACK_TO_BACK("odd:back-to-back", "Back to back", "Two max hits in a row, with a max hit of 10 or more",
 			Category.ODD),
@@ -193,48 +215,107 @@ public final class Moments
 
 		POISONED("odd:poisoned", "Poisoned", "Stand while poisoned", Category.POISON),
 		OWN_MEDICINE("odd:own-medicine", "Taste of your own medicine",
-			"Stand while poisoned and wearing something poisonous", Category.POISON);
+			"Stand while poisoned and wearing something poisonous", Category.POISON),
+
+		HOT_SEAT("odd:hot-seat", "Hot seat", "Things are heating up at the bank.", Category.ODD, true),
+		WALK_IT_OFF("odd:walk-it-off", "Walk it off", "Time heals all wounds.", Category.ODD, true),
+		NOT_NOW("odd:not-now", "Not now", "Some visitors are best ignored.", Category.ODD, true),
+		NOT_BUDGING("odd:not-budging", "Not budging", "Stand your ground.", Category.ODD, true),
+		MAX_CASH("odd:max-cash", "Max cash", "Your pockets can't hold any more.", Category.ODD, true),
+		CLUE_HOARDER("odd:clue-hoarder", "Clue hoarder", "The treasure can wait.", Category.ODD, true),
+		APRIL_FOOLS("odd:april-fools", "April Fools", "No joke.", Category.CALENDAR, true),
+		PARTY_POOPER("odd:party-pooper", "Party pooper", "Not everyone likes a party.", Category.CROWDS, true),
+		PERSONAL_SPACE("odd:personal-space", "Personal space", "A little too close for comfort.", Category.CROWDS,
+			true),
+
+		WHERE_IT_BEGAN("place:where-it-all-began", "Where it all began", "Before the mainland."),
+		OFF_THE_MAP("place:off-the-map", "Off the map", "Not every bank is on the map."),
+		BOLD_CHOICE("place:bold-choice", "Bold choice", "Some banks come with a skull warning."),
+		MOLE_PEOPLE("place:mole-people", "Mole people", "Never see the sun."),
+		ISLAND_HOPPER("place:island-hopper", "Island hopper", "Bring a boat."),
+		SIBLING_RIVALRY("place:sibling-rivalry", "Sibling rivalry", "Pick a side. Or don't."),
+		NIGHT_HEIST("place:night-heist", "Night heist", "Thieves keep odd hours."),
+		GRAVEYARD_SHIFT("place:graveyard-shift", "Graveyard shift", "The dead don't sleep either."),
+		FEELING_THE_HEAT("place:feeling-the-heat", "Feeling the heat", "Hot enough for you?"),
+		OFF_SEASON("place:off-season", "Off season", "Wrong time of year."),
+		TOURIST_TRAP("place:tourist-trap", "Tourist trap", "Through the gate and no further."),
+		GRAND_TOUR("place:grand-tour", "Grand tour", "See the whole kingdom."),
+		FREQUENT_FLYER("place:frequent-flyer", "Frequent flyer", "Quick on your feet."),
+		RAGS_TO_RICHES("place:rags-to-riches", "Rags to riches", "From nothing to everything."),
+		KITCHEN_NIGHTMARE("place:kitchen-nightmare", "Kitchen nightmare", "Not really a bank."),
+		ELVEN_WELCOME("place:elven-welcome", "Elven welcome", "Hidden in the trees."),
+		CROWD_PLEASER("place:crowd-pleaser", "Crowd pleaser", "Old habits die hard."),
+		SEA_LEGS("place:sea-legs", "Sea legs", "Steady on."),
+		NEIGHBOURHOOD_WATCH("place:neighbourhood-watch", "Neighbourhood watch", "Someone has to keep an eye on it."),
+		HIGH_SOCIETY("place:high-society", "High society", "Dress for the bank you want."),
+		QUICK_CHANGE("place:quick-change", "Quick change", "Dress for every occasion.");
 
 		public final String key;
 		public final String title;
+		/** What to do, or for a hidden moment only a hint. */
 		public final String description;
 		public final Category category;
+		public final boolean hidden;
 
 		Odd(String key, String title, String description, Category category)
+		{
+			this(key, title, description, category, false);
+		}
+
+		/** A hidden place. */
+		Odd(String key, String title, String hint)
+		{
+			this(key, title, hint, Category.PLACES, true);
+		}
+
+		Odd(String key, String title, String description, Category category, boolean hidden)
 		{
 			this.key = key;
 			this.title = title;
 			this.description = description;
 			this.category = category;
+			this.hidden = hidden;
 		}
 	}
 
 	/** What a stand needs remembered between ticks to spot the odd moments. Not saved. */
 	public static final class Watch
 	{
-		private LocalDate lastUtcDay;
+		private LocalDate lastDay;
 		private int lastYaw = Integer.MIN_VALUE;
 		private int lastPitch = Integer.MIN_VALUE;
 		private long stillTicks;
 		private long prayerlessTicks;
 		private int maxHitsInARow;
 		private int onesInARow;
-		private LocalDate lastRollDay;
 		/** When the last rare drop came, or -1 for none yet. */
 		private long lastRareAt = -1;
 		private final Set<String> loginBanks = new HashSet<>();
 		private LocalDate worldDay;
 		private final Set<Integer> worlds = new HashSet<>();
+		private long balloonTicks;
+		private long sharedTileTicks;
+		private long nightWatchTicks;
+		/** Healing from 1 hitpoint without eating: under way, and the last hitpoints seen. */
+		private boolean healing;
+		private int lastHitpoints;
+		/** The region of the bank last stood at, and when. */
+		private String lastRegion;
+		private long lastRegionAt;
 
 		/** Call when a stand ends. */
 		public void standEnded()
 		{
-			lastUtcDay = null;
+			lastDay = null;
 			lastYaw = Integer.MIN_VALUE;
 			stillTicks = 0;
 			prayerlessTicks = 0;
 			maxHitsInARow = 0;
 			onesInARow = 0;
+			balloonTicks = 0;
+			sharedTileTicks = 0;
+			nightWatchTicks = 0;
+			healing = false;
 		}
 
 		/** Call on logging out or hopping. Worlds are kept, since hopping is the point. */
@@ -284,7 +365,7 @@ public final class Moments
 	}
 
 	public static Splat drop(Progress p, Watch w, int hit, boolean maxHit, boolean boosted, Keywords.Kind phrase,
-		int normalMax, LocalDate utcDay, long now, Set<Odd> odd)
+		int normalMax, LocalDate day, long now, Set<Odd> odd)
 	{
 		boolean logMax = maxHit && normalMax >= MAX_HIT_LOG_MIN_MAX_HIT;
 		if (phrase == null)
@@ -299,9 +380,9 @@ public final class Moments
 			{
 				note(p, Odd.ROUGH_PATCH, now, odd);
 			}
-			if (utcDay != null && !utcDay.equals(w.lastRollDay))
+			if (day != null && !day.toString().equals(p.firstRollDate))
 			{
-				w.lastRollDay = utcDay;
+				p.firstRollDate = day.toString();
 				if (logMax)
 				{
 					note(p, Odd.FIRST_TRY, now, odd);
@@ -330,6 +411,61 @@ public final class Moments
 		return true;
 	}
 
+	/**
+	 * Called each tick the player stands on a fire near a bank: notes the moment, and returns
+	 * true if a boosted roll is due (the first time, then at most once an hour).
+	 */
+	public static boolean onFire(Progress p, long now, Set<Odd> odd)
+	{
+		note(p, Odd.HOT_SEAT, now, odd);
+		if (p.lastFireRoll != 0 && now - p.lastFireRoll < SIT_COOLDOWN_MILLIS)
+		{
+			return false;
+		}
+		p.lastFireRoll = now;
+		return true;
+	}
+
+	/** Notes a moment the plugin spots itself, like a random event left waiting. */
+	public static void notice(Progress p, Odd moment, long now, Set<Odd> odd)
+	{
+		note(p, moment, now, odd);
+	}
+
+	/** Called with the outfits that counted toward a roll, for {@link Odd#QUICK_CHANGE}. */
+	public static void outfitsWorn(Progress p, LocalDate day, Collection<String> outfitKeys, long now, Set<Odd> odd)
+	{
+		Set<String> notes = notes(p, day);
+		int outfits = 0;
+		for (String key : outfitKeys)
+		{
+			notes.add(key);
+		}
+		for (String note : notes)
+		{
+			if (note.startsWith(Modifiers.OUTFIT))
+			{
+				outfits++;
+			}
+		}
+		if (outfits >= QUICK_CHANGE_OUTFITS)
+		{
+			note(p, Odd.QUICK_CHANGE, now, odd);
+		}
+	}
+
+	/** What's been done today toward the one-day moments, cleared when the day changes. */
+	private static Set<String> notes(Progress p, LocalDate day)
+	{
+		String date = day.toString();
+		if (!date.equals(p.notesDate))
+		{
+			p.notesDate = date;
+			p.notes.clear();
+		}
+		return p.notes;
+	}
+
 	/** Called for each rare drop; two within an hour is {@link Odd#LIGHTNING}. */
 	public static void rareDrop(Progress p, Watch w, long now, Set<Odd> odd)
 	{
@@ -345,23 +481,23 @@ public final class Moments
 	{
 		for (HolidayEntry entry : HolidayEntry.values())
 		{
-			if (entry.holiday.isOn(t.utcDay) && record(p, entry.key(), t.now))
+			if (entry.holiday.isOn(t.day) && record(p, entry.key(), t.now))
 			{
 				holidays.add(entry);
 			}
 		}
 
-		if (w.lastUtcDay != null && !w.lastUtcDay.equals(t.utcDay))
+		if (w.lastDay != null && !w.lastDay.equals(t.day))
 		{
 			note(p, Odd.MIDNIGHT, t.now, odd);
 		}
-		w.lastUtcDay = t.utcDay;
+		w.lastDay = t.day;
 
 		if (t.local.getHour() == 3)
 		{
 			note(p, Odd.NIGHT_SHIFT, t.now, odd);
 		}
-		LocalDate localDay = t.local.toLocalDate();
+		LocalDate localDay = t.day;
 		if (localDay.getDayOfMonth() == 13 && localDay.getDayOfWeek() == DayOfWeek.FRIDAY)
 		{
 			note(p, Odd.FRIDAY_13TH, t.now, odd);
@@ -400,9 +536,9 @@ public final class Moments
 			}
 		}
 
-		if (!t.utcDay.equals(w.worldDay))
+		if (!t.day.equals(w.worldDay))
 		{
-			w.worldDay = t.utcDay;
+			w.worldDay = t.day;
 			w.worlds.clear();
 		}
 		w.worlds.add(t.world);
@@ -465,6 +601,177 @@ public final class Moments
 				note(p, Odd.OWN_MEDICINE, t.now, odd);
 			}
 		}
+
+		hidden(p, w, t, localDay, odd);
+		places(p, w, t, odd);
+	}
+
+	/** The hidden moments that aren't places. */
+	private static void hidden(Progress p, Watch w, Tick t, LocalDate localDay, Set<Odd> odd)
+	{
+		if (localDay.getMonth() == Month.APRIL && localDay.getDayOfMonth() == 1)
+		{
+			note(p, Odd.APRIL_FOOLS, t.now, odd);
+		}
+
+		w.balloonTicks = t.balloons && "falador-east".equals(t.namedBank) ? w.balloonTicks + 1 : 0;
+		if (w.balloonTicks >= DROP_PARTY_TICKS)
+		{
+			note(p, Odd.PARTY_POOPER, t.now, odd);
+		}
+
+		w.sharedTileTicks = t.sharedTile ? w.sharedTileTicks + 1 : 0;
+		if (w.sharedTileTicks >= PERSONAL_SPACE_TICKS)
+		{
+			note(p, Odd.PERSONAL_SPACE, t.now, odd);
+		}
+
+		if (t.maxCash)
+		{
+			note(p, Odd.MAX_CASH, t.now, odd);
+		}
+		if (t.clueTiers >= CLUE_TIERS)
+		{
+			note(p, Odd.CLUE_HOARDER, t.now, odd);
+		}
+
+		// From 1 hitpoint back to full in one stand, one point at a time and without eating.
+		if (w.healing)
+		{
+			if (t.eating || t.hitpoints - w.lastHitpoints > 1)
+			{
+				w.healing = false;
+			}
+			else if (t.maxHitpoints > 1 && t.hitpoints >= t.maxHitpoints)
+			{
+				w.healing = false;
+				t.healed = true;
+				note(p, Odd.WALK_IT_OFF, t.now, odd);
+			}
+			w.lastHitpoints = t.hitpoints;
+		}
+		if (!w.healing && t.hitpoints == 1 && !t.eating)
+		{
+			w.healing = true;
+			w.lastHitpoints = 1;
+		}
+	}
+
+	private static void places(Progress p, Watch w, Tick t, Set<Odd> odd)
+	{
+		String bank = t.namedBank;
+		if (bank == null)
+		{
+			return;
+		}
+		int hour = t.local.getHour();
+		Set<String> notes = notes(p, t.day);
+		notes.add("bank:" + bank);
+
+		placeAt(p, bank, "tutorial-island", Odd.WHERE_IT_BEGAN, t.now, odd);
+		placeAt(p, bank, "zanaris", Odd.OFF_THE_MAP, t.now, odd);
+		placeAt(p, bank, "mage-arena", Odd.BOLD_CHOICE, t.now, odd);
+		placeAt(p, bank, "culinaromancers-chest", Odd.KITCHEN_NIGHTMARE, t.now, odd);
+		placeAt(p, bank, "lletya", Odd.ELVEN_WELCOME, t.now, odd);
+
+		if (visited(notes, MOLE_BANKS) >= MOLE_PEOPLE_BANKS)
+		{
+			note(p, Odd.MOLE_PEOPLE, t.now, odd);
+		}
+		if (visited(notes, ISLAND_BANKS) >= ISLAND_HOPPER_BANKS)
+		{
+			note(p, Odd.ISLAND_HOPPER, t.now, odd);
+		}
+		if (visited(notes, KOUREND_BANKS) == KOUREND_BANKS.size())
+		{
+			note(p, Odd.GRAND_TOUR, t.now, odd);
+		}
+		if (w.loginBanks.contains("neitiznot") && w.loginBanks.contains("jatizso"))
+		{
+			note(p, Odd.SIBLING_RIVALRY, t.now, odd);
+		}
+
+		if (bank.equals("rogues-den") && (hour == 2 || hour == 3))
+		{
+			note(p, Odd.NIGHT_HEIST, t.now, odd);
+		}
+		if (bank.equals("port-phasmatys") && hour == 0)
+		{
+			note(p, Odd.GRAVEYARD_SHIFT, t.now, odd);
+		}
+		if (bank.equals("tzhaar") && t.standTicks >= Records.TICKS_PER_HOUR)
+		{
+			note(p, Odd.FEELING_THE_HEAT, t.now, odd);
+		}
+		Month month = t.local.getMonth();
+		if (bank.equals("wintertodt") && (month == Month.JUNE || month == Month.JULY || month == Month.AUGUST))
+		{
+			note(p, Odd.OFF_SEASON, t.now, odd);
+		}
+		if (bank.equals("shantay-pass") && t.standTicks >= TOURIST_TICKS)
+		{
+			note(p, Odd.TOURIST_TRAP, t.now, odd);
+		}
+		if (bank.equals("emirs-arena") && t.playersAround >= CROWD_PLEASER_PLAYERS)
+		{
+			note(p, Odd.CROWD_PLEASER, t.now, odd);
+		}
+		if (bank.equals("bank-boat") && t.standTicks >= Records.TICKS_PER_HOUR)
+		{
+			note(p, Odd.SEA_LEGS, t.now, odd);
+		}
+		w.nightWatchTicks = bank.equals("draynor") && (hour >= 22 || hour < 6) ? w.nightWatchTicks + 1 : 0;
+		if (w.nightWatchTicks >= Records.TICKS_PER_HOUR)
+		{
+			note(p, Odd.NEIGHBOURHOOD_WATCH, t.now, odd);
+		}
+		if (bank.equals("varrock-west") && t.wornValue >= BILLION)
+		{
+			note(p, Odd.HIGH_SOCIETY, t.now, odd);
+		}
+		if (bank.equals("ge"))
+		{
+			if (t.emptyHanded)
+			{
+				notes.add("ge-empty-handed");
+			}
+			else if (t.wornValue >= BILLION && notes.contains("ge-empty-handed"))
+			{
+				note(p, Odd.RAGS_TO_RICHES, t.now, odd);
+			}
+		}
+
+		String region = BankRegions.regionOf(bank);
+		if (region != null)
+		{
+			if (w.lastRegion != null && !region.equals(w.lastRegion) && t.now - w.lastRegionAt <= FREQUENT_FLYER_MILLIS)
+			{
+				note(p, Odd.FREQUENT_FLYER, t.now, odd);
+			}
+			w.lastRegion = region;
+			w.lastRegionAt = t.now;
+		}
+	}
+
+	private static void placeAt(Progress p, String bank, String place, Odd moment, long now, Set<Odd> odd)
+	{
+		if (bank.equals(place))
+		{
+			note(p, moment, now, odd);
+		}
+	}
+
+	private static int visited(Set<String> notes, List<String> banks)
+	{
+		int visited = 0;
+		for (String bank : banks)
+		{
+			if (notes.contains("bank:" + bank))
+			{
+				visited++;
+			}
+		}
+		return visited;
 	}
 
 	/** Notes the local day as stood, and checks the moments that depend on which days. */
@@ -537,7 +844,7 @@ public final class Moments
 	public static final class Tick
 	{
 		public long now;
-		public LocalDate utcDay;
+		public LocalDate day;
 		public LocalDateTime local;
 		public int yaw;
 		public int pitch;
@@ -557,5 +864,22 @@ public final class Moments
 		public boolean poisoned;
 		/** Wearing a poisoned weapon or a toxic item. */
 		public boolean wearingPoison;
+		/** Current and real hitpoints, and whether an eating or drinking animation is playing. */
+		public int hitpoints;
+		public int maxHitpoints;
+		public boolean eating;
+		/** Drop party balloons in the scene. */
+		public boolean balloons;
+		/** Another player on your own tile. */
+		public boolean sharedTile;
+		/** A full stack of coins in the inventory. */
+		public boolean maxCash;
+		/** How many different clue scroll tiers are in the inventory. */
+		public int clueTiers;
+		/** Nothing worn and nothing carried. */
+		public boolean emptyHanded;
+		public long wornValue;
+		/** Set by the moments when hitpoints made it from 1 back to full without eating. */
+		public boolean healed;
 	}
 }

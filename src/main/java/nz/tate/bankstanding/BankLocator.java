@@ -127,6 +127,26 @@ class BankLocator
 		return false;
 	}
 
+	/** True if a bank booth or chest (not a deposit box or banker) is within {@code range} tiles. */
+	boolean isBoothOrChestNear(WorldPoint player, int range)
+	{
+		for (TileObject object : candidates)
+		{
+			ObjectComposition form = currentForm(object);
+			if (inRange(player, area(object), range) && isBank(form) && !isDepositOnly(form))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isDepositOnly(ObjectComposition composition)
+	{
+		String[] actions = composition.getActions();
+		return hasAction(actions, "Deposit") && !hasAction(actions, "Bank") && !hasAction(actions, "Use");
+	}
+
 	private static boolean inRange(WorldPoint player, WorldArea target, int range)
 	{
 		return target != null && player.getPlane() == target.getPlane() && target.distanceTo2D(player) <= range;

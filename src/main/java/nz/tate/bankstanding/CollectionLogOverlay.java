@@ -113,6 +113,10 @@ class CollectionLogOverlay extends GameWindow
 		"Said in public chat while bank standing.",
 		"Which ones you've found stays a secret."
 	};
+	/** Shown for a hidden entry until it's found. */
+	private static final String SECRET = "Secret";
+	/** The icon a hidden drop shows until it's found. */
+	private static final int SECRET_ICON = 6199;
 	private static final String[] DRESSED_HINT = {
 		"Worn, or played, at the right bank while standing.",
 		"Which ones you've found stays a secret."
@@ -210,6 +214,11 @@ class CollectionLogOverlay extends GameWindow
 	private volatile int scroll;
 	private volatile int contentRows;
 	private volatile int visibleContentRows = 1;
+	/** Entries on the shown tab, as last drawn, for clicks on the mouse thread. */
+	private volatile int entryCount;
+	/** The title's count over every tab, rebuilt at most once a second. Client thread. */
+	private String totalCount = "";
+	private long totalCountedAt;
 
 	@Inject
 	CollectionLogOverlay(BankStandingPlugin plugin, Client client, GuideArt art, TooltipManager tooltipManager,
@@ -254,7 +263,7 @@ class CollectionLogOverlay extends GameWindow
 		if (x >= LIST_LEFT && x < LIST_RIGHT && y >= BODY_TOP)
 		{
 			int index = (y - BODY_TOP) / ENTRY_ROW;
-			if (index < entries(plugin.getProgress()).size())
+			if (index < entryCount)
 			{
 				entry = index;
 				scroll = 0;
@@ -304,17 +313,23 @@ class CollectionLogOverlay extends GameWindow
 		art.steelBorder(graphics, x, y, WIDTH, HEIGHT);
 		art.draw(graphics, GuideArt.STEEL_CLOSE, x + CLOSE.x, y + CLOSE.y);
 
-		int done = 0;
-		int total = 0;
-		for (int t = 0; t < TABS.length; t++)
+		long now = System.currentTimeMillis();
+		if (now - totalCountedAt >= 1000)
 		{
-			for (Entry each : entries(progress, t))
+			int done = 0;
+			int total = 0;
+			for (int t = 0; t < TABS.length; t++)
 			{
-				done += each.done();
-				total += each.slots.size();
+				for (Entry each : entries(progress, t))
+				{
+					done += each.done();
+					total += each.slots.size();
+				}
 			}
+			totalCount = done + "/" + total;
+			totalCountedAt = now;
 		}
-		art.bold.drawShadowedCentred(graphics, "Bank Standing Collection Log - " + done + "/" + total, x + WIDTH / 2, y + 11, ORANGE);
+		art.bold.drawShadowedCentred(graphics, "Bank Standing Collection Log - " + totalCount, x + WIDTH / 2, y + 11, ORANGE);
 
 		for (int t = 0; t < TABS.length; t++)
 		{
@@ -327,6 +342,7 @@ class CollectionLogOverlay extends GameWindow
 		graphics.drawLine(x + LIST_RIGHT + 3, y + BODY_TOP, x + LIST_RIGHT + 3, y + BODY_BOTTOM);
 
 		List<Entry> entries = entries(progress);
+		entryCount = entries.size();
 		int selected = Math.min(entry, entries.size() - 1);
 		for (int i = 0; i < entries.size(); i++)
 		{
@@ -497,6 +513,11 @@ class CollectionLogOverlay extends GameWindow
 						continue;
 					}
 					CollectionLog.Obtained obtained = progress.collection.get(drop.key);
+					if (drop.hidden && obtained == null)
+					{
+						each.slots.add(new Slot(SECRET, false, SECRET_ICON, false, "Not found yet", 0));
+						continue;
+					}
 					String detail = obtained == null ? "Not obtained yet" : "Obtained: " + format.format(obtained.count)
 						+ "</br>First: " + StatsView.date(obtained.firstAt) + ", after " + format.format(obtained.firstRolls) + " rolls";
 					if (obtained == null && drop.holiday != null)
@@ -608,8 +629,9 @@ class CollectionLogOverlay extends GameWindow
 				for (GearSets.Tier tier : set.tiers)
 				{
 					Long at = progress.moments.get(set.momentKey(tier));
-					gear.slots.add(new Slot(tier.name, at != null, tier.icon, false,
-						at == null ? "Stand at the " + BankNames.displayName(set.banks.get(0), null) + " with one" : first(at), 0));
+					gear.slots.add(new Slot(tier.name, at != null, tier.icon, false, at != null ? first(at)
+						: set.banks.isEmpty() ? "Wear the whole outfit while standing at any bank"
+						: "Stand at the " + BankNames.displayName(set.banks.get(0), null) + " with one", 0));
 				}
 				entries.add(gear);
 			}
@@ -635,7 +657,8 @@ class CollectionLogOverlay extends GameWindow
 						continue;
 					}
 					Long at = progress.moments.get(moment.key);
-					moments.slots.add(new Slot(moment.title, at != null, -1, false,
+					String title = moment.hidden && at == null ? SECRET : moment.title;
+					moments.slots.add(new Slot(title, at != null, -1, false,
 						moment.description + (at == null ? "" : "</br>" + first(at)), 0));
 				}
 				entries.add(moments);

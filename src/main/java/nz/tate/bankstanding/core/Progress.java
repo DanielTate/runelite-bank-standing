@@ -35,7 +35,7 @@ public final class Progress
 	public int xp;
 	public Map<String, BankRecord> banks = new LinkedHashMap<>();
 
-	/** The last UTC day (ISO date) that counted toward the streak, and how long the streak is. */
+	/** The last day (ISO date) that counted toward the streak, and how long the streak is. */
 	public String streakDate;
 	public int streakDays;
 	/** Standing ticks so far on {@link #todayDate}. */
@@ -60,6 +60,13 @@ public final class Progress
 	public long lastSitRoll;
 	/** Every local date (ISO) with some standing, for the calendar moments. */
 	public Set<String> daysStood = new TreeSet<>();
+	/** When standing on a fire last paid out a boosted roll, in epoch milliseconds. */
+	public long lastFireRoll;
+	/** Things done on {@link #notesDate} (an ISO date) that count toward the one-day moments. */
+	public String notesDate;
+	public Set<String> notes = new TreeSet<>();
+	/** The day (ISO) of the last normal roll, so the first roll of a day survives a restart. */
+	public String firstRollDate;
 
 	public int level()
 	{

@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.2
+
+Lots more to find this time, and most of it is secret. Please don't spoil it for other players.
+
+### Collection log
+- Secret entries: some moments, and one drop, show as "Secret" with only a hint until you
+  find them.
+- A new **Places** entry on the Moments tab, full of secrets.
+- A new gear set: **Random event outfits**. Wear the whole outfit while standing at any bank.
+- Tutorial Island is no longer listed on the Banks tab.
+
+### Other
+- More secret phrases and other hidden things to discover.
+- The version number now shows at the bottom of the side panel.
+- The README has screenshots and a short FAQ.
+
+### Fixes
+- The collection log and skill guide are now drawn on top of the side panel and other
+  plugins' bars in resizable mode.
+- The skill guide always opens on its first tab.
+- The worn rug (levels 10 to 39) no longer has a gap in the middle.
+- "Today" in the side panel, and everything else that counts days, now follows your own
+  clock. It used to roll over at midnight UTC.
+- Progress is now saved when you close RuneLite, and a world hop no longer resets your
+  session stats.
+- If your saved progress ever can't be read, a copy of it is kept instead of being
+  overwritten.
+- Right-clicking in the collection log or skill guide no longer counts as a left click, and
+  a closed window can no longer block clicks.
+- Fixed a few rare crashes when turning the plugin off or clicking in the collection log.
+
 ## 1.1.1
 
 - Quick peek now shows a stopwatch above the bank, counting down how long you can keep it

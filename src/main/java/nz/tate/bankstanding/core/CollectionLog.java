@@ -68,6 +68,8 @@ public final class CollectionLog
 		public final Group group;
 		/** The holiday it only drops during, or null. */
 		public final Holiday holiday;
+		/** Never rolled: earned by doing something, and shown as a secret until then. */
+		public final boolean hidden;
 
 		Drop(String key, String name, int icon, int rate, boolean gold, boolean pet)
 		{
@@ -75,6 +77,11 @@ public final class CollectionLog
 		}
 
 		Drop(String key, String name, int icon, int rate, boolean gold, Group group, Holiday holiday)
+		{
+			this(key, name, icon, rate, gold, group, holiday, false);
+		}
+
+		Drop(String key, String name, int icon, int rate, boolean gold, Group group, Holiday holiday, boolean hidden)
 		{
 			this.key = key;
 			this.name = name;
@@ -84,6 +91,7 @@ public final class CollectionLog
 			this.pet = group == Group.PET;
 			this.group = group;
 			this.holiday = holiday;
+			this.hidden = hidden;
 		}
 
 		public boolean rare()
@@ -93,6 +101,9 @@ public final class CollectionLog
 	}
 
 	private static final int SEASONAL_RATE = 2_000;
+	/** Hidden drops are never rolled, so they have no rate. */
+	private static final int NEVER = 0;
+	public static final String BANDAGES = "bandages";
 
 	/** In log order within each group. About 5.3 million rolls reach 99. */
 	public static final List<Drop> DROPS = Collections.unmodifiableList(Arrays.asList(
@@ -101,6 +112,7 @@ public final class CollectionLog
 		new Drop("forgotten-note", "Forgotten note", 28767, 1_000_000, false, false),
 		new Drop("gold-leaf", "Gold leaf", 8784, 2_500_000, false, false),
 		new Drop("golden-booth-key", "Golden booth key", 989, 5_000_000, true, false),
+		new Drop(BANDAGES, "Bandages", 4049, NEVER, false, Group.RARE, null, true),
 		new Drop("bankers-hat", "Banker's hat", 12432, 150_000, false, Group.OUTFIT, null),
 		new Drop("bankers-waistcoat", "Banker's waistcoat", 24798, 200_000, false, Group.OUTFIT, null),
 		new Drop("bankers-trousers", "Banker's trousers", 5036, 200_000, false, Group.OUTFIT, null),
@@ -122,12 +134,19 @@ public final class CollectionLog
 		new Drop("bank-rat", "Bank rat", 523, 25_000_000, false, true)
 	));
 
-	/** Rarest first, which is the order drops are rolled in. */
+	/** Rarest first, which is the order drops are rolled in. Hidden drops are left out. */
 	private static final List<Drop> BY_RARITY;
 
 	static
 	{
-		List<Drop> sorted = new ArrayList<>(DROPS);
+		List<Drop> sorted = new ArrayList<>();
+		for (Drop drop : DROPS)
+		{
+			if (!drop.hidden)
+			{
+				sorted.add(drop);
+			}
+		}
 		sorted.sort((a, b) -> Integer.compare(b.rate, a.rate));
 		BY_RARITY = Collections.unmodifiableList(sorted);
 	}
@@ -148,7 +167,7 @@ public final class CollectionLog
 
 	/**
 	 * Rolls for a drop alongside one XP roll; the rarest is checked first and at most one
-	 * drops. Seasonal drops only roll on their holiday (UTC).
+	 * drops. Seasonal drops only roll on their holiday.
 	 */
 	public static Drop roll(Random random, LocalDate today)
 	{
@@ -196,15 +215,18 @@ public final class CollectionLog
 		return progress.collection.containsKey("pet-moneybag");
 	}
 
-	/** How many of the named banks you've stood at. */
+	/** How many of the banks listed in the log you've stood at. */
 	public static int banksVisited(Progress progress)
 	{
 		int visited = 0;
-		for (BankArea area : BankNames.all())
+		for (String region : BankRegions.names())
 		{
-			if (progress.banks.containsKey(area.getKey()))
+			for (String key : BankRegions.keys(region))
 			{
-				visited++;
+				if (progress.banks.containsKey(key))
+				{
+					visited++;
+				}
 			}
 		}
 		return visited;

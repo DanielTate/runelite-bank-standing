@@ -261,4 +261,47 @@ public class ModifiersTest
 		assertEquals(XpRoller.MAX_BOOST, e.boost, EPS);
 		assertEquals(XpRoller.MAX_BONUS_HIT, e.bonusHit);
 	}
+
+	@Test
+	public void maxCapeCountsOnceLikeARareCape()
+	{
+		assertEquals(1, Modifiers.evaluate(at("ge", 13280)).bonusHit);
+		assertEquals(1, Modifiers.evaluate(at("fishing-guild", 13280, 9798)).bonusHit);
+	}
+
+	@Test
+	public void skillingPetAtItsHomeBank()
+	{
+		StandContext c = at("fishing-guild", 4151);
+		c.followerName = "heron";
+		Modifiers.Effect e = Modifiers.evaluate(c);
+		assertEquals(Modifiers.SMALL, e.boost, EPS);
+		assertTrue(e.found.contains("skilling-pet:fishing-guild"));
+		c.bankKey = "ge";
+		assertEquals(0, Modifiers.evaluate(c).boost, EPS);
+	}
+
+	@Test
+	public void fullBarrowsSetAtCanifisAndDharokAtOneHitpoint()
+	{
+		assertEquals(1, Modifiers.evaluate(at("canifis", 4716, 4718, 4720, 4722)).bonusHit);
+		assertEquals(0, Modifiers.evaluate(at("canifis", 4716, 4718, 4720)).bonusHit);
+		assertEquals(0, Modifiers.evaluate(at("ge", 4716, 4718, 4720, 4722)).bonusHit);
+		StandContext dharok = at("ferox", 4880, 4886, 4892, 4898);
+		dharok.hitpoints = 1;
+		Modifiers.Effect e = Modifiers.evaluate(dharok);
+		// One for standing at 1 hitpoint, one for the set, and a little more for both together.
+		assertEquals(2, e.bonusHit);
+		assertEquals(2 * Modifiers.GEAR + Modifiers.SMALL, e.boost, EPS);
+	}
+
+	@Test
+	public void gnomeChildHatAndSkullAtTheirBanks()
+	{
+		assertEquals(Modifiers.TINY, Modifiers.evaluate(at("gnome-stronghold-north", 13655)).boost, EPS);
+		assertEquals(0, Modifiers.evaluate(at("ge", 13655)).boost, EPS);
+		StandContext skulled = at("edgeville", 4151);
+		skulled.skulled = true;
+		assertEquals(Modifiers.SMALL, Modifiers.evaluate(skulled).boost, EPS);
+	}
 }

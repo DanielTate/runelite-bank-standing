@@ -27,7 +27,7 @@ package nz.tate.bankstanding;
 import com.google.inject.Provides;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -38,19 +38,23 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.Client;
+import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
+import net.runelite.api.NPCComposition;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.Tile;
 import net.runelite.api.WorldType;
 import net.runelite.api.clan.ClanSettings;
 import net.runelite.api.coords.LocalPoint;
@@ -62,11 +66,15 @@ import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.SpotanimID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
@@ -75,6 +83,7 @@ import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.events.ClientShutdown;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -150,9 +159,6 @@ public class BankStandingPlugin extends Plugin
 	private StandCosmetics cosmetics;
 
 	@Inject
-	private ConfigManager configManager;
-
-	@Inject
 	private MouseManager mouseManager;
 
 	@Inject
@@ -199,8 +205,6 @@ public class BankStandingPlugin extends Plugin
 
 	/** Our own slot in the player's spot animations, so the fireworks never replace the game's. */
 	private static final int FIREWORKS_KEY = 0x42414E4B;
-	/** Client-wide config key: when the plugin first started, in epoch milliseconds. */
-	private static final String INSTALLED_KEY = "installedAt";
 
 	/** Unsaved changes are written at most this often (a minute), and on logout. */
 	private static final int SAVE_EVERY_TICKS = 100;
@@ -222,8 +226,27 @@ public class BankStandingPlugin extends Plugin
 	/** An emote's effect lasts this long after it starts. */
 	private static final int EMOTE_TICKS = 100;
 
+	/** Eating and drinking, which spoil healing from 1 hitpoint. */
+	private static final Set<Integer> EATING = new HashSet<>(Arrays.asList(
+		AnimationID.HUMAN_EAT, AnimationID.HUMAN_EAT_BANANA, AnimationID.HUMAN_EAT_WITHSOUND));
+	/** Fires anyone can light from logs, in every colour. */
+	private static final Set<Integer> FIRES = new HashSet<>(Arrays.asList(
+		ObjectID.FIRE, ObjectID.RED_FIRE, ObjectID.GREEN_FIRE, ObjectID.BLUE_FIRE));
+	/** How close a fire must be to a bank booth or chest to count. */
+	private static final int FIRE_TILES = 2;
+	/** Drop party balloons, before they're popped. */
+	private static final int FIRST_BALLOON = ObjectID.BALLOON_YELLOW;
+	private static final int LAST_BALLOON = ObjectID.BALLOON3;
+	private final Set<GameObject> balloons = new HashSet<>();
+	/** Random event NPCs that have come to you during this stand. */
+	private final Set<NPC> randomEvents = new HashSet<>();
+	/** The tick you were hit on during a stand, or -1. */
+	private int hitOnTick = -1;
+
 	private Set<Integer> worn = Collections.emptySet();
 	private int[] inventory = new int[0];
+	private boolean maxCash;
+	private int clueTiers;
 	private long wornValue;
 	private int wornCape = -1;
 	private Emote emote = Emote.NONE;
@@ -240,11 +263,6 @@ public class BankStandingPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		// RuneLite doesn't record when a plugin was installed, so note the first start.
-		if (configManager.getConfiguration(BankStandingConfig.GROUP, INSTALLED_KEY) == null)
-		{
-			configManager.setConfiguration(BankStandingConfig.GROUP, INSTALLED_KEY, System.currentTimeMillis());
-		}
 		tracker.reset();
 		overlayManager.add(skillTileOverlay);
 		for (GameWindow window : windows())
@@ -303,12 +321,19 @@ public class BankStandingPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
-		save();
-		int realCape = wornCape;
+		// Progress belongs to the client thread, so it's saved and dropped there.
 		clientThread.invoke(() ->
 		{
-			capeDisplay.restore(realCape);
+			save();
+			capeDisplay.restore(wornCape);
 			cosmetics.clear();
+			realXp.clear();
+			progress = null;
+			worn = Collections.emptySet();
+			inventory = new int[0];
+			wornValue = 0;
+			wornCape = -1;
+			emote = Emote.NONE;
 		});
 		overlayManager.remove(skillTileOverlay);
 		for (GameWindow window : windows())
@@ -336,13 +361,19 @@ public class BankStandingPlugin extends Plugin
 		}
 		panel = null;
 		bankLocator.clear();
-		realXp.clear();
-		progress = null;
-		worn = Collections.emptySet();
-		inventory = new int[0];
-		wornValue = 0;
-		wornCape = -1;
-		emote = Emote.NONE;
+	}
+
+	/** Closing RuneLite while logged in: save on the client thread before it goes. */
+	@Subscribe
+	public void onClientShutdown(ClientShutdown event)
+	{
+		CompletableFuture<Void> saved = new CompletableFuture<>();
+		clientThread.invoke(() ->
+		{
+			save();
+			saved.complete(null);
+		});
+		event.waitFor(saved);
 	}
 
 	@Subscribe
@@ -352,6 +383,8 @@ public class BankStandingPlugin extends Plugin
 		if (state == GameState.LOADING)
 		{
 			bankLocator.clear();
+			balloons.clear();
+			randomEvents.clear();
 			cosmetics.clear();
 		}
 		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING)
@@ -359,13 +392,21 @@ public class BankStandingPlugin extends Plugin
 			save();
 			tracker.reset();
 			peekTimer.ticksLeft(0);
-			watch.loggedOut();
 			realXp.clear();
-			progress = null;
 			capeDisplay.forget();
 			cosmetics.clear();
-			BankStandingPanel shown = panel;
-			SwingUtilities.invokeLater(shown::showLoggedOut);
+			if (state == GameState.HOPPING)
+			{
+				// Still the same account and login, so the session and progress carry on.
+				watch.standEnded();
+			}
+			else
+			{
+				watch.loggedOut();
+				progress = null;
+				BankStandingPanel shown = panel;
+				SwingUtilities.invokeLater(shown::showLoggedOut);
+			}
 			for (GameWindow window : windows())
 			{
 				window.close();
@@ -378,12 +419,39 @@ public class BankStandingPlugin extends Plugin
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
 		bankLocator.objectSpawned(event.getGameObject());
+		int id = event.getGameObject().getId();
+		if (id >= FIRST_BALLOON && id <= LAST_BALLOON)
+		{
+			balloons.add(event.getGameObject());
+		}
 	}
 
 	@Subscribe
 	public void onGameObjectDespawned(GameObjectDespawned event)
 	{
 		bankLocator.objectDespawned(event.getGameObject());
+		balloons.remove(event.getGameObject());
+	}
+
+	@Subscribe
+	public void onHitsplatApplied(HitsplatApplied event)
+	{
+		if (event.getActor() == client.getLocalPlayer() && event.getHitsplat().getAmount() > 0 && tracker.isStanding())
+		{
+			hitOnTick = client.getTickCount();
+		}
+	}
+
+	/** A random event that came to you and gave up while you kept standing. */
+	@Subscribe
+	public void onNpcDespawned(NpcDespawned event)
+	{
+		if (randomEvents.remove(event.getNpc()) && progress != null && tracker.isStanding())
+		{
+			Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+			Moments.notice(progress, Moments.Odd.NOT_NOW, System.currentTimeMillis(), odd);
+			announce(Collections.emptySet(), odd);
+		}
 	}
 
 	@Subscribe
@@ -422,12 +490,40 @@ public class BankStandingPlugin extends Plugin
 	private void readInventory(ItemContainer container)
 	{
 		int[] slots = new int[container.size()];
+		boolean fullStack = false;
+		Set<String> tiers = new HashSet<>();
 		for (int i = 0; i < slots.length; i++)
 		{
 			Item item = container.getItem(i);
 			slots[i] = item == null ? -1 : item.getId();
+			if (item == null || item.getId() <= 0)
+			{
+				continue;
+			}
+			if (item.getId() == ItemID.COINS && item.getQuantity() == Integer.MAX_VALUE)
+			{
+				fullStack = true;
+			}
+			String tier = clueTier(itemManager.getItemComposition(item.getId()).getName());
+			if (tier != null)
+			{
+				tiers.add(tier);
+			}
 		}
 		inventory = slots;
+		maxCash = fullStack;
+		clueTiers = tiers.size();
+	}
+
+	/** The tier of a clue scroll, like "easy", or null for anything else (boxes and caskets too). */
+	static String clueTier(String name)
+	{
+		String lower = name == null ? "" : name.toLowerCase(Locale.ENGLISH);
+		if (lower.startsWith("clue scroll (") && lower.endsWith(")"))
+		{
+			return lower.substring("clue scroll (".length(), lower.length() - 1);
+		}
+		return null;
 	}
 
 	private void readEquipment(ItemContainer container)
@@ -588,6 +684,8 @@ public class BankStandingPlugin extends Plugin
 		{
 			progress.records.standEnded();
 			watch.standEnded();
+			randomEvents.clear();
+			hitOnTick = -1;
 			return;
 		}
 
@@ -609,6 +707,7 @@ public class BankStandingPlugin extends Plugin
 		DailyStreak.standingTick(progress, today());
 		progress.records.standingTick(progress, session, System.currentTimeMillis());
 		noteMoments(bankKey, location, bank);
+		standingOnFire(player, bank);
 
 		if (roll)
 		{
@@ -616,6 +715,17 @@ public class BankStandingPlugin extends Plugin
 			Modifiers.Effect effect = evaluate(bank, location);
 			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level, null);
 			progress.rolls++;
+			Set<Moments.Odd> changed = EnumSet.noneOf(Moments.Odd.class);
+			Set<String> outfits = new HashSet<>();
+			for (String key : effect.found)
+			{
+				if (key.startsWith("outfit:"))
+				{
+					outfits.add(key);
+				}
+			}
+			Moments.outfitsWorn(progress, today(), outfits, System.currentTimeMillis(), changed);
+			announce(Collections.emptySet(), changed);
 			CollectionLog.Drop found = CollectionLog.roll(collectionRandom, today());
 			if (found != null)
 			{
@@ -640,7 +750,8 @@ public class BankStandingPlugin extends Plugin
 
 	private GameWindow[] windows()
 	{
-		return new GameWindow[]{skillGuideOverlay, collectionLogOverlay};
+		// The log first: it can open over the skill tile, and a press on it there is the log's.
+		return new GameWindow[]{collectionLogOverlay, skillGuideOverlay};
 	}
 
 	/** Opens the collection log, from the side panel or the skill tile's menu. */
@@ -653,7 +764,7 @@ public class BankStandingPlugin extends Plugin
 	/** Adds a drop to the log: the popup the first time, a chat line every time. Client thread. */
 	private void obtain(CollectionLog.Drop drop)
 	{
-		if (drop.rare())
+		if (drop.rare() && !drop.hidden)
 		{
 			Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
 			Moments.rareDrop(progress, watch, System.currentTimeMillis(), odd);
@@ -712,11 +823,25 @@ public class BankStandingPlugin extends Plugin
 		{
 			if (Moments.record(progress, key, System.currentTimeMillis()))
 			{
-				collected("Dressed for it: ", key.startsWith("diary:") ? "diary item" : key.startsWith("haul:") ? "full inventory" : "outfit", -1, false);
+				collected("Dressed for it: ", dressedFor(key), -1, false);
 				dirty = true;
 			}
 		}
 		return effect;
+	}
+
+	/** What kind of thing counted, without saying which. */
+	private static String dressedFor(String key)
+	{
+		if (key.startsWith("diary:"))
+		{
+			return "diary item";
+		}
+		if (key.startsWith("haul:"))
+		{
+			return "full inventory";
+		}
+		return key.startsWith("skilling-pet:") ? "pet at home" : "outfit";
 	}
 
 	private StandContext context(BankRecord bank, WorldPoint location)
@@ -728,7 +853,12 @@ public class BankStandingPlugin extends Plugin
 		context.bankKey = BankNames.keyFor(location.getX(), location.getY());
 		context.today = today();
 		context.emote = client.getTickCount() < emoteUntilTick ? emote : Emote.NONE;
-		context.follower = client.getFollower() != null;
+		NPC follower = client.getFollower();
+		context.follower = follower != null;
+		context.followerName = follower == null || follower.getName() == null ? null
+			: Text.removeTags(follower.getName()).replace('\u00A0', ' ').trim().toLowerCase(Locale.ENGLISH);
+		Player player = client.getLocalPlayer();
+		context.skulled = player != null && player.getSkullIcon() != -1;
 		context.streakDays = DailyStreak.current(progress, context.today);
 		context.hoursAtBank = bank.hours();
 		context.inventory = inventory;
@@ -737,7 +867,7 @@ public class BankStandingPlugin extends Plugin
 
 	private static LocalDate today()
 	{
-		return LocalDate.now(ZoneOffset.UTC);
+		return LocalDate.now();
 	}
 
 	/**
@@ -769,8 +899,8 @@ public class BankStandingPlugin extends Plugin
 	{
 		Moments.Tick tick = new Moments.Tick();
 		tick.now = System.currentTimeMillis();
-		tick.utcDay = today();
 		tick.local = LocalDateTime.now();
+		tick.day = tick.local.toLocalDate();
 		tick.yaw = client.getCameraYaw();
 		tick.pitch = client.getCameraPitch();
 		tick.prayer = client.getBoostedSkillLevel(Skill.PRAYER);
@@ -783,11 +913,84 @@ public class BankStandingPlugin extends Plugin
 		tick.skillTotalWorld = types.contains(WorldType.SKILL_TOTAL);
 		tick.poisoned = client.getVarpValue(VarPlayerID.POISON) > 0;
 		tick.wearingPoison = wearingPoison;
+		Player me = client.getLocalPlayer();
+		tick.hitpoints = client.getBoostedSkillLevel(Skill.HITPOINTS);
+		tick.maxHitpoints = client.getRealSkillLevel(Skill.HITPOINTS);
+		tick.eating = EATING.contains(me.getAnimation());
+		tick.balloons = !balloons.isEmpty();
+		tick.maxCash = maxCash;
+		tick.clueTiers = clueTiers;
+		tick.wornValue = wornValue;
+		tick.emptyHanded = worn.isEmpty() && Arrays.stream(inventory).allMatch(id -> id <= 0);
 		watchNeighbours(tick);
+		watchRandomEvents(me);
 		Set<Moments.HolidayEntry> holidays = EnumSet.noneOf(Moments.HolidayEntry.class);
 		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+		if (hitOnTick >= 0 && client.getTickCount() > hitOnTick)
+		{
+			// Hit last tick, and still standing.
+			Moments.notice(progress, Moments.Odd.NOT_BUDGING, tick.now, odd);
+			hitOnTick = -1;
+		}
 		Moments.standingTick(progress, watch, tick, holidays, odd);
 		announce(holidays, odd);
+		if (tick.healed)
+		{
+			obtain(CollectionLog.find(CollectionLog.BANDAGES));
+		}
+	}
+
+	/** Random event NPCs come with a Dismiss option; note any that are here for you. */
+	private void watchRandomEvents(Player me)
+	{
+		for (NPC npc : client.getTopLevelWorldView().npcs())
+		{
+			if (npc == null || npc.getInteracting() != me)
+			{
+				continue;
+			}
+			NPCComposition composition = npc.getComposition();
+			String[] actions = composition == null ? null : composition.getActions();
+			if (actions != null && Arrays.asList(actions).contains("Dismiss"))
+			{
+				randomEvents.add(npc);
+			}
+		}
+	}
+
+	/**
+	 * Standing on a lit fire close to a bank booth or chest: a moment for the log, and a
+	 * boosted roll the first time and then at most once an hour.
+	 */
+	private void standingOnFire(Player player, BankRecord bank)
+	{
+		LocalPoint local = player.getLocalLocation();
+		if (local == null || !bankLocator.isBoothOrChestNear(player.getWorldLocation(), FIRE_TILES))
+		{
+			return;
+		}
+		Tile[][][] tiles = client.getTopLevelWorldView().getScene().getTiles();
+		int plane = client.getTopLevelWorldView().getPlane();
+		Tile tile = tiles[plane][local.getSceneX()][local.getSceneY()];
+		if (tile == null)
+		{
+			return;
+		}
+		for (GameObject object : tile.getGameObjects())
+		{
+			if (object != null && FIRES.contains(object.getId()))
+			{
+				Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+				if (Moments.onFire(progress, System.currentTimeMillis(), odd))
+				{
+					int level = progress.level();
+					drop(roller.boostedRoll(level), bank, level, null);
+				}
+				dirty = true;
+				announce(Collections.emptySet(), odd);
+				return;
+			}
+		}
 	}
 
 	/**
@@ -801,6 +1004,7 @@ public class BankStandingPlugin extends Plugin
 		Map<String, long[]> seen = new HashMap<>();
 		int around = 0;
 		long stillest = 0;
+		boolean sharedTile = false;
 		for (Player other : client.getTopLevelWorldView().players())
 		{
 			if (other == null || other == me || other.getName() == null)
@@ -809,6 +1013,7 @@ public class BankStandingPlugin extends Plugin
 			}
 			around++;
 			WorldPoint at = other.getWorldLocation();
+			sharedTile |= at.equals(here);
 			if (at.getPlane() != here.getPlane() || at.distanceTo2D(here) > NEIGHBOUR_TILES)
 			{
 				continue;
@@ -822,6 +1027,7 @@ public class BankStandingPlugin extends Plugin
 		neighbours = seen;
 		tick.playersAround = around;
 		tick.stillestNeighbourTicks = stillest;
+		tick.sharedTile = sharedTile;
 	}
 
 	private void announce(Set<Moments.HolidayEntry> holidays, Set<Moments.Odd> odd)

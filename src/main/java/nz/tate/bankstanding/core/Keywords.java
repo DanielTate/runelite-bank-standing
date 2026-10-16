@@ -44,7 +44,7 @@ import java.util.Set;
  * <p>Only hashes are stored, so reading the source doesn't give the phrases away. A phrase
  * must be the whole message. Some only work during a {@link Holiday}, some only at certain
  * banks, some only while wearing a particular item. Each pays out at most once an hour, and all of them together at most
- * {@link #DAILY_CAP} times per UTC day. Over a limit, nothing happens at all.
+ * {@link #DAILY_CAP} times per day. Over a limit, nothing happens at all.
  */
 public final class Keywords
 {
@@ -245,7 +245,67 @@ public final class Keywords
 		phrase("c83d9127c6d86c8141b647f46a7b1d9c487f3ae3a31c88b5adc49cbb81e3faa2", null, "guardians-of-the-rift"),
 		phrase("1a2112315793c6122fb25b7621f9f9dda05d30f223668423dc6126e6b631d34f", null, "hallowed-sepulchre"),
 		phrase("bbb94d6f7a44186b95243d552788af23dcd972d665a3048bf5f573639f5f4bfe", null, "prifddinas-north", "prifddinas-south"),
-		phrase("337e35b8b2c7aa2f4cc5e6faab267ad986ad86b0811c4db0e0c4dfe2d37fb2d9", null, "clan-hall").beforeClanName()
+		phrase("337e35b8b2c7aa2f4cc5e6faab267ad986ad86b0811c4db0e0c4dfe2d37fb2d9", null, "clan-hall").beforeClanName(),
+		phrase("8031271ac7f29f23fa9c3cd680add24eb47d0d0ca1ec3eea7c6ee9455acb9369", null),
+		phrase("ace437f10302bcdc359a0ae1587af9f2491df0f5bf1570660cf54017cad05beb", null, "ge"),
+		phrase("176bd9faa4e540a087649f9d38592776211a62a4c2fc826a20b9e28e7b01f4e5", null),
+		phrase("b10923ad2252afd273d62a9bc11c3f5a00df908094ad4f809bb79713713367c1", null),
+		phrase("92c5e8703cce56fc34c35c9c4407c98d933faa4a83c10c731447cf1b954ffc4e", null),
+		phrase("e8d1a628cdaab15bdcf693e7e490897a1b8876e1f1093f643fe37b56d8d68b96", null),
+		phrase("198594e8e5aa48c66eff8704da0a1bcb40e515bd2948c394f3663dd153f53df1", null),
+		phrase("afd47fd44b3876addf2d23abe9d5c006007671bf5d85f5e26d35ed1b8264f211", null),
+		phrase("3a68701175e9e93c1d1a94fff4d9db6d4e71abb8554e5df66c09579bc420241a", null),
+		phrase("d168c9de5db8be51b844dacb35c92ad1de58c7438d436e622c4562e05fc57506", null),
+		phrase("7200d0b296a360a4ffb19cf8b203eff017b3344e22de45d1e3eb91b7f5458513", null),
+		phrase("00de770518035f9477444110f9e03d76abcba26fbd26bb847e9b64084c1ed798", null),
+		phrase("8614ade2aaa8199506975759a6e1571a082be1feb2465fc295332c392e2765df", null),
+		phrase("cc96235486063307f664180960eb0ed6ebf621d7e7645a8f41220c2b0f4736d7", null),
+		phrase("9d053cc3513f722ecf97e4489d083a44e908afd32370eb794e52673ef3586ca8", null),
+		phrase("9694e89e01e35af81e2de063e3956961b655c0e8db3868c4842f60c8f1b0fdec", null),
+		phrase("fbd079044f005bcd70fb7e77528d46b4c4dc86ab2d7e0c39aaf78ed7f3e7bc5d", null),
+		phrase("f5466683fcb9144c463832063cf9ce90d1202247d3b72bddd999c4f2909bb776", null),
+		phrase("09d11b38532e4cb55a54882147353a3cda545f6f4d6782fe5ed7500414d95540", null),
+		phrase("703c76fba9274a492df0b92d7b70be87ab107442de24d1f342047d769a8c1e22", null),
+		phrase("33b5eab62d3881df625f090ec9410bb2dcbc2558ae9af68777dedf05a2056142", null),
+		phrase("15b1808ed60aa90ea535e8ad70ea8e4f76a17e43f6e905984981f60be790ef3d", null),
+		phrase("175c83e80eb1353d8e198a13a72634cdc95903f3be94f82b2e017db3993ebc1f", null),
+		phrase("730d72282314be2fc7aef6302e5bb48d4bcc92c202ad1d02b5c671d0c1f682de", null),
+		phrase("b739b80f581c62d09e6d6dd7937a1bfcaf0c0790d22675adda06abda592e2d4d", null),
+		phrase("acbbd8c2d78f349880a80b68a88a8a56a8051dfb1e07eb029991821d7d75c4fd", null, "edgeville"),
+		phrase("4a344616a1f18bdd2205e77919c6cc8317f382466ce579933744dee41351f992", null, "edgeville", "ferox"),
+		phrase("2cb4e43c8644e397af1cad2bef0d49d4fd4b33d6dc60f60235fa063fc81d001e", null, "ferox"),
+		phrase("c9b598c0010c75a46803cfe21d45c9f48ee6c8d096e5de812d8f65ec0f6525ca", null, "al-kharid"),
+		phrase("dbbe28c4f7dc4e2b69999c8e9c11bca61d5fa822293079e4bed8ddeeb561f599", null, "al-kharid"),
+		phrase("e33ac3f82480aa6b98da09543085681f361b6a52b010ad4256a7b417ed0f0bd6", null, "port-sarim"),
+		phrase("82ead4ddab988de1f64e04cc367b318817320febec50c23329b3c74d77ad6ca3", null, "yanille"),
+		phrase("1e90a17911cd190bd83798f1f594ee935e860e172fb77cd97cd07bae086ec895", null, "gnome-stronghold-south", "gnome-stronghold-north"),
+		phrase("e6bb54a3ca9cec8e16cffcafd36f68522fef10be86af8d8580a3268198df5df8", null, "ardougne-north", "ardougne-south"),
+		phrase("f9f7750f7733da4159d5391a793c4bf68cc4dfa42a131c53e49b15d08329b9bd", null, "zanaris"),
+		phrase("13e9457824036a7a9a09cd87a56c973623d9b7fbb362680e829a0ddfffcb70cb", null, "mount-karuulm"),
+		phrase("bd1d4e87381e59a7be8cb051556c84a13ed862f87be1a972b2bd5163db4c84eb", null, "keldagrim"),
+		phrase("8baabc2573439230e7e767487c5a11471a7bad12c87c6312004eeb602444a80a", null, "keldagrim"),
+		phrase("59b9b402dca374e09c7a080ac99d37bf1d82b1467615945eb784232342a82221", null, "darkmeyer"),
+		phrase("3d8605356e61215eb129c8099164be21309fabc9a7b9b7a1299e5e61a26d9657", null, "lunar-isle"),
+		phrase("9bc2426343a76f5a19adaa740d044c957a26dcf95b6969c5823d59cdfcfcfc73", null, "neitiznot"),
+		phrase("fc093eead0cdc2bf99f7b570bd38abe98043232486b3f398c64ba8482665baa6", null, "port-phasmatys"),
+		phrase("c2c863110166d56259ae80abbdef0d89371f222e635c46a68d19a5fb15104522", null, "pest-control"),
+		phrase("60acae7cb90a3244be7d8adc151bea1592e6a7d6134cfd6b6d8ccef8a7dcf0f6", null, "castle-wars"),
+		phrase("98ab22b86bf13f5515ea978001fc02406314a65f4a2715de6efa4258c1bead9d", null, "piscatoris"),
+		phrase("89592e6e426db64ea7ae6f5918152ebe74c7279a2c8ab90ad6616a5954486887", null, "volcanic-mine"),
+		phrase("d18263a9f371fcd36af79d90acf9f94821e43a7233c4297f8096f29737f06ac5", null, "blast-furnace"),
+		phrase("6ccfa7e76cef0d90858d4708e99c04cb34cbe429d944c72de27e67351953bd78", null, "rogues-den"),
+		phrase("e58b826f91d2bc86ff07a54788fcc8ba725ba82db6d163f1b747f2bde4c0fba8", null, "farming-guild", "farming-guild-upper"),
+		phrase("5f6308c184e3020b51fb4de6b08b3e589b0c8bc7fc9896c3636596cb34e10100", null, "falador-east", "falador-west"),
+		phrase("ada0ebca23366d45e367ef726a5ff1d4b48ba389e8141ade69936a6730836fce", null, "shantay-pass"),
+		phrase("f651f28436291d40910fd3532a7064010d867af62f4bb9bfb385d0f934187b88", Holiday.CHRISTMAS),
+		phrase("9afd166f983d8c4f6805a76ae8bfed885a87140e014b37b1e920085e43e2f7d3", Holiday.HALLOWEEN),
+		phrase("0b8f09c42f05ea949250ef9c1b033d9261355de0d9a21232bbec078721ef0f0d", Holiday.EASTER),
+		phrase("3340a2d27861a131bfce83203c1536802cbfd265d6b2b3dfe46106851620343e", Holiday.BIRTHDAY),
+		phrase("c92b74a3399e45ed4a767227c8b9bd4ecc5679fd485d0c013318ee9d8694f0b9", Holiday.FALADOR_MASSACRE, "falador-east", "falador-west"),
+		phrase("5ad2ce896582e2c3d68e5c14f3898bef8ca2bdcbb64265b8b58ffbbf47a88663", null).wearing(Items.ABYSSAL_WHIPS),
+		phrase("6637965d85ade42e336a7aad92c733b28491588e8779509533ec3a466a1cfb73", null).wearing(Items.TWISTED_BOWS),
+		phrase("1c23358fd07d8681e10ac6d603bac3b2262ab81cf81003f59623ee5df13ccd9b", null).wearing(Items.MAX_CAPES),
+		phrase("7d2bb49cabc5d76cbc34e7f5c39ca3d259a594a93f5b19ac93d5ba15c728cf34", null).wearing(Items.RUBBER_CHICKENS)
 	));
 
 	private final List<Phrase> phrases;

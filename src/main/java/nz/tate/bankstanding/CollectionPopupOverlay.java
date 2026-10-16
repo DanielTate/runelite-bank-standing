@@ -84,7 +84,8 @@ class CollectionPopupOverlay extends Overlay
 		this.art = art;
 		this.skillIcon = icons.small();
 		setPosition(OverlayPosition.DYNAMIC);
-		setLayer(OverlayLayer.ABOVE_WIDGETS);
+		// Always on top, so the resizable side panel and other plugins' bars can't cover it.
+		setLayer(OverlayLayer.ALWAYS_ON_TOP);
 	}
 
 	/** Queues a popup; {@code item} is the icon, or -1 for none. Client thread. */

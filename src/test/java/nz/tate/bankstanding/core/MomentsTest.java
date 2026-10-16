@@ -1,5 +1,6 @@
 package nz.tate.bankstanding.core;
 
+import java.util.Collections;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -15,12 +16,12 @@ public class MomentsTest
 {
 	private static final LocalDate DAY = LocalDate.of(2026, 10, 15);
 
-	private static Moments.Tick tick(LocalDate utcDay, int hour)
+	private static Moments.Tick tick(LocalDate day, int hour)
 	{
 		Moments.Tick t = new Moments.Tick();
 		t.now = 1000;
-		t.utcDay = utcDay;
-		t.local = utcDay.atTime(hour, 0);
+		t.day = day;
+		t.local = day.atTime(hour, 0);
 		t.world = 302;
 		t.prayer = 50;
 		return t;
@@ -232,6 +233,19 @@ public class MomentsTest
 	}
 
 	@Test
+	public void firstTryIsOncePerDayEvenAfterARestart()
+	{
+		Progress p = new Progress();
+		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+		Moments.drop(p, new Moments.Watch(), 1, false, false, null, 20, DAY, 0, odd);
+		// A restart brings a new watch, but the day's first roll has already gone.
+		Moments.drop(p, new Moments.Watch(), 20, true, false, null, 20, DAY, 0, odd);
+		assertFalse(odd.contains(Moments.Odd.FIRST_TRY));
+		Moments.drop(p, new Moments.Watch(), 20, true, false, null, 20, DAY.plusDays(1), 0, odd);
+		assertTrue(odd.contains(Moments.Odd.FIRST_TRY));
+	}
+
+	@Test
 	public void roughPatchAndFirstTry()
 	{
 		Progress p = new Progress();
@@ -325,5 +339,135 @@ public class MomentsTest
 		assertEquals(EnumSet.of(Moments.Odd.TAKE_A_SEAT), odd);
 		assertFalse(Moments.sat(p, 2 * Moments.SIT_COOLDOWN_MILLIS - 1, odd));
 		assertTrue(Moments.sat(p, 2 * Moments.SIT_COOLDOWN_MILLIS, odd));
+	}
+
+	private static Moments.Tick at(String bank, LocalDate day, int hour)
+	{
+		Moments.Tick t = tick(day, hour);
+		t.namedBank = bank;
+		return t;
+	}
+
+	@Test
+	public void placesAreAllHidden()
+	{
+		for (Moments.Odd moment : Moments.Odd.values())
+		{
+			if (moment.category == Moments.Category.PLACES)
+			{
+				assertTrue(moment.key, moment.hidden);
+			}
+		}
+	}
+
+	@Test
+	public void placesAreFoundAtTheirBank()
+	{
+		Progress p = new Progress();
+		assertTrue(stand(p, new Moments.Watch(), at("tutorial-island", DAY, 12)).contains(Moments.Odd.WHERE_IT_BEGAN));
+		assertTrue(stand(p, new Moments.Watch(), at("rogues-den", DAY, 3)).contains(Moments.Odd.NIGHT_HEIST));
+		assertFalse(stand(p, new Moments.Watch(), at("port-phasmatys", DAY, 1)).contains(Moments.Odd.GRAVEYARD_SHIFT));
+	}
+
+	@Test
+	public void islandHopperNeedsFiveIslandsInOneUtcDay()
+	{
+		Progress p = new Progress();
+		Moments.Watch w = new Moments.Watch();
+		for (String island : Arrays.asList("lunar-isle", "neitiznot", "jatizso", "ape-atoll"))
+		{
+			assertFalse(stand(p, w, at(island, DAY, 12)).contains(Moments.Odd.ISLAND_HOPPER));
+		}
+		assertFalse(stand(p, w, at("fossil-island", DAY.plusDays(1), 12)).contains(Moments.Odd.ISLAND_HOPPER));
+		for (String island : Arrays.asList("lunar-isle", "neitiznot", "jatizso"))
+		{
+			stand(p, w, at(island, DAY.plusDays(1), 12));
+		}
+		assertTrue(stand(p, w, at("ape-atoll", DAY.plusDays(1), 12)).contains(Moments.Odd.ISLAND_HOPPER));
+	}
+
+	@Test
+	public void frequentFlyerNeedsTwoRegionsWithinTwoMinutes()
+	{
+		Progress p = new Progress();
+		Moments.Watch w = new Moments.Watch();
+		Moments.Tick varrock = at("varrock-west", DAY, 12);
+		stand(p, w, varrock);
+		Moments.Tick late = at("seers", DAY, 12);
+		late.now = varrock.now + Moments.FREQUENT_FLYER_MILLIS + 1;
+		assertFalse(stand(p, w, late).contains(Moments.Odd.FREQUENT_FLYER));
+		Moments.Tick quick = at("ge", DAY, 12);
+		quick.now = late.now + Moments.FREQUENT_FLYER_MILLIS;
+		assertTrue(stand(p, w, quick).contains(Moments.Odd.FREQUENT_FLYER));
+	}
+
+	@Test
+	public void walkItOffHealsOnePointAtATimeWithoutEating()
+	{
+		Progress p = new Progress();
+		Moments.Watch w = new Moments.Watch();
+		boolean healed = false;
+		for (int hp = 1; hp <= 5; hp++)
+		{
+			Moments.Tick t = tick(DAY, 12);
+			t.hitpoints = hp;
+			t.maxHitpoints = 5;
+			stand(p, w, t);
+			healed |= t.healed;
+		}
+		assertTrue(healed);
+		assertTrue(Moments.has(p, Moments.Odd.WALK_IT_OFF.key));
+
+		Progress ate = new Progress();
+		Moments.Watch w2 = new Moments.Watch();
+		for (int hp : new int[]{1, 2, 5})
+		{
+			Moments.Tick t = tick(DAY, 12);
+			t.hitpoints = hp;
+			t.maxHitpoints = 5;
+			stand(ate, w2, t);
+			assertFalse(t.healed);
+		}
+		assertFalse(Moments.has(ate, Moments.Odd.WALK_IT_OFF.key));
+	}
+
+	@Test
+	public void partyPooperNeedsAMinuteOfBalloonsAtFaladorEast()
+	{
+		Progress p = new Progress();
+		Moments.Watch w = new Moments.Watch();
+		for (int i = 1; i < Moments.DROP_PARTY_TICKS; i++)
+		{
+			Moments.Tick t = at("falador-east", DAY, 12);
+			t.balloons = true;
+			assertFalse(stand(p, w, t).contains(Moments.Odd.PARTY_POOPER));
+		}
+		Moments.Tick t = at("falador-east", DAY, 12);
+		t.balloons = true;
+		assertTrue(stand(p, w, t).contains(Moments.Odd.PARTY_POOPER));
+	}
+
+	@Test
+	public void quickChangeNeedsFiveOutfitsInADay()
+	{
+		Progress p = new Progress();
+		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+		Moments.outfitsWorn(p, DAY, Arrays.asList("outfit:a", "outfit:b", "outfit:c", "outfit:d"), 0, odd);
+		Moments.outfitsWorn(p, DAY.plusDays(1), Collections.singletonList("outfit:e"), 0, odd);
+		assertTrue(odd.isEmpty());
+		Moments.outfitsWorn(p, DAY.plusDays(1), Arrays.asList("outfit:a", "outfit:b", "outfit:c", "outfit:d"), 0, odd);
+		assertEquals(EnumSet.of(Moments.Odd.QUICK_CHANGE), odd);
+	}
+
+	@Test
+	public void fireRollsTheFirstTimeThenHourly()
+	{
+		Progress p = new Progress();
+		Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+		long start = 5_000_000;
+		assertTrue(Moments.onFire(p, start, odd));
+		assertEquals(EnumSet.of(Moments.Odd.HOT_SEAT), odd);
+		assertFalse(Moments.onFire(p, start + Moments.SIT_COOLDOWN_MILLIS - 1, odd));
+		assertTrue(Moments.onFire(p, start + Moments.SIT_COOLDOWN_MILLIS, odd));
 	}
 }

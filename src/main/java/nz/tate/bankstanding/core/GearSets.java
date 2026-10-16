@@ -32,7 +32,8 @@ import java.util.Set;
 
 /**
  * Collection log sets: every tier of a tool, each collected by standing at its guild's bank
- * with it worn or carried. Purely for the log; they never change XP.
+ * with it worn or carried, and whole outfits worn at any bank. Purely for the log; they never
+ * change XP.
  */
 public final class GearSets
 {
@@ -43,6 +44,8 @@ public final class GearSets
 		public final String name;
 		public final int icon;
 		final Set<Integer> ids;
+		/** For an outfit: one of each piece must be worn, and carrying it doesn't count. Else null. */
+		final List<Set<Integer>> pieces;
 
 		Tier(String key, String name, Integer... ids)
 		{
@@ -50,6 +53,33 @@ public final class GearSets
 			this.name = name;
 			this.ids = Items.ids(ids);
 			this.icon = ids[0];
+			this.pieces = null;
+		}
+
+		private Tier(String key, String name, List<Set<Integer>> pieces)
+		{
+			this.key = key;
+			this.name = name;
+			this.ids = Collections.emptySet();
+			this.icon = pieces.get(0).iterator().next();
+			this.pieces = Collections.unmodifiableList(pieces);
+		}
+
+		/** A whole outfit; each array is one piece, any item of which counts. The first item is its icon. */
+		static Tier outfit(String key, String name, Integer[]... pieces)
+		{
+			List<Set<Integer>> sets = new ArrayList<>();
+			for (Integer[] piece : pieces)
+			{
+				sets.add(Items.ids(piece));
+			}
+			Tier tier = new Tier(key, name, sets);
+			return tier;
+		}
+
+		public boolean outfit()
+		{
+			return pieces != null;
 		}
 	}
 
@@ -58,7 +88,7 @@ public final class GearSets
 	{
 		public final String key;
 		public final String title;
-		/** The banks it's collected at; the first names it in the log. */
+		/** The banks it's collected at, the first naming it in the log; empty for any bank. */
 		public final List<String> banks;
 		public final List<Tier> tiers;
 
@@ -197,8 +227,21 @@ public final class GearSets
 		new GearSet("hween-masks", "H'ween masks", "draynor",
 			new Tier("green", "Green h'ween mask", 1053),
 			new Tier("blue", "Blue h'ween mask", 1055),
-			new Tier("red", "Red h'ween mask", 1057))
+			new Tier("red", "Red h'ween mask", 1057)),
+		new GearSet("random-events", "Random event outfits", Collections.emptyList(),
+			Tier.outfit("mime", "Mime outfit", p(3057), p(3058), p(3059), p(3060), p(3061)),
+			Tier.outfit("frog", "Frog mask", p(6188)),
+			Tier.outfit("camo", "Camo outfit", p(6656), p(6654), p(6655)),
+			Tier.outfit("zombie", "Zombie outfit", p(7594), p(7592), p(7593), p(7595), p(7596)),
+			Tier.outfit("lederhosen", "Lederhosen outfit", p(6182), p(6180), p(6181)),
+			Tier.outfit("royal", "Prince or princess outfit", p(6184, 6186), p(6185, 6187)))
 	));
+
+	/** One piece of an outfit: any of these items. */
+	private static Integer[] p(Integer... ids)
+	{
+		return ids;
+	}
 
 	private GearSets()
 	{
@@ -210,7 +253,7 @@ public final class GearSets
 		List<Tier> found = new ArrayList<>();
 		for (GearSet set : SETS)
 		{
-			if (!set.banks.contains(bankKey))
+			if (!set.banks.isEmpty() && !set.banks.contains(bankKey))
 			{
 				continue;
 			}
@@ -227,6 +270,17 @@ public final class GearSets
 
 	private static boolean holds(Tier tier, Set<Integer> worn, int[] inventory)
 	{
+		if (tier.outfit())
+		{
+			for (Set<Integer> piece : tier.pieces)
+			{
+				if (piece.stream().noneMatch(worn::contains))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
 		for (int id : tier.ids)
 		{
 			if (worn.contains(id))

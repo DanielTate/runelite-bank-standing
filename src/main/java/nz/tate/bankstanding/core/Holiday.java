@@ -26,7 +26,7 @@ package nz.tate.bankstanding.core;
 
 import java.time.LocalDate;
 
-/** Holiday windows, by UTC date. */
+/** Holiday windows, by date on your own clock. */
 public enum Holiday
 {
 	/** 20 to 31 December. */

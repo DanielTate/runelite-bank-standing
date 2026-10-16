@@ -77,7 +77,7 @@ class SkillGuideOverlay extends ParchmentWindow
 	boolean claimPress(MouseEvent event)
 	{
 		Progress progress = plugin.getProgress();
-		if (progress == null || !SwingUtilities.isLeftMouseButton(event) || !tile.getBounds().contains(event.getPoint()))
+		if (progress == null || !SwingUtilities.isLeftMouseButton(event) || !tile.shownBounds().contains(event.getPoint()))
 		{
 			return false;
 		}
@@ -87,19 +87,11 @@ class SkillGuideOverlay extends ParchmentWindow
 		}
 		else
 		{
-			showNext(progress.level());
+			// Always the first tab, scrolled to the top, like the game's own skill guides.
+			showTab(0);
 			open();
 		}
 		return true;
-	}
-
-	/** Opens on the category of the next unlock, scrolled so it shows. */
-	private void showNext(int level)
-	{
-		Unlocks.Unlock next = Unlocks.next(level);
-		Unlocks.Category category = next == null ? Unlocks.Category.CAPE : next.category;
-		showTab(category.ordinal());
-		scrollTo(next == null ? 0 : Unlocks.in(category).indexOf(next) - 1);
 	}
 
 	private Unlocks.Category category()

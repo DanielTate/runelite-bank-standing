@@ -26,7 +26,7 @@ package nz.tate.bankstanding.core;
 
 import java.time.LocalDate;
 
-/** A UTC day counts once you've earned Bank Standing XP for 30 minutes of it. */
+/** A day (on your own clock) counts once you've earned Bank Standing XP for 30 minutes of it. */
 public final class DailyStreak
 {
 	static final long TICKS_PER_DAY_NEEDED = 3000;

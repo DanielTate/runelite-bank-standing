@@ -37,10 +37,14 @@ public final class StandContext
 	public long wornValue;
 	public int hitpoints = 99;
 	public String bankKey = "";
-	/** Today in UTC, the same clock as OSRS dailies. */
+	/** Today on your own clock, like every other day in the plugin. */
 	public LocalDate today = LocalDate.of(2000, 1, 1);
 	public Emote emote = Emote.NONE;
 	public boolean follower;
+	/** The follower's name in lower case, or null for none. */
+	public String followerName;
+	/** Showing a PK skull. */
+	public boolean skulled;
 	public int streakDays;
 	public double hoursAtBank;
 	/** Item IDs in each inventory slot, -1 for an empty slot. */

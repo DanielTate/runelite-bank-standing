@@ -42,9 +42,25 @@ public class CollectionLogTest
 		for (CollectionLog.Drop drop : CollectionLog.DROPS)
 		{
 			assertTrue(keys.add(drop.key));
-			assertTrue(drop.rate >= 500);
+			assertTrue(drop.hidden ? drop.rate == 0 : drop.rate >= 500);
 			assertEquals(drop.group == CollectionLog.Group.SEASONAL, drop.holiday != null);
 		}
+	}
+
+	@Test
+	public void hiddenDropsAreNeverRolled()
+	{
+		Random everyRollHits = new Random()
+		{
+			@Override
+			public int nextInt(int bound)
+			{
+				return 0;
+			}
+		};
+		CollectionLog.Drop rarest = CollectionLog.roll(everyRollHits, LocalDate.of(2026, 8, 1));
+		assertFalse(rarest.hidden);
+		assertTrue(CollectionLog.find(CollectionLog.BANDAGES).hidden);
 	}
 
 	@Test
@@ -109,11 +125,12 @@ public class CollectionLogTest
 	}
 
 	@Test
-	public void banksCountOnlyNamedOnes()
+	public void banksCountOnlyListedOnes()
 	{
 		Progress progress = new Progress();
 		progress.bank("varrock-west", 3185, 3441);
 		progress.bank("region-12345", 1, 1);
+		progress.bank("tutorial-island", 3122, 3124);
 		assertEquals(1, CollectionLog.banksVisited(progress));
 	}
 }

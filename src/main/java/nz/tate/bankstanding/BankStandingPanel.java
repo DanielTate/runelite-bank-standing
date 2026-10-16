@@ -32,6 +32,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -46,7 +47,9 @@ import nz.tate.bankstanding.core.StatsView;
  */
 class BankStandingPanel extends PluginPanel
 {
-	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor and Zerek.";
+	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek and Dennis.";
+	/** Must match runelite-plugin.properties; a test checks it does. */
+	static final String VERSION = "1.2";
 
 	private static final Color GOLD = new Color(214, 176, 48);
 
@@ -156,7 +159,14 @@ class BankStandingPanel extends PluginPanel
 		JLabel credits = new JLabel("<html>" + CREDITS + "</html>");
 		credits.setFont(FontManager.getRunescapeSmallFont());
 		credits.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
-		add(credits, BorderLayout.SOUTH);
+		JLabel version = new JLabel("v" + VERSION, SwingConstants.RIGHT);
+		version.setFont(FontManager.getRunescapeSmallFont());
+		version.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
+		JPanel footer = new JPanel(new BorderLayout(0, 2));
+		footer.setOpaque(false);
+		footer.add(credits, BorderLayout.CENTER);
+		footer.add(version, BorderLayout.SOUTH);
+		add(footer, BorderLayout.SOUTH);
 
 		showLoggedOut();
 	}

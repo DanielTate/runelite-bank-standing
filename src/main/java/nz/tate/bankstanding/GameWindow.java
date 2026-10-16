@@ -27,6 +27,7 @@ package nz.tate.bankstanding;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
+import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
 import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.input.MouseWheelListener;
@@ -45,12 +46,15 @@ abstract class GameWindow extends Overlay
 	protected final GuideArt art;
 
 	private volatile boolean open;
-	/** Where the window was last drawn, in canvas coordinates. */
+	/** Where the window was last drawn, in canvas coordinates, and when (System.nanoTime). */
 	private volatile Rectangle drawn = new Rectangle();
+	private volatile long drawnAt;
 	/** Set when a press was ours, so the release and click don't reach the game either. */
 	private boolean swallowing;
 	/** Run whenever this window opens, so the plugin can close the others. */
 	private volatile Runnable onOpen;
+	/** A window not drawn for this long is treated as gone, for clicks. */
+	static final long STALE_NANOS = 1_000_000_000L;
 
 	final MouseAdapter mouse = new MouseAdapter()
 	{
@@ -58,19 +62,23 @@ abstract class GameWindow extends Overlay
 		public MouseEvent mousePressed(MouseEvent event)
 		{
 			swallowing = false;
-			if (event.isAltDown())
+			// Alt is for moving overlays; consumed means another window already took it.
+			if (event.isAltDown() || event.isConsumed())
 			{
 				return event;
 			}
 			Point point = event.getPoint();
-			Rectangle window = drawn;
-			if (claimPress(event))
+			Rectangle window = visible();
+			if (open && window.contains(point))
 			{
+				if (SwingUtilities.isLeftMouseButton(event))
+				{
+					click(point.x - window.x, point.y - window.y);
+				}
 				swallowing = true;
 			}
-			else if (open && window.contains(point))
+			else if (claimPress(event))
 			{
-				click(point.x - window.x, point.y - window.y);
 				swallowing = true;
 			}
 			else
@@ -108,8 +116,8 @@ abstract class GameWindow extends Overlay
 
 	final MouseWheelListener wheel = event ->
 	{
-		Rectangle window = drawn;
-		if (open && window.contains(event.getPoint()))
+		Rectangle window = visible();
+		if (open && !event.isConsumed() && window.contains(event.getPoint()))
 		{
 			wheel(event.getX() - window.x, event.getY() - window.y, event.getWheelRotation());
 			event.consume();
@@ -122,10 +130,11 @@ abstract class GameWindow extends Overlay
 		this.client = client;
 		this.art = art;
 		setPosition(OverlayPosition.DYNAMIC);
-		setLayer(OverlayLayer.ABOVE_WIDGETS);
+		// Always on top, so the resizable side panel and other plugins' bars can't cover it.
+		setLayer(OverlayLayer.ALWAYS_ON_TOP);
 	}
 
-	/** A left click inside the window, in window coordinates. Mouse thread. */
+	/** A left press inside the window, in window coordinates. Mouse thread. */
 	abstract void click(int x, int y);
 
 	/** The mouse wheel inside the window, in window coordinates. Mouse thread. */
@@ -137,7 +146,7 @@ abstract class GameWindow extends Overlay
 		return true;
 	}
 
-	/** A press before the window's own handling, such as on the button that opens it; true if used. */
+	/** A press outside the window, such as on the button that opens it; true if used. */
 	boolean claimPress(MouseEvent event)
 	{
 		return false;
@@ -171,7 +180,21 @@ abstract class GameWindow extends Overlay
 	/** Whether to draw this frame: open, available and with the art loaded. */
 	boolean showing()
 	{
-		return open && available() && art.ready();
+		boolean showing = open && available() && art.ready();
+		if (!showing)
+		{
+			drawn = new Rectangle();
+		}
+		return showing;
+	}
+
+	/**
+	 * Where the window is on screen now, or empty. Overlays can stop being drawn without being
+	 * told (hidden overlays, a minimised client), so an old position doesn't count.
+	 */
+	private Rectangle visible()
+	{
+		return System.nanoTime() - drawnAt < STALE_NANOS ? drawn : new Rectangle();
 	}
 
 	/** Centres a window of this size in the game view and remembers where, for clicks. */
@@ -181,6 +204,7 @@ abstract class GameWindow extends Overlay
 		int y = client.getViewportYOffset() + Math.max(0, (client.getViewportHeight() - height) / 2);
 		Rectangle window = new Rectangle(x, y, width, height);
 		drawn = window;
+		drawnAt = System.nanoTime();
 		return window;
 	}
 }

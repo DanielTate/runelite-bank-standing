@@ -284,19 +284,6 @@ public final class Unlocks
 		return lines;
 	}
 
-	/** The first thing still to unlock, or null at 99. */
-	public static Unlock next(int level)
-	{
-		for (Unlock unlock : ALL)
-		{
-			if (unlock.level > level)
-			{
-				return unlock;
-			}
-		}
-		return null;
-	}
-
 	/** The next level that unlocks something, or -1 at 99. */
 	public static int nextUnlockLevel(int level)
 	{

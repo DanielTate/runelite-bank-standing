@@ -49,11 +49,17 @@ import nz.tate.bankstanding.core.Unlocks;
 @Singleton
 class StandCosmetics
 {
-	// Rug pieces: corner, side, middle. The standard rug is red with a gold trim.
-	private static final int[] WORN_RUG = {1061, 1117, 1113};
+	// Rug pieces: corner, side, middle. The standard rug is red with a gold trim. The game's
+	// worn rug (objects 917 and 918) has only corners and sides, so its middle is the standard
+	// rug's, recoloured to match.
+	private static final int[] WORN_RUG = {1061, 1117, 1067};
 	private static final int[] RUG = {1110, 1134, 1067};
 	private static final short RUG_BODY = 926;
 	private static final short RUG_TRIM = 9145;
+	/** The standard rug middle's pattern. */
+	private static final short RUG_PATTERN = 0;
+	private static final short WORN_BODY = 7952;
+	private static final short WORN_TRIM = 9114;
 	private static final short BLUE_BODY = (short) 46249;
 	private static final short BLUE_TRIM = (short) 47378;
 	private static final short GOLD_BODY = 9000;
@@ -96,6 +102,8 @@ class StandCosmetics
 	private Unlocks.Rug rugShown = Unlocks.Rug.NONE;
 	private RuneLiteObject seatObject;
 	private RuneLiteObject petObject;
+	/** Whether the pet has been tried this stand, so a model that won't load isn't retried every tick. */
+	private boolean petTried;
 	private Unlocks.Seat seatShown = Unlocks.Seat.NONE;
 	private int sitAnimation = -1;
 	private int standingIdlePose = -1;
@@ -135,9 +143,10 @@ class StandCosmetics
 			placeSeat(player, seat);
 		}
 		keepSitting(player);
-		if (pet && (started || petObject == null))
+		if (pet && (started || !petTried))
 		{
 			placePet(player);
+			petTried = true;
 		}
 		else if (!pet)
 		{
@@ -198,6 +207,7 @@ class StandCosmetics
 
 	private void removePet()
 	{
+		petTried = false;
 		if (petObject != null)
 		{
 			petObject.setActive(false);
@@ -259,7 +269,11 @@ class StandCosmetics
 					return;
 				}
 				ModelData piece = base.cloneColors();
-				if (rug == Unlocks.Rug.BLUE)
+				if (rug == Unlocks.Rug.WORN && edges == 0)
+				{
+					piece.recolor(RUG_BODY, WORN_BODY).recolor(RUG_PATTERN, WORN_TRIM);
+				}
+				else if (rug == Unlocks.Rug.BLUE)
 				{
 					piece.recolor(RUG_BODY, BLUE_BODY).recolor(RUG_TRIM, BLUE_TRIM);
 				}

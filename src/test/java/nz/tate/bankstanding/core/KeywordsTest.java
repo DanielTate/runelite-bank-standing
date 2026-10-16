@@ -158,7 +158,7 @@ public class KeywordsTest
 		{
 			assertTrue(hashes.add(phrase.hash));
 		}
-		assertEquals(99, hashes.size());
+		assertEquals(159, hashes.size());
 	}
 
 	@Test
@@ -174,5 +174,22 @@ public class KeywordsTest
 		assertFalse(claim(new Progress(), "dressed phrase", 0, DAY));
 		assertEquals(Keywords.Kind.ANYWHERE,
 			keywords.claim(new Progress(), "dressed phrase", 0, DAY, "ge", Collections.singleton(1234)));
+	}
+
+	@Test
+	public void shippedPhrasesOnlyNameRealBanks()
+	{
+		Set<String> named = new HashSet<>();
+		for (BankArea area : BankNames.all())
+		{
+			named.add(area.getKey());
+		}
+		for (Keywords.Phrase phrase : Keywords.PHRASES)
+		{
+			for (String bank : phrase.banks)
+			{
+				assertTrue(bank, named.contains(bank));
+			}
+		}
 	}
 }

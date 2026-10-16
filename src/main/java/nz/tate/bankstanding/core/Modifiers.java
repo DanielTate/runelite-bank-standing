@@ -71,6 +71,7 @@ public final class Modifiers
 	static final String OUTFIT = "outfit:";
 	static final String DIARY = "diary:";
 	static final String HAUL = "haul:";
+	static final String SKILLING_PET = "skilling-pet:";
 	static final int INVENTORY_SLOTS = 28;
 
 	/** A bank where standing with every inventory slot full of the right things counts. */
@@ -135,6 +136,7 @@ public final class Modifiers
 			hauls.add(haul.bankKey);
 		}
 		counts.put("Full inventories", count(moments, HAUL, hauls));
+		counts.put("Pets at home", count(moments, SKILLING_PET, new ArrayList<>(Items.SKILLING_PETS.keySet())));
 		return counts;
 	}
 
@@ -211,7 +213,7 @@ public final class Modifiers
 		{
 			capeBonus = true;
 		}
-		else if (c.wearingAny(Items.RARE_CAPES))
+		else if (c.wearingAny(Items.RARE_CAPES) || c.wearingAny(Items.MAX_CAPES))
 		{
 			capeBonus = true;
 		}
@@ -243,6 +245,13 @@ public final class Modifiers
 		if (c.hitpoints == 1)
 		{
 			e.gear();
+		}
+
+		String pet = Items.SKILLING_PETS.get(c.bankKey);
+		if (pet != null && pet.equals(c.followerName))
+		{
+			e.boost += SMALL;
+			e.found.add(SKILLING_PET + c.bankKey);
 		}
 
 		e.boost += newSpot(c.hoursAtBank);
@@ -301,6 +310,28 @@ public final class Modifiers
 			{
 				e.boost += TINY;
 			}
+		}
+
+		for (Outfit brother : Items.BARROWS)
+		{
+			if (c.at(brother.bankKeys()) && brother.wornBy(c))
+			{
+				e.gear();
+				if (brother == Items.DHAROK && c.hitpoints == 1)
+				{
+					e.boost += SMALL;
+				}
+			}
+		}
+
+		if (c.at("gnome-stronghold-south", "gnome-stronghold-north") && c.wearingAny(Items.GNOME_CHILD_HATS))
+		{
+			e.boost += TINY;
+		}
+
+		if (c.at("edgeville") && c.skulled)
+		{
+			e.boost += SMALL;
 		}
 
 		if (c.at("edgeville") && c.wearing(1163) && c.wearing(1127) && (c.wearing(1079) || c.wearing(1093))

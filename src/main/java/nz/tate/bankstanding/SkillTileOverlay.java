@@ -28,6 +28,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.text.NumberFormat;
 import javax.inject.Inject;
@@ -62,6 +63,7 @@ class SkillTileOverlay extends Overlay
 	private final Client client;
 	private final TooltipManager tooltipManager;
 	private final BufferedImage icon;
+	private volatile long renderedAt;
 
 	@Inject
 	SkillTileOverlay(BankStandingPlugin plugin, Client client, TooltipManager tooltipManager, Icons icons)
@@ -75,6 +77,12 @@ class SkillTileOverlay extends Overlay
 		setMovable(true);
 	}
 
+	/** Where the tile is on screen, or empty if it hasn't been drawn lately. Mouse thread. */
+	Rectangle shownBounds()
+	{
+		return System.nanoTime() - renderedAt < GameWindow.STALE_NANOS ? getBounds() : new Rectangle();
+	}
+
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
@@ -83,6 +91,7 @@ class SkillTileOverlay extends Overlay
 		{
 			return null;
 		}
+		renderedAt = System.nanoTime();
 
 		graphics.setColor(FACE);
 		graphics.fillRect(0, 0, WIDTH, HEIGHT);

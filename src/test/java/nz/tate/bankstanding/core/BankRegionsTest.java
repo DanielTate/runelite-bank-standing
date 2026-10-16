@@ -25,7 +25,9 @@
 package nz.tate.bankstanding.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.Test;
@@ -33,7 +35,7 @@ import org.junit.Test;
 public class BankRegionsTest
 {
 	@Test
-	public void everyBankIsInExactlyOneRegion()
+	public void everyBankButTutorialIslandIsInExactlyOneRegion()
 	{
 		Set<String> named = new HashSet<>();
 		for (BankArea area : BankNames.all())
@@ -50,6 +52,8 @@ public class BankRegionsTest
 			}
 		}
 		named.removeAll(seen);
-		assertEquals("banks with no region: " + named, 0, named.size());
+		assertEquals(Collections.singleton("tutorial-island"), named);
+		assertNull(BankRegions.regionOf("tutorial-island"));
+		assertEquals("Misthalin", BankRegions.regionOf("varrock-west"));
 	}
 }

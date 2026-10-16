@@ -64,7 +64,7 @@ final class Items
 		BOSS_ITEMS.put("quidamortem", ids(20997, 21000, 21003, 21006, 21012, 21015, 21018, 21021, 21024, 13652));
 		BOSS_ITEMS.put("ver-sinhaza", ids(22322, 22323, 22324, 22325, 22326, 22327, 22328, 22481, 22486,
 			25731, 25733, 25734, 25736, 25738, 25739, 25741));
-		BOSS_ITEMS.put("mor-ul-rek", ids(6570, 21295, 13329, 21284));
+		BOSS_ITEMS.put("mor-ul-rek", ids(6570, 21295, 13329, 21285));
 		BOSS_ITEMS.put("fortis", ids(28947, 28951, 28955, 28902));
 		BOSS_ITEMS.put("canifis", ids(4151, 12773, 12774, 12006, 26482, 26484));
 		BOSS_ITEMS.put("warriors-guild", ids(12954, 19722, 27008, 22322));
@@ -207,6 +207,64 @@ final class Items
 	 * per the OSRS Wiki's Cape of Accomplishment page). Refresh with updates.
 	 */
 	static final Set<Integer> RARE_CAPES = ids(31288, 31290, 9765, 9766, 9771, 9772);
+
+	/** Every max cape you can wear, trouver-locked ones too, but not the hoods. */
+	static final Set<Integer> MAX_CAPES = ids(13280, 13342, 13329, 13331, 13333, 13335, 13337, 20760, 21285, 21776,
+		21780, 21784, 21898, 24133, 24134, 24135, 24232, 24233, 24234, 24855, 27363, 27365, 28902, 28906, 34625);
+	static final Set<Integer> ABYSSAL_WHIPS = ids(4151, 12773, 12774, 20405, 26482, 26484);
+	static final Set<Integer> TWISTED_BOWS = ids(20997, 28540);
+	static final Set<Integer> RUBBER_CHICKENS = ids(4566);
+	static final Set<Integer> GNOME_CHILD_HATS = ids(13655, 25321);
+
+	/** Each Barrows brother's set: head, weapon, body and legs, in every charge and ornament form. */
+	static final List<Outfit> BARROWS = Collections.unmodifiableList(Arrays.asList(
+		new Outfit("canifis", "ferox")
+			.piece(4708, 4856, 4857, 4858, 4859, 30445, 30519, 30525, 30531, 30537)
+			.piece(4710, 4862, 4863, 4864, 4865, 23653, 30568, 30570, 30571, 30572, 30573)
+			.piece(4712, 4868, 4869, 4870, 4871, 20598, 30447, 30521, 30527, 30533, 30539)
+			.piece(4714, 4874, 4875, 4876, 4877, 20599, 30449, 30523, 30529, 30535, 30541),
+		new Outfit("canifis", "ferox")
+			.piece(4716, 4880, 4881, 4882, 4883, 23639)
+			.piece(4718, 4886, 4887, 4888, 4889, 25516)
+			.piece(4720, 4892, 4893, 4894, 4895, 25515)
+			.piece(4722, 4898, 4899, 4900, 4901, 23633),
+		new Outfit("canifis", "ferox")
+			.piece(4724, 4904, 4905, 4906, 4907, 23638)
+			.piece(4726, 4910, 4911, 4912, 4913)
+			.piece(4728, 4916, 4917, 4918, 4919)
+			.piece(4730, 4922, 4923, 4924, 4925),
+		new Outfit("canifis", "ferox")
+			.piece(4732, 4928, 4929, 4930, 4931)
+			.piece(4734, 4934, 4935, 4936, 4937)
+			.piece(4736, 4940, 4941, 4942, 4943, 23632)
+			.piece(4738, 4946, 4947, 4948, 4949, 34609),
+		new Outfit("canifis", "ferox")
+			.piece(4745, 4952, 4953, 4954, 4955, 23637)
+			.piece(4747, 4958, 4959, 4960, 4961)
+			.piece(4749, 4964, 4965, 4966, 4967)
+			.piece(4751, 4970, 4971, 4972, 4973, 23634),
+		new Outfit("canifis", "ferox")
+			.piece(4753, 4976, 4977, 4978, 4979, 23636)
+			.piece(4755, 4982, 4983, 4984, 4985, 27189)
+			.piece(4757, 4988, 4989, 4990, 4991, 27190)
+			.piece(4759, 4994, 4995, 4996, 4997, 23635)
+	));
+
+	static final Outfit DHAROK = BARROWS.get(1);
+
+	/** Skilling pets by follower name (any colour), keyed by the bank that is home to that skill. */
+	static final Map<String, String> SKILLING_PETS = new HashMap<>();
+
+	static
+	{
+		SKILLING_PETS.put("fishing-guild", "heron");
+		SKILLING_PETS.put("woodcutting-guild", "beaver");
+		SKILLING_PETS.put("mining-guild", "rock golem");
+		SKILLING_PETS.put("farming-guild", "tangleroot");
+		SKILLING_PETS.put("wintertodt", "phoenix");
+		SKILLING_PETS.put("guardians-of-the-rift", "rift guardian");
+		SKILLING_PETS.put("rogues-den", "rocky");
+	}
 
 	private Items()
 	{
