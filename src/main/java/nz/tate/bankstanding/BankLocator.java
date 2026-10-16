@@ -33,9 +33,11 @@ import net.runelite.api.GameObject;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.ObjectComposition;
+import net.runelite.api.Point;
 import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
+import net.runelite.api.WorldView;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 
@@ -162,8 +164,18 @@ class BankLocator
 		}
 		if (object instanceof GameObject)
 		{
-			// The location is the object's centre tile; this also works for banks on boats.
 			GameObject game = (GameObject) object;
+			WorldView view = object.getWorldView();
+			Point min = game.getSceneMinLocation();
+			Point max = game.getSceneMaxLocation();
+			if (view != null && view.isTopLevel() && min != null && max != null)
+			{
+				// The tiles the game itself blocks, exactly: big objects aren't always centred
+				// where their size would suggest.
+				WorldPoint corner = WorldPoint.fromScene(view, min.getX(), min.getY(), object.getPlane());
+				return new WorldArea(corner, max.getX() - min.getX() + 1, max.getY() - min.getY() + 1);
+			}
+			// On a boat the scene is the boat's own, so go from the object's centre tile instead.
 			int width = Math.max(1, game.sizeX());
 			int height = Math.max(1, game.sizeY());
 			return new WorldArea(location.dx(-width / 2).dy(-height / 2), width, height);

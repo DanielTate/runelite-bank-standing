@@ -29,6 +29,8 @@ Lots more to find this time, and most of it is secret. Please don't spoil it for
   overwritten.
 - Right-clicking in the collection log or skill guide no longer counts as a left click, and
   a closed window can no longer block clicks.
+- Banks two tiles wide, like the Bank Camel at the Tombs of Amascut, are now measured from
+  the tiles they really stand on. Before, some couldn't be reached at low levels.
 - Fixed a few rare crashes when turning the plugin off or clicking in the collection log.
 
 ## 1.1.1
