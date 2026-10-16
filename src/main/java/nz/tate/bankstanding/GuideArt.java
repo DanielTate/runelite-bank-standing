@@ -81,6 +81,8 @@ class GuideArt
 	private final SpriteManager spriteManager;
 	private final ItemManager itemManager;
 	private final Map<Integer, BufferedImage> sprites = new ConcurrentHashMap<>();
+	/** Mirrored copies of sprites, by the original's ID. */
+	private final Map<Integer, BufferedImage> flipped = new ConcurrentHashMap<>();
 	private final Map<Integer, Image> goldIcons = new ConcurrentHashMap<>();
 	private BufferedImage sideParchment;
 	/** The game's fonts: the skill guide's title, small, plain, bold and larger bold. */
@@ -121,6 +123,29 @@ class GuideArt
 	BufferedImage sprite(int id)
 	{
 		return sprites.get(id);
+	}
+
+	/** A mirror image: left to right if {@code horizontally}, otherwise top to bottom. */
+	private static BufferedImage flip(BufferedImage image, boolean horizontally)
+	{
+		int w = image.getWidth();
+		int h = image.getHeight();
+		BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		for (int px = 0; px < w; px++)
+		{
+			for (int py = 0; py < h; py++)
+			{
+				out.setRGB(horizontally ? w - 1 - px : px, horizontally ? py : h - 1 - py, image.getRGB(px, py));
+			}
+		}
+		return out;
+	}
+
+	/** How far a tab's slanted right end reaches in, so labels can stay clear of it. */
+	int tabSlant()
+	{
+		BufferedImage right = sprites.get(TAB[2]);
+		return right == null ? 0 : right.getWidth();
 	}
 
 	/** Loads the fonts the first time; false until everything needed to draw is ready. Client thread. */
@@ -224,6 +249,7 @@ class GuideArt
 	/** The steel border used around the game's windows. */
 	void steelBorder(Graphics2D graphics, int x, int y, int width, int height)
 	{
+		// The game only has the top and right edges; the bottom and left are those flipped.
 		BufferedImage horizontal = sprites.get(STEEL_EDGE_HORIZONTAL);
 		BufferedImage vertical = sprites.get(STEEL_EDGE_VERTICAL);
 		BufferedImage topLeft = sprites.get(STEEL_CORNERS[0]);
@@ -231,6 +257,8 @@ class GuideArt
 		{
 			return;
 		}
+		BufferedImage bottom = flipped.computeIfAbsent(STEEL_EDGE_HORIZONTAL, id -> flip(horizontal, false));
+		BufferedImage left = flipped.computeIfAbsent(STEEL_EDGE_VERTICAL, id -> flip(vertical, true));
 		int cw = topLeft.getWidth();
 		int ch = topLeft.getHeight();
 		java.awt.Shape clip = graphics.getClip();
@@ -238,13 +266,13 @@ class GuideArt
 		for (int tx = x + cw; tx < x + width - cw; tx += horizontal.getWidth())
 		{
 			graphics.drawImage(horizontal, tx, y, null);
-			graphics.drawImage(horizontal, tx, y + height - horizontal.getHeight(), null);
+			graphics.drawImage(bottom, tx, y + height - bottom.getHeight(), null);
 		}
 		graphics.setClip(clip);
 		graphics.clipRect(x, y + ch, width, height - 2 * ch);
 		for (int ty = y + ch; ty < y + height - ch; ty += vertical.getHeight())
 		{
-			graphics.drawImage(vertical, x, ty, null);
+			graphics.drawImage(left, x, ty, null);
 			graphics.drawImage(vertical, x + width - vertical.getWidth(), ty, null);
 		}
 		graphics.setClip(clip);

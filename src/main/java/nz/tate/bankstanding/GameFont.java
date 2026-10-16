@@ -84,6 +84,21 @@ final class GameFont
 		return height;
 	}
 
+	/**
+	 * Where to draw shadowed text so it looks vertically centred in a box: capital letters and
+	 * their shadow sit in the middle, and descenders hang below, as in the game.
+	 */
+	int centredTop(int boxTop, int boxHeight)
+	{
+		BufferedImage capital = masks['A'];
+		if (capital == null)
+		{
+			return boxTop + (boxHeight - height) / 2;
+		}
+		int capitalHeight = capital.getHeight() + 1;
+		return boxTop + (boxHeight - capitalHeight) / 2 - offsetY['A'];
+	}
+
 	int width(String text)
 	{
 		int width = 0;

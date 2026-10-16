@@ -28,6 +28,7 @@ import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
@@ -39,8 +40,8 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
-import net.runelite.client.ui.overlay.tooltip.Tooltip;
-import net.runelite.client.ui.overlay.tooltip.TooltipManager;
+import net.runelite.client.config.RuneLiteConfig;
+import net.runelite.client.ui.overlay.components.TooltipComponent;
 import nz.tate.bankstanding.core.BankArea;
 import nz.tate.bankstanding.core.BankNames;
 import nz.tate.bankstanding.core.BankRegions;
@@ -115,6 +116,8 @@ class CollectionLogOverlay extends GameWindow
 	};
 	/** Shown for a hidden entry until it's found. */
 	private static final String SECRET = "Secret";
+	/** How far below the cursor a tooltip sits, as RuneLite's own do. */
+	private static final int TOOLTIP_GAP = 24;
 	/** The icon a hidden drop shows until it's found. */
 	private static final int SECRET_ICON = 6199;
 	private static final String[] DRESSED_HINT = {
@@ -206,8 +209,10 @@ class CollectionLogOverlay extends GameWindow
 	}
 
 	private final BankStandingPlugin plugin;
-	private final TooltipManager tooltipManager;
+	private final RuneLiteConfig runeLiteConfig;
 	private final HitsplatOverlay hitsplats;
+	/** The hovered slot's tooltip this frame, drawn last so it sits on top of the window. */
+	private String tooltip;
 
 	private volatile int tab;
 	private volatile int entry;
@@ -221,12 +226,12 @@ class CollectionLogOverlay extends GameWindow
 	private long totalCountedAt;
 
 	@Inject
-	CollectionLogOverlay(BankStandingPlugin plugin, Client client, GuideArt art, TooltipManager tooltipManager,
+	CollectionLogOverlay(BankStandingPlugin plugin, Client client, GuideArt art, RuneLiteConfig runeLiteConfig,
 		HitsplatOverlay hitsplats)
 	{
 		super(client, art);
 		this.plugin = plugin;
-		this.tooltipManager = tooltipManager;
+		this.runeLiteConfig = runeLiteConfig;
 		this.hitsplats = hitsplats;
 	}
 
@@ -335,7 +340,10 @@ class CollectionLogOverlay extends GameWindow
 		{
 			int tabX = x + TAB_X + t * TAB_WIDTH;
 			art.tab(graphics, tabX, y + TAB_Y, TAB_WIDTH, t == tab);
-			art.plain.drawShadowedCentred(graphics, TABS[t], tabX + TAB_WIDTH / 2, y + TAB_Y + 4, ORANGE);
+			// Centred in the flat part of the tab, clear of its slanted end.
+			int room = TAB_WIDTH - art.tabSlant() - 4;
+			art.small.drawShadowedCentred(graphics, TABS[t], tabX + 2 + room / 2,
+				art.small.centredTop(y + TAB_Y, TAB_HEIGHT), ORANGE);
 		}
 		graphics.setColor(SEPARATOR);
 		graphics.drawLine(x + TAB_X, y + BODY_TOP - 1, x + WIDTH - TAB_X, y + BODY_TOP - 1);
@@ -358,13 +366,53 @@ class CollectionLogOverlay extends GameWindow
 				graphics.fillRect(x + LIST_LEFT, rowY, LIST_RIGHT - LIST_LEFT, ENTRY_ROW);
 			}
 			boolean complete = each.done() == each.slots.size();
-			art.plain.drawShadowed(graphics, each.name, x + LIST_LEFT + 4, rowY + 2, complete ? GREEN : ORANGE);
+			art.plain.drawShadowed(graphics, each.name, x + LIST_LEFT + 4, art.plain.centredTop(rowY, ENTRY_ROW),
+				complete ? GREEN : ORANGE);
 		}
+		tooltip = null;
 		if (selected >= 0)
 		{
 			drawEntry(graphics, entries.get(selected), x, y);
 		}
+		if (tooltip != null)
+		{
+			drawTooltip(graphics, tooltip);
+		}
 		return new Dimension(WIDTH, HEIGHT);
+	}
+
+	/**
+	 * Draws a tooltip like RuneLite's own, below the cursor and kept on screen. RuneLite draws
+	 * its tooltips under always-on-top overlays like this window, so the window draws its own.
+	 */
+	private void drawTooltip(Graphics2D graphics, String text)
+	{
+		TooltipComponent component = new TooltipComponent();
+		component.setText(text);
+		component.setBackgroundColor(runeLiteConfig.overlayBackgroundColor());
+		component.setModIcons(client.getModIcons());
+
+		// Measure first, off screen, so the tooltip can be kept inside the canvas.
+		BufferedImage scratch = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D measure = scratch.createGraphics();
+		Font font = runeLiteConfig.tooltipFont().getFont();
+		measure.setFont(font);
+		component.setPreferredLocation(new java.awt.Point(0, 0));
+		Dimension size = component.render(measure);
+		measure.dispose();
+
+		Point mouse = client.getMouseCanvasPosition();
+		int tipX = Math.max(0, Math.min(mouse.getX(), client.getCanvasWidth() - size.width));
+		int tipY = mouse.getY() + TOOLTIP_GAP;
+		if (tipY + size.height > client.getCanvasHeight())
+		{
+			tipY = Math.max(0, mouse.getY() - TOOLTIP_GAP - size.height);
+		}
+		component.setPreferredLocation(new java.awt.Point(tipX, tipY));
+		Font original = graphics.getFont();
+		graphics.setFont(font);
+		component.render(graphics);
+		graphics.setFont(original);
 	}
 
 	private void drawEntry(Graphics2D graphics, Entry shown, int x, int y)
@@ -454,7 +502,7 @@ class CollectionLogOverlay extends GameWindow
 				}
 				if (hover.contains(mouse.getX(), mouse.getY()))
 				{
-					tooltipManager.add(new Tooltip(slot.name + "</br>" + slot.detail));
+					tooltip = slot.name + "</br>" + slot.detail;
 				}
 			}
 		}

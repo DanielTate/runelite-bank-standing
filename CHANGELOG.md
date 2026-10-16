@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1
+
+- Tooltips in the collection log show on top of it again, instead of underneath.
+- The collection log's bottom and left borders now match the game's.
+- The collection log's tab labels use the smaller font so they all fit, and the list on
+  the left is centred in its highlight.
+
 ## 1.2
 
 Lots more to find this time, and most of it is secret. Please don't spoil it for other players.
