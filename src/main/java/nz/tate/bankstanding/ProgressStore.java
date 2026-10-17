@@ -25,6 +25,9 @@
 package nz.tate.bankstanding;
 
 import com.google.gson.Gson;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -32,17 +35,26 @@ import net.runelite.client.config.ConfigManager;
 import nz.tate.bankstanding.core.Progress;
 
 /**
- * Saves progress per OSRS account, in RuneLite's profile config. Saves go to the account the
- * progress was loaded from, so a save made while logging out can't land on another account.
+ * Saves progress per OSRS account, in RuneLite's profile config, which RuneLite syncs between
+ * computers. Saves go to the account the progress was loaded from, so a save made while logging
+ * out can't land on another account.
+ *
+ * <p>RuneLite only pulls in other computers' settings when it starts, so two RuneLites open at
+ * once would each save over the other's progress. To keep that from losing anything for good,
+ * every RuneLite also saves its own copy under a key of its own, and loading picks whichever
+ * copy has the most XP. The main key is still written, for older versions of the plugin.
  */
 @Slf4j
 @Singleton
 class ProgressStore
 {
 	private static final String KEY = "progress";
+	private static final String COPY = KEY + ".";
 
 	private final ConfigManager configManager;
 	private final Gson gson;
+	/** This RuneLite's own copy, new each time it starts. */
+	private final String copyKey = COPY + UUID.randomUUID().toString().substring(0, 8);
 	private String profileKey;
 
 	@Inject
@@ -61,31 +73,82 @@ class ProgressStore
 			return null;
 		}
 
-		String json = configManager.getConfiguration(BankStandingConfig.GROUP, profile(), KEY);
-		if (json == null)
+		List<Progress> saves = new ArrayList<>();
+		add(saves, KEY, configManager.getConfiguration(BankStandingConfig.GROUP, profile(), KEY));
+		List<String> copies = copies();
+		for (String copy : copies)
+		{
+			add(saves, copy, configManager.getConfiguration(BankStandingConfig.GROUP, profile(), copy));
+		}
+		// Saves from before the first release used RuneLite's own per-account keys.
+		add(saves, "the first save", configManager.getRSProfileConfiguration(BankStandingConfig.GROUP, KEY));
+
+		Progress best = Progress.best(saves);
+		if (best == null)
 		{
 			return new Progress();
+		}
+		if (saves.size() > 1)
+		{
+			log.info("Found {} Bank Standing saves for this account; using the one with {} xp", saves.size(), best.xp);
+		}
+		// Keep the best one, then tidy away the other copies: any RuneLite still open writes
+		// its copy again on its next save.
+		save(best);
+		for (String copy : copies)
+		{
+			configManager.unsetConfiguration(BankStandingConfig.GROUP, profile(), copy);
+		}
+		return best;
+	}
+
+	private void add(List<Progress> saves, String key, String json)
+	{
+		if (json == null)
+		{
+			return;
 		}
 		try
 		{
 			Progress progress = gson.fromJson(json, Progress.class);
-			return progress != null ? progress : new Progress();
+			if (progress != null)
+			{
+				saves.add(progress);
+			}
 		}
 		catch (RuntimeException e)
 		{
-			// Keep the unreadable save beside the fresh one, since the next save replaces it.
+			// Keep the unreadable save beside the others, since the next save replaces it.
 			String backup = KEY + "-unreadable-" + System.currentTimeMillis();
 			configManager.setConfiguration(BankStandingConfig.GROUP, profile(), backup, json);
-			log.warn("Unreadable Bank Standing progress, starting fresh; the old save is kept as {}", backup, e);
-			return new Progress();
+			log.warn("Unreadable Bank Standing save ({}), skipping it; it's kept as {}", key, backup, e);
 		}
+	}
+
+	/** Every RuneLite's own copy for this account, by key, apart from this one's. */
+	private List<String> copies()
+	{
+		List<String> copies = new ArrayList<>();
+		for (String found : configManager.getRSProfileConfigurationKeys(BankStandingConfig.GROUP, profile(), COPY))
+		{
+			// RuneLite hands the key back with part of the profile on the front.
+			int at = found.lastIndexOf(COPY);
+			String copy = at < 0 ? null : found.substring(at);
+			if (copy != null && copy.length() > COPY.length() && copy.indexOf('.', COPY.length()) < 0 && !copy.equals(copyKey))
+			{
+				copies.add(copy);
+			}
+		}
+		return copies;
 	}
 
 	void save(Progress progress)
 	{
 		if (profileKey != null)
 		{
-			configManager.setConfiguration(BankStandingConfig.GROUP, profile(), KEY, gson.toJson(progress));
+			String json = gson.toJson(progress);
+			configManager.setConfiguration(BankStandingConfig.GROUP, profile(), KEY, json);
+			configManager.setConfiguration(BankStandingConfig.GROUP, profile(), copyKey, json);
 		}
 	}
 

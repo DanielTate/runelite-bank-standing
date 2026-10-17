@@ -58,8 +58,9 @@ redraws your own copy of it, the same way RuneLite's `!kc` works. Other players 
 
 **RuneLite warned me this plugin might send my IP address to a third party. Does it?**
 No. RuneLite shows that warning for every Plugin Hub plugin, because it can't check what
-each one does. Bank Standing makes no network requests and sends no data anywhere. Your
-progress is only saved on your own computer.
+each one does. Bank Standing makes no network requests of its own. Your progress is saved in
+RuneLite's settings, so if you're logged in to a RuneLite account, RuneLite syncs it along
+with the rest of your settings.
 
 **Can other players see my cape, rug or hitsplats?**
 No. Everything is drawn on your own client, and the game server never hears about it.
@@ -79,7 +80,13 @@ No. The plugin never clicks, moves or acts for you. It only watches what you do,
 gives no advantage in the real game.
 
 **Does it work on all my accounts?**
-Yes. Progress is saved separately for each account.
+Yes. Progress is saved separately for each OSRS account.
+
+**Will my progress follow me to another computer?**
+Yes, if you're logged in to the same RuneLite account on both and it syncs your settings.
+Close RuneLite on one computer before playing on the other: RuneLite only picks up the other
+computer's progress when it starts. If two copies of your progress ever end up out of step,
+Bank Standing keeps the one with the most XP.
 
 ## Credits
 

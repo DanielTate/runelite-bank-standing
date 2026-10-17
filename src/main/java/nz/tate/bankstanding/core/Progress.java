@@ -25,6 +25,7 @@
 package nz.tate.bankstanding.core;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -115,5 +116,22 @@ public final class Progress
 			}
 		}
 		banks = renamed;
+	}
+
+	/**
+	 * The save to keep when there's more than one: the most XP, then the most rolls. Null if
+	 * there are none.
+	 */
+	public static Progress best(List<Progress> saves)
+	{
+		Progress best = null;
+		for (Progress save : saves)
+		{
+			if (best == null || save.xp > best.xp || save.xp == best.xp && save.rolls > best.rolls)
+			{
+				best = save;
+			}
+		}
+		return best;
 	}
 }

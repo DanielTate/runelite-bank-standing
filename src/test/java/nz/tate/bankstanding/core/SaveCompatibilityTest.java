@@ -3,6 +3,8 @@ package nz.tate.bankstanding.core;
 import com.google.gson.Gson;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -44,5 +46,23 @@ public class SaveCompatibilityTest
 		assertEquals(13034431, again.xp);
 		assertEquals(Long.valueOf(7), again.moments.get("odd:midnight"));
 		assertTrue(again.daysStood.contains("2026-10-15"));
+	}
+
+	@Test
+	public void theSaveWithTheMostXpWins()
+	{
+		Progress a = new Progress();
+		a.xp = 500;
+		a.rolls = 10;
+		Progress b = new Progress();
+		b.xp = 900;
+		b.rolls = 5;
+		Progress c = new Progress();
+		c.xp = 900;
+		c.rolls = 8;
+		assertNull(Progress.best(java.util.Collections.emptyList()));
+		assertSame(a, Progress.best(java.util.Collections.singletonList(a)));
+		assertSame(c, Progress.best(java.util.Arrays.asList(a, b, c)));
+		assertSame(c, Progress.best(java.util.Arrays.asList(c, b, a)));
 	}
 }
