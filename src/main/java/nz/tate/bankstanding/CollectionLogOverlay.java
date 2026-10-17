@@ -333,6 +333,22 @@ class CollectionLogOverlay extends GameWindow
 		scroll = Math.max(0, Math.min(Math.max(0, contentRows - visibleContentRows), scroll + rows));
 	}
 
+	/** The whole log's {found, total}, as its title shows it. Client thread. */
+	int[] total(Progress progress)
+	{
+		int done = 0;
+		int total = 0;
+		for (int t = 0; t < TABS.length; t++)
+		{
+			for (Entry each : entries(progress, t))
+			{
+				done += each.done();
+				total += each.slots.size();
+			}
+		}
+		return new int[]{done, total};
+	}
+
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
@@ -352,17 +368,8 @@ class CollectionLogOverlay extends GameWindow
 		long now = System.currentTimeMillis();
 		if (now - totalCountedAt >= 1000)
 		{
-			int done = 0;
-			int total = 0;
-			for (int t = 0; t < TABS.length; t++)
-			{
-				for (Entry each : entries(progress, t))
-				{
-					done += each.done();
-					total += each.slots.size();
-				}
-			}
-			totalCount = done + "/" + total;
+			int[] counted = total(progress);
+			totalCount = counted[0] + "/" + counted[1];
 			totalCountedAt = now;
 		}
 		art.bold.drawShadowedCentred(graphics, "Bank Standing Collection Log - " + totalCount, x + WIDTH / 2, y + 11, ORANGE);

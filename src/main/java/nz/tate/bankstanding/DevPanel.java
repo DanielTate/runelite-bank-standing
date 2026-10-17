@@ -102,6 +102,10 @@ class DevPanel extends PluginPanel
 		pretend.setOpaque(false);
 		pretend.addActionListener(e -> dev.pretendStanding = pretend.isSelected());
 		body.add(pretend);
+		JCheckBox modifiers = new JCheckBox("Preview the modifier widget", dev.previewModifiers);
+		modifiers.setOpaque(false);
+		modifiers.addActionListener(e -> dev.previewModifiers = modifiers.isSelected());
+		body.add(modifiers);
 
 		body.add(heading("Collection log"));
 		JComboBox<String> drop = new JComboBox<>();

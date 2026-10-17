@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.4
+
+### Active modifiers
+- A small row of boxes in the corner shows what's helping your stand right now: the emote
+  you just did with its countdown, and full outfits and other sets while they count. Hover
+  one to see what it does.
+- Sitting down and the like show how long until they're ready again, and a gold box adds up
+  everything shown.
+- Hidden ones only appear once you've found them. Turn it all off with "Show active
+  modifiers" in the settings.
+
+### Chat commands
+- Type `!bs` (or `!bankstanding`) in chat for your level, XP and time stood.
+- Add a word for more: `here`, a bank's name, `fav`, `regulars`, `banks`, `log`, `pet`,
+  `secrets`, `session`, `streak` or `title`. `!bs help` lists them.
+- Only you see the answer: your message is sent as typed, and your own copy of it is
+  redrawn, like RuneLite's `!kc`.
+- Each bank now counts your visits and when you first stood there, from this version on.
+
+### Other
+- Thanks to Hochep, now in the credits.
+
 ## 1.3.1
 
 - Finding a secret phrase for the first time now shows the collection log popup, like

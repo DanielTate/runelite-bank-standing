@@ -92,4 +92,14 @@ public interface BankStandingConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+		keyName = "showModifiers",
+		name = "Show active modifiers",
+		description = "While you bank stand, show a small box for each emote or full set that's helping, with a timer for emotes. Hidden ones only show once you've found them."
+	)
+	default boolean showModifiers()
+	{
+		return true;
+	}
 }

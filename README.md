@@ -45,6 +45,15 @@ by right-clicking the skill tile.
 
 ![The Bank Standing collection log](https://raw.githubusercontent.com/DanielTate/runelite-bank-standing/main/docs/images/collection-log.png)
 
+## Chat commands
+
+Type `!bs` in any chat to show off your level, XP and time stood. Add a word for more:
+`here`, a bank's name (like `!bs varrock west`), `fav`, `regulars`, `banks`, `log`, `pet`,
+`secrets`, `session`, `streak` or `title`. `!bs help` lists them.
+
+Only you see the answer. Your message goes out exactly as you typed it, and the plugin
+redraws your own copy of it, the same way RuneLite's `!kc` works. Other players see `!bs`.
+
 ## FAQ
 
 **RuneLite warned me this plugin might send my IP address to a third party. Does it?**
@@ -54,6 +63,11 @@ progress is only saved on your own computer.
 
 **Can other players see my cape, rug or hitsplats?**
 No. Everything is drawn on your own client, and the game server never hears about it.
+
+**What's that row of boxes in the corner?**
+The modifiers helping your stand right now, like an emote's countdown or a full outfit at its
+bank. Hover one to see what it does. Hidden ones only show once you've found them. Turn it
+off with "Show active modifiers" in the settings.
 
 **Why did my stand end?**
 Walking, opening the bank, or gaining XP in a real skill ends your stand, and the timer
@@ -69,7 +83,7 @@ Yes. Progress is saved separately for each account.
 
 ## Credits
 
-Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek and Dennis.
+Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and Hochep.
 
 For building and testing the plugin, see [DEVELOPMENT.md](DEVELOPMENT.md). For what's new,
 see [CHANGELOG.md](CHANGELOG.md).

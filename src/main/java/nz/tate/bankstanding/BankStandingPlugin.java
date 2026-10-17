@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +51,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
+import net.runelite.api.MessageNode;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.Player;
@@ -77,9 +79,11 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.SpotanimID;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
@@ -97,6 +101,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
 import nz.tate.bankstanding.core.BankNames;
 import nz.tate.bankstanding.core.BankRecord;
+import nz.tate.bankstanding.core.ChatCommands;
 import nz.tate.bankstanding.core.CollectionLog;
 import nz.tate.bankstanding.core.DailyStreak;
 import nz.tate.bankstanding.core.Emote;
@@ -199,6 +204,12 @@ public class BankStandingPlugin extends Plugin
 	@Inject
 	private PeekTimer peekTimer;
 
+	@Inject
+	private ModifierWidget modifierWidget;
+
+	@Inject
+	private ChatCommandManager chatCommandManager;
+
 	private BankStandingPanel panel;
 	private NavigationButton navButton;
 	private NavigationButton devButton;
@@ -295,6 +306,11 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.add(xpDropOverlay);
 		overlayManager.add(hitsplatOverlay);
 		overlayManager.add(peekTimer);
+		overlayManager.add(modifierWidget);
+		// Only the half that runs after the message is sent: the message is never changed
+		// on its way out, only your own copy of it is redrawn.
+		chatCommandManager.registerCommand(ChatCommands.SHORT, this::onChatCommand);
+		chatCommandManager.registerCommand(ChatCommands.LONG, this::onChatCommand);
 
 		panel = new BankStandingPanel(icons, this::capeEmote, this::openCollectionLog);
 		navButton = NavigationButton.builder()
@@ -367,6 +383,10 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.remove(hitsplatOverlay);
 		overlayManager.remove(peekTimer);
 		peekTimer.ticksLeft(0);
+		overlayManager.remove(modifierWidget);
+		chatCommandManager.unregisterCommand(ChatCommands.SHORT);
+		chatCommandManager.unregisterCommand(ChatCommands.LONG);
+		modifierWidget.show(Collections.emptyList());
 		dropFeed.clear();
 		celebration.stop();
 		clientToolbar.removeNavigation(navButton);
@@ -642,6 +662,70 @@ public class BankStandingPlugin extends Plugin
 		}
 	}
 
+	/**
+	 * {@code !bs} in chat: your own copy of the message is redrawn with the answer. Other
+	 * players, and other people's {@code !bs}, see the message as typed.
+	 */
+	private void onChatCommand(ChatMessage chatMessage, String message)
+	{
+		Player player = client.getLocalPlayer();
+		MessageNode node = chatMessage.getMessageNode();
+		if (progress == null || player == null || player.getName() == null || node == null)
+		{
+			return;
+		}
+		boolean mine = chatMessage.getType() == ChatMessageType.PRIVATECHATOUT
+			|| Text.sanitize(chatMessage.getName()).equals(Text.sanitize(player.getName()));
+		if (!mine)
+		{
+			return;
+		}
+		ChatCommands.Facts facts = new ChatCommands.Facts();
+		facts.progress = progress;
+		facts.session = session;
+		facts.today = today();
+		if (tracker.isIdleAtBank())
+		{
+			WorldPoint location = mapLocation(player);
+			facts.hereKey = BankNames.keyFor(location.getX(), location.getY());
+		}
+		facts.log = collectionLogOverlay.total(progress);
+		facts.secrets = secretsFound();
+		String answer = ChatCommands.answer(Text.removeTags(message), facts);
+		if (answer != null)
+		{
+			node.setValue(answer);
+			client.refreshChat();
+		}
+	}
+
+	/** Every secret found, of every kind, as one number: never which. */
+	private int secretsFound()
+	{
+		int found = 0;
+		for (int[] count : keywords.foundByGroup(progress).values())
+		{
+			found += count[0];
+		}
+		for (int[] count : Modifiers.foundByGroup(progress.moments).values())
+		{
+			found += count[0];
+		}
+		for (Spellbook book : Spellbook.values())
+		{
+			found += progress.moments.containsKey(book.momentKey()) ? 1 : 0;
+		}
+		for (Moments.Odd odd : Moments.Odd.values())
+		{
+			found += odd.hidden && progress.moments.containsKey(odd.key) ? 1 : 0;
+		}
+		for (CollectionLog.Drop drop : CollectionLog.DROPS)
+		{
+			found += drop.hidden && progress.collection.containsKey(drop.key) ? 1 : 0;
+		}
+		return found;
+	}
+
 	/** The first time a phrase pays out, it's new in the log: say which kind, never which one. */
 	private void newPhrase(Map<Keywords.Group, int[]> before)
 	{
@@ -720,6 +804,7 @@ public class BankStandingPlugin extends Plugin
 
 		if (!tracker.isStanding())
 		{
+			showModifiers(Collections.emptyList());
 			progress.records.standEnded();
 			watch.standEnded();
 			randomEvents.clear();
@@ -735,6 +820,10 @@ public class BankStandingPlugin extends Plugin
 		{
 			collected("New bank: ", BankNames.displayName(bankKey, bank), -1, false);
 		}
+		if (bank.ticks == 0 && bank.firstAt == 0)
+		{
+			bank.firstAt = System.currentTimeMillis();
+		}
 		bank.ticks++;
 		session.ticks++;
 		dirty = true;
@@ -744,8 +833,13 @@ public class BankStandingPlugin extends Plugin
 		}
 		DailyStreak.standingTick(progress, today());
 		progress.records.standingTick(progress, session, System.currentTimeMillis());
+		if (progress.records.standTicks() == 1)
+		{
+			bank.visits++;
+		}
 		noteMoments(bankKey, location, bank);
 		standingOnFire(player, bank);
+		showModifiers(config.showModifiers() ? activeModifiers(bankKey, bank, location) : Collections.emptyList());
 
 		if (roll)
 		{
@@ -893,6 +987,110 @@ public class BankStandingPlugin extends Plugin
 			}
 		}
 		return effect;
+	}
+
+	/** Dressed-for-it entries by moment key, for the modifier widget. */
+	private static final Map<String, Modifiers.Dressed> DRESSED = new HashMap<>();
+
+	static
+	{
+		for (Modifiers.Dressed dressed : Modifiers.dressed())
+		{
+			DRESSED.put(dressed.key, dressed);
+		}
+	}
+
+	/**
+	 * What the modifier widget shows this tick: the emote you did, while it lasts, and each
+	 * full set that counts here. A set only shows once it's in the log, so the widget never
+	 * gives away one you haven't found.
+	 */
+	private List<ModifierWidget.Shown> activeModifiers(String bankKey, BankRecord bank, WorldPoint location)
+	{
+		List<ModifierWidget.Shown> shown = new ArrayList<>();
+		int ticksLeft = emoteUntilTick - client.getTickCount();
+		if (emote != Emote.NONE && ticksLeft > 0)
+		{
+			shown.add(emoteShown(emote, System.currentTimeMillis() + ticksLeft * 600L));
+		}
+		for (String key : Modifiers.evaluate(context(bank, location)).found)
+		{
+			if (!progress.moments.containsKey(key))
+			{
+				continue;
+			}
+			Spellbook book = Spellbook.forMomentKey(key);
+			if (book != null)
+			{
+				shown.add(ModifierWidget.Shown.buff(book.title, "+1 max hit", book.icon, -1, 0, 1, false));
+				continue;
+			}
+			Modifiers.Dressed dressed = DRESSED.get(key);
+			if (dressed == null)
+			{
+				continue;
+			}
+			String here = BankNames.displayName(bankKey, bank);
+			String what = dressedFor(key);
+			String name = Character.toUpperCase(what.charAt(0)) + what.substring(1) + " at " + here;
+			boolean pet = dressed.pet != null;
+			shown.add(ModifierWidget.Shown.buff(name, pet ? "Slightly better rolls" : "+1 max hit", dressed.icon, -1, 0,
+				pet ? 0 : 1, pet));
+		}
+		cooldowns(shown, System.currentTimeMillis());
+		return shown;
+	}
+
+	/** Sit, and standing on a fire once found, each pay out once an hour: show the wait. */
+	private void cooldowns(List<ModifierWidget.Shown> shown, long now)
+	{
+		long sitReady = progress.lastSitRoll + Moments.SIT_COOLDOWN_MILLIS;
+		if (progress.lastSitRoll != 0 && now < sitReady)
+		{
+			shown.add(ModifierWidget.Shown.cooldown("Sit", "A boosted drop once an hour", ItemID.POH_DINING_CHAIRS_1, -1, sitReady));
+		}
+		long fireReady = progress.lastFireRoll + Moments.SIT_COOLDOWN_MILLIS;
+		if (progress.lastFireRoll != 0 && now < fireReady)
+		{
+			shown.add(ModifierWidget.Shown.cooldown("Hot seat", "A boosted drop once an hour", ItemID.TINDERBOX, -1, fireReady));
+		}
+	}
+
+	/** Every kind of box at once, for the dev panel; the emote restarts each minute. */
+	private List<ModifierWidget.Shown> previewModifiers()
+	{
+		long now = System.currentTimeMillis();
+		long minute = 60_000L;
+		long emoteEnds = (now / minute + 1) * minute;
+		List<ModifierWidget.Shown> shown = new ArrayList<>();
+		shown.add(emoteShown(Emote.FLEX, emoteEnds));
+		shown.add(ModifierWidget.Shown.buff("Outfit (preview)", "+1 max hit", ItemID.SPIRIT_ANGLER_HAT, -1, 0, 1, false));
+		shown.add(ModifierWidget.Shown.buff("Pet at home (preview)", "Slightly better rolls", -1, -1, 0, 0, true));
+		shown.add(ModifierWidget.Shown.buff(Spellbook.LUNAR.title, "+1 max hit", Spellbook.LUNAR.icon, -1, 0, 1, false));
+		shown.add(ModifierWidget.Shown.cooldown("Sit", "A boosted drop once an hour", ItemID.POH_DINING_CHAIRS_1, -1, now + 42 * minute));
+		shown.add(ModifierWidget.Shown.cooldown("Hot seat", "A boosted drop once an hour", ItemID.TINDERBOX, -1, emoteEnds + 15_000));
+		return shown;
+	}
+
+	/** What the widget shows this tick, unless the dev panel is previewing it. */
+	private void showModifiers(List<ModifierWidget.Shown> shown)
+	{
+		modifierWidget.show(dev.previewModifiers ? previewModifiers() : shown);
+	}
+
+	private static ModifierWidget.Shown emoteShown(Emote emote, long endsAt)
+	{
+		switch (emote)
+		{
+			case LEAN:
+				return ModifierWidget.Shown.buff("Lean", "Better rolls", -1, SpriteID.Emotes.LEAN, endsAt, 0, true);
+			case YAWN:
+				return ModifierWidget.Shown.buff("Yawn", "Slightly better rolls", -1, SpriteID.Emotes.YAWN, endsAt, 0, true);
+			case FLEX:
+				return ModifierWidget.Shown.buff("Flex", "+1 max hit", -1, -1, endsAt, 1, false);
+			default:
+				return ModifierWidget.Shown.buff("Skillcape emote", "+1 max hit", -1, SpriteID.Emotes.SKILLCAPE, endsAt, 1, false);
+		}
 	}
 
 	/** What kind of thing counted, without saying which. */

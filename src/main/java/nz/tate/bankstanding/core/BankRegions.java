@@ -100,6 +100,17 @@ public final class BankRegions
 		return null;
 	}
 
+	/** How many banks the log lists. */
+	public static int total()
+	{
+		int total = 0;
+		for (List<String> keys : REGIONS.values())
+		{
+			total += keys.size();
+		}
+		return total;
+	}
+
 	/** The bank keys in a region, in the order listed. */
 	public static List<String> keys(String region)
 	{

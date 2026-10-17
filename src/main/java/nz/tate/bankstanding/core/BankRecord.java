@@ -34,6 +34,11 @@ public final class BankRecord
 	public int x;
 	public int y;
 
+	/** Stands started here, counted from 1.4. */
+	public int visits;
+	/** When you first stood here, in epoch millis; 0 for banks first stood at before 1.4. */
+	public long firstAt;
+
 	public double hours()
 	{
 		return ticks * 0.6 / 3600;

@@ -51,6 +51,8 @@ class DevOptions
 	boolean previewCape;
 	/** Shows the rug, seat, fidgets and bankers as if standing, anywhere (dev panel only). */
 	boolean pretendStanding;
+	/** Shows every kind of modifier box at once (dev panel only). */
+	boolean previewModifiers;
 	/** Shows the pet as if you owned it (dev panel only). */
 	boolean previewPet;
 	/** The skillcape the 99 cape is built from, or 0 for the default (dev panel only). */
