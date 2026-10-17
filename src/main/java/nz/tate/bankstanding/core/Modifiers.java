@@ -124,6 +124,54 @@ public final class Modifiers
 		new Haul("sulphur-mine", Items.ids(13571))
 	));
 
+	/** One thing that counts in "Dressed for it", as the journal lists it once found. */
+	public static final class Dressed
+	{
+		/** The group, as {@link #foundByGroup} names it. */
+		public final String group;
+		/** The moment key it's saved under. */
+		public final String key;
+		public final String bankKey;
+		/** An item to show for it, or -1. */
+		public final int icon;
+		/** The pet's name, for pets at home; otherwise null. */
+		public final String pet;
+
+		Dressed(String group, String key, String bankKey, int icon, String pet)
+		{
+			this.group = group;
+			this.key = key;
+			this.bankKey = bankKey;
+			this.icon = icon;
+			this.pet = pet;
+		}
+	}
+
+	/** Everything that counts in "Dressed for it", group by group. */
+	public static List<Dressed> dressed()
+	{
+		List<Dressed> all = new ArrayList<>();
+		for (Outfit outfit : Items.OUTFITS)
+		{
+			all.add(new Dressed("Outfits", OUTFIT + outfit.key(), outfit.key(), outfit.icon(), null));
+		}
+		for (Outfit diary : Items.DIARY)
+		{
+			all.add(new Dressed("Diary items", DIARY + diary.key(), diary.key(), diary.icon(), null));
+		}
+		for (Haul haul : HAULS)
+		{
+			all.add(new Dressed("Full inventories", HAUL + haul.bankKey, haul.bankKey, Collections.min(haul.items), null));
+		}
+		List<String> pets = new ArrayList<>(Items.SKILLING_PETS.keySet());
+		Collections.sort(pets);
+		for (String bank : pets)
+		{
+			all.add(new Dressed("Pets at home", SKILLING_PET + bank, bank, -1, Items.SKILLING_PETS.get(bank)));
+		}
+		return all;
+	}
+
 	/** For the collection log: how many of each kind have counted at least once, as {found, total}. */
 	public static Map<String, int[]> foundByGroup(Map<String, Long> moments)
 	{
@@ -205,6 +253,12 @@ public final class Modifiers
 				e.gear();
 				e.found.add(HAUL + haul.bankKey);
 			}
+		}
+
+		if (c.spellbook != null && c.at(c.spellbook.bankKey))
+		{
+			e.gear();
+			e.found.add(c.spellbook.momentKey());
 		}
 
 		Set<Integer> guildCapes = Items.GUILD_CAPES.get(c.bankKey);

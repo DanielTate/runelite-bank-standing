@@ -59,6 +59,7 @@ import net.runelite.api.WorldType;
 import net.runelite.api.clan.ClanSettings;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
@@ -107,6 +108,7 @@ import nz.tate.bankstanding.core.Moments;
 import nz.tate.bankstanding.core.Modifiers;
 import nz.tate.bankstanding.core.Progress;
 import nz.tate.bankstanding.core.Session;
+import nz.tate.bankstanding.core.Spellbook;
 import nz.tate.bankstanding.core.StandContext;
 import nz.tate.bankstanding.core.StandTracker;
 import nz.tate.bankstanding.core.Unlocks;
@@ -151,6 +153,9 @@ public class BankStandingPlugin extends Plugin
 
 	@Inject
 	private CollectionLogOverlay collectionLogOverlay;
+
+	@Inject
+	private JournalOverlay journal;
 
 	@Inject
 	private CollectionPopupOverlay collectionPopup;
@@ -271,8 +276,20 @@ public class BankStandingPlugin extends Plugin
 			mouseManager.registerMouseListener(window.mouse);
 			mouseManager.registerMouseWheelListener(window.wheel);
 		}
-		skillGuideOverlay.setOnOpen(collectionLogOverlay::close);
-		collectionLogOverlay.setOnOpen(skillGuideOverlay::close);
+		for (GameWindow window : windows())
+		{
+			// One window at a time, like the game's own.
+			window.setOnOpen(() ->
+			{
+				for (GameWindow other : windows())
+				{
+					if (other != window)
+					{
+						other.close();
+					}
+				}
+			});
+		}
 		overlayManager.add(collectionPopup);
 		skillTileOverlay.addMenuEntry(MenuAction.RUNELITE_OVERLAY, "View", "Collection log", e -> openCollectionLog());
 		overlayManager.add(xpDropOverlay);
@@ -613,7 +630,7 @@ public class BankStandingPlugin extends Plugin
 		String bankKey = BankNames.keyFor(location.getX(), location.getY());
 		ClanSettings clan = client.getClanSettings();
 		Keywords.Kind phrase = keywords.claim(progress, Text.removeTags(event.getMessage()),
-			System.currentTimeMillis(), today(), bankKey, worn, clan == null ? null : clan.getName());
+			System.currentTimeMillis(), today(), bankKey, worn, clan == null ? null : clan.getName(), spellbook());
 		if (phrase != null)
 		{
 			BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
@@ -651,6 +668,10 @@ public class BankStandingPlugin extends Plugin
 				return;
 			}
 			progress.renameBanks();
+			if (progress.journalSince == 0)
+			{
+				progress.journalSince = System.currentTimeMillis();
+			}
 			Moments.backfill(progress, keywords);
 			applyDevOverrides();
 			progress.records.begin(progress, System.currentTimeMillis());
@@ -748,10 +769,29 @@ public class BankStandingPlugin extends Plugin
 		}
 	}
 
+	/** The spellbook you're on, or null if the game hasn't said. Client thread. */
+	private Spellbook spellbook()
+	{
+		return Spellbook.of(client.getVarbitValue(VarbitID.SPELLBOOK));
+	}
+
 	private GameWindow[] windows()
 	{
 		// The log first: it can open over the skill tile, and a press on it there is the log's.
-		return new GameWindow[]{collectionLogOverlay, skillGuideOverlay};
+		return new GameWindow[]{journal, collectionLogOverlay, skillGuideOverlay};
+	}
+
+	/** Opens one of the journal's books on one tab, from the collection log. */
+	void openJournal(int book, int tab)
+	{
+		journal.show(book, tab);
+	}
+
+	/** Back from the journal to its section of the collection log. */
+	void openJournalSectionInLog(int book)
+	{
+		collectionLogOverlay.showSecrets(book == JournalOverlay.DRESSED);
+		collectionLogOverlay.open();
 	}
 
 	/** Opens the collection log, from the side panel or the skill tile's menu. */
@@ -823,7 +863,15 @@ public class BankStandingPlugin extends Plugin
 		{
 			if (Moments.record(progress, key, System.currentTimeMillis()))
 			{
-				collected("Dressed for it: ", dressedFor(key), -1, false);
+				Spellbook book = Spellbook.forMomentKey(key);
+				if (book != null)
+				{
+					collected("New spellbook: ", book.title, book.icon, false);
+				}
+				else
+				{
+					collected("Dressed for it: ", dressedFor(key), -1, false);
+				}
 				dirty = true;
 			}
 		}
@@ -862,6 +910,7 @@ public class BankStandingPlugin extends Plugin
 		context.streakDays = DailyStreak.current(progress, context.today);
 		context.hoursAtBank = bank.hours();
 		context.inventory = inventory;
+		context.spellbook = spellbook();
 		return context;
 	}
 
@@ -921,6 +970,7 @@ public class BankStandingPlugin extends Plugin
 		tick.maxCash = maxCash;
 		tick.clueTiers = clueTiers;
 		tick.wornValue = wornValue;
+		tick.spellbook = spellbook();
 		tick.emptyHanded = worn.isEmpty() && Arrays.stream(inventory).allMatch(id -> id <= 0);
 		watchNeighbours(tick);
 		watchRandomEvents(me);

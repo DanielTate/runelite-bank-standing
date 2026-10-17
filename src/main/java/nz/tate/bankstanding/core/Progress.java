@@ -46,6 +46,12 @@ public final class Progress
 	public Map<String, Long> keywordPaid = new LinkedHashMap<>();
 	public String keywordDate;
 	public int keywordCount;
+	/** When the journal started (epoch ms); "Dressed for it" finds before then don't get a star. */
+	public long journalSince;
+	/** "Dressed for it" moment keys already seen in the journal. */
+	public Set<String> journalRead = new TreeSet<>();
+	/** What was said for each phrase when it first paid out, and where, for the journal. */
+	public Map<String, Keywords.Noted> phraseNotes = new LinkedHashMap<>();
 
 	/** Personal records and the milestone history. */
 	public Records records = new Records();

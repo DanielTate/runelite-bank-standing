@@ -49,7 +49,7 @@ class BankStandingPanel extends PluginPanel
 {
 	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek and Dennis.";
 	/** Must match runelite-plugin.properties; a test checks it does. */
-	static final String VERSION = "1.2.1";
+	static final String VERSION = "1.3";
 
 	private static final Color GOLD = new Color(214, 176, 48);
 

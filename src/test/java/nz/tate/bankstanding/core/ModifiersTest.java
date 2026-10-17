@@ -304,4 +304,22 @@ public class ModifiersTest
 		skulled.skulled = true;
 		assertEquals(Modifiers.SMALL, Modifiers.evaluate(skulled).boost, EPS);
 	}
+
+	@Test
+	public void eachSpellbookAtItsOwnBank()
+	{
+		for (Spellbook book : Spellbook.values())
+		{
+			StandContext home = at(book.bankKey, 4151);
+			home.spellbook = book;
+			Modifiers.Effect e = Modifiers.evaluate(home);
+			assertEquals(book.name(), 1, e.bonusHit);
+			assertTrue(e.found.contains(book.momentKey()));
+			assertEquals(book, Spellbook.forMomentKey(book.momentKey()));
+
+			StandContext away = at("ge", 4151);
+			away.spellbook = book;
+			assertEquals(0, Modifiers.evaluate(away).bonusHit);
+		}
+	}
 }

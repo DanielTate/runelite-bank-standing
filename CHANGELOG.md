@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.3
+
+Plenty more to find. As always, please don't spoil the secrets for other players.
+
+### Journal
+- Once you've found some secret phrases, or been "Dressed for it", a little book appears next
+  to their count in the collection log. Click it to read the ones you've found, with where
+  and when you found them. New finds get a gold star until you've read them.
+- Phrases you found before 1.3 get written into the journal the next time you say them.
+
+### Skill unlocks
+- Peeking in the bank now comes in steps: a Glance at level 40, a Quick peek at 50 and a Peek
+  at 65.
+- From level 85, bankers sometimes bring you a cup of tea.
+- Two new titles, at levels 45 and 90.
+
+### Other
+- Lots more secret phrases, spread across almost every bank, plus a few other new secrets.
+- A new hidden entry on the collection log's Gear tab.
+- Sangvesti is now listed under Other realms in the collection log.
+
 ## 1.2.1
 
 - Tooltips in the collection log show on top of it again, instead of underneath.

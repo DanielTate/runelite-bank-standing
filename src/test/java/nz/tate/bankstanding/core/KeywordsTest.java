@@ -158,7 +158,7 @@ public class KeywordsTest
 		{
 			assertTrue(hashes.add(phrase.hash));
 		}
-		assertEquals(159, hashes.size());
+		assertEquals(389, hashes.size());
 	}
 
 	@Test
@@ -191,5 +191,51 @@ public class KeywordsTest
 				assertTrue(bank, named.contains(bank));
 			}
 		}
+	}
+
+	@Test
+	public void spellbookPhrasesNeedThatSpellbook()
+	{
+		Keywords book = new Keywords(Arrays.asList(
+			Keywords.phrase(Keywords.hash("moon phrase"), null).onSpellbook(Spellbook.LUNAR)));
+		assertEquals(null, book.claim(new Progress(), "moon phrase", 0, DAY, "ge", Collections.emptySet(), null,
+			Spellbook.STANDARD));
+		assertEquals(null, book.claim(new Progress(), "moon phrase", 0, DAY, "ge", Collections.emptySet()));
+		Progress p = new Progress();
+		assertEquals(Keywords.Kind.ANYWHERE, book.claim(p, "moon phrase", 0, DAY, "ge", Collections.emptySet(), null,
+			Spellbook.LUNAR));
+		assertEquals(1, book.foundByGroup(p).get(Keywords.Group.SPELLBOOK)[0]);
+	}
+
+	@Test
+	public void theJournalNotesWhatWasSaidWhereAndWhenItWasFirstFound()
+	{
+		Progress p = new Progress();
+		keywords.claim(p, "  Local   PHRASE ", 5, DAY, "ge", Collections.emptySet());
+		keywords.claim(p, "local phrase", 5 + 2 * HOUR, DAY, "edgeville", Collections.emptySet());
+		java.util.List<Keywords.Noted> found = keywords.found(p, Keywords.Group.BANK);
+		assertEquals(1, found.size());
+		assertEquals("local phrase", found.get(0).said);
+		assertEquals("ge", found.get(0).bank);
+		assertEquals(5, found.get(0).at);
+		assertTrue(keywords.unread(p, Keywords.Group.BANK));
+		assertFalse(keywords.unread(p, Keywords.Group.ANYWHERE));
+
+		found.get(0).read = true;
+		assertFalse(keywords.unread(p, Keywords.Group.BANK));
+	}
+
+	@Test
+	public void phrasesFoundBeforeTheJournalAreListedWithoutTheirWords()
+	{
+		Progress p = new Progress();
+		p.keywordPaid.put(Keywords.hash("test phrase"), 7L);
+		java.util.List<Keywords.Noted> found = keywords.found(p, Keywords.Group.ANYWHERE);
+		assertEquals(1, found.size());
+		assertEquals(null, found.get(0).said);
+		assertFalse(keywords.unread(p, Keywords.Group.ANYWHERE));
+
+		keywords.claim(p, "test phrase", 2 * HOUR, DAY, "ge", Collections.emptySet());
+		assertEquals("test phrase", keywords.found(p, Keywords.Group.ANYWHERE).get(0).said);
 	}
 }

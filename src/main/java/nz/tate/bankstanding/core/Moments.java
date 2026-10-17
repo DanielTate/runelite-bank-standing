@@ -227,6 +227,8 @@ public final class Moments
 		PARTY_POOPER("odd:party-pooper", "Party pooper", "Not everyone likes a party.", Category.CROWDS, true),
 		PERSONAL_SPACE("odd:personal-space", "Personal space", "A little too close for comfort.", Category.CROWDS,
 			true),
+		FORGOT_SOMETHING("odd:forgot-something", "Forgot something?", "Some islanders expect the right book.",
+			Category.ODD, true),
 
 		WHERE_IT_BEGAN("place:where-it-all-began", "Where it all began", "Before the mainland."),
 		OFF_THE_MAP("place:off-the-map", "Off the map", "Not every bank is on the map."),
@@ -621,6 +623,10 @@ public final class Moments
 		}
 
 		w.sharedTileTicks = t.sharedTile ? w.sharedTileTicks + 1 : 0;
+		if ("lunar-isle".equals(t.namedBank) && t.spellbook != null && t.spellbook != Spellbook.LUNAR)
+		{
+			note(p, Odd.FORGOT_SOMETHING, t.now, odd);
+		}
 		if (w.sharedTileTicks >= PERSONAL_SPACE_TICKS)
 		{
 			note(p, Odd.PERSONAL_SPACE, t.now, odd);
@@ -879,6 +885,8 @@ public final class Moments
 		/** Nothing worn and nothing carried. */
 		public boolean emptyHanded;
 		public long wornValue;
+		/** The spellbook you're on, or null if unknown. */
+		public Spellbook spellbook;
 		/** Set by the moments when hitpoints made it from 1 back to full without eating. */
 		public boolean healed;
 	}

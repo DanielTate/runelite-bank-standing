@@ -25,6 +25,7 @@
 package nz.tate.bankstanding.core;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -48,6 +49,12 @@ final class Outfit
 	String[] bankKeys()
 	{
 		return bankKeys;
+	}
+
+	/** An item from its first piece, to show for it. */
+	int icon()
+	{
+		return Collections.min(pieces.get(0));
 	}
 
 	/** Saved in the collection log, so it must never change: the first bank's key. */

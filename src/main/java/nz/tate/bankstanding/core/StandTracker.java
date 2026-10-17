@@ -73,7 +73,7 @@ public final class StandTracker
 		}
 		if (usingBank)
 		{
-			// Quick peek: a short look in the bank pauses the stand instead of ending it.
+			// Peeking: a short look in the bank pauses the stand instead of ending it.
 			if (++bankTicks > peekTicks)
 			{
 				idleTicks = 0;
@@ -108,7 +108,7 @@ public final class StandTracker
 		hasPosition = false;
 	}
 
-	/** While a Quick peek is holding the stand open: ticks left before it ends, else 0. */
+	/** While a peek is holding the stand open: ticks left before it ends, else 0. */
 	public int peekTicksLeft()
 	{
 		return bankTicks > 0 && isStanding() ? peekTicks - bankTicks + 1 : 0;

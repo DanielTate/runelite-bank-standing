@@ -45,7 +45,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.ComponentConstants;
 
 /**
- * A stopwatch pinned to the top of the bank while Quick peek holds a stand open, counting
+ * A stopwatch pinned to the top of the bank while a peek holds a stand open, counting
  * down to the millisecond until the stand ends.
  */
 @Singleton

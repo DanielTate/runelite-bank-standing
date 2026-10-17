@@ -316,6 +316,29 @@ class GuideArt
 		return icon;
 	}
 
+	private static final Color STAR = new Color(0xff, 0xd7, 0x00);
+	private static final Color STAR_EDGE = new Color(0x3e, 0x2a, 0x00);
+
+	/** A small gold star centred on (x, y), marking something new. */
+	static void star(Graphics2D graphics, int x, int y, int radius)
+	{
+		java.awt.Polygon star = new java.awt.Polygon();
+		for (int i = 0; i < 10; i++)
+		{
+			double r = i % 2 == 0 ? radius : radius * 0.45;
+			double angle = Math.PI * i / 5 - Math.PI / 2;
+			star.addPoint(x + (int) Math.round(r * Math.cos(angle)), y + (int) Math.round(r * Math.sin(angle)));
+		}
+		Object antialias = graphics.getRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING);
+		graphics.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(STAR);
+		graphics.fillPolygon(star);
+		graphics.setColor(STAR_EDGE);
+		graphics.drawPolygon(star);
+		graphics.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+			antialias == null ? java.awt.RenderingHints.VALUE_ANTIALIAS_DEFAULT : antialias);
+	}
+
 	/** Draws an icon shrunk, if it has to be, to fit a square box, centred in it. */
 	static void drawIcon(Graphics2D graphics, Image icon, int x, int y, int box)
 	{

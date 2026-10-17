@@ -66,11 +66,11 @@ public final class BankRegions
 			"alchemical-society", "auburnvale", "cam-torum", "quetzacalli-gorge", "darkfrost", "hunters-guild",
 			"fortis", "fortis-west", "fortis-cothon", "colosseum");
 		region("Islands and the sea", "isle-of-souls", "bank-boat", "sunbleak-island", "buccaneers-haven",
-			"deepfin-point", "deepfin-mine-west", "deepfin-mine-east", "sangvesti", "wyrmscraig", "charred-island",
+			"deepfin-point", "deepfin-mine-west", "deepfin-mine-east", "wyrmscraig", "charred-island",
 			"red-rock", "onyx-crest", "great-conch", "great-conch-dock", "the-node", "ape-atoll",
 			"mos-le-harmless", "trouble-brewing", "fossil-island", "fossil-island-wreck", "volcanic-mine",
 			"pest-control");
-		region("Other realms", "zanaris", "clan-hall", "dorgesh-kaan");
+		region("Other realms", "zanaris", "clan-hall", "dorgesh-kaan", "sangvesti");
 	}
 
 	private BankRegions()

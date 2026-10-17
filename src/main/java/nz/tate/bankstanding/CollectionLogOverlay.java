@@ -55,6 +55,7 @@ import nz.tate.bankstanding.core.Modifiers;
 import nz.tate.bankstanding.core.Moments;
 import nz.tate.bankstanding.core.Progress;
 import nz.tate.bankstanding.core.Records;
+import nz.tate.bankstanding.core.Spellbook;
 import nz.tate.bankstanding.core.StatsView;
 import nz.tate.bankstanding.core.Unlocks;
 
@@ -112,8 +113,13 @@ class CollectionLogOverlay extends GameWindow
 	/** Shown instead of the phrases themselves, which stay secret even once found. */
 	private static final String[] PHRASE_HINT = {
 		"Said in public chat while bank standing.",
-		"Which ones you've found stays a secret."
+		"Click the journal to read the ones you've found."
 	};
+	/** The journal icon by each phrase count, which opens the phrase journal. */
+	private static final int JOURNAL_ICON = 2967;
+	private static final int JOURNAL_SIZE = 16;
+	private static final int PHRASES_ENTRY = 3;
+	private static final int DRESSED_ENTRY = 4;
 	/** Shown for a hidden entry until it's found. */
 	private static final String SECRET = "Secret";
 	/** How far below the cursor a tooltip sits, as RuneLite's own do. */
@@ -122,7 +128,7 @@ class CollectionLogOverlay extends GameWindow
 	private static final int SECRET_ICON = 6199;
 	private static final String[] DRESSED_HINT = {
 		"Worn, or played, at the right bank while standing.",
-		"Which ones you've found stays a secret."
+		"Click the journal to read the ones you've found."
 	};
 
 	/** One thing in an entry: an item for the grid, or a line of text. */
@@ -156,6 +162,11 @@ class CollectionLogOverlay extends GameWindow
 		final String label;
 		final int done;
 		final int total;
+		/** The journal book and tab its icon opens, or -1 for none. */
+		int journalBook = -1;
+		int journal = -1;
+		/** Whether the journal has new finds on that tab. */
+		boolean unread;
 
 		Row(String label, int done, int total)
 		{
@@ -224,6 +235,9 @@ class CollectionLogOverlay extends GameWindow
 	/** The title's count over every tab, rebuilt at most once a second. Client thread. */
 	private String totalCount = "";
 	private long totalCountedAt;
+	/** The journal icons as last drawn, in window coordinates, and the book and tab each opens. */
+	private volatile List<Rectangle> journalButtons = new ArrayList<>();
+	private volatile List<int[]> journalTabs = new ArrayList<>();
 
 	@Inject
 	CollectionLogOverlay(BankStandingPlugin plugin, Client client, GuideArt art, RuneLiteConfig runeLiteConfig,
@@ -248,6 +262,13 @@ class CollectionLogOverlay extends GameWindow
 		scroll = 0;
 	}
 
+	/** Shows the secret phrases or "Dressed for it" entry, as when coming back from the journal. */
+	void showSecrets(boolean dressed)
+	{
+		showTab(MILESTONES);
+		entry = dressed ? DRESSED_ENTRY : PHRASES_ENTRY;
+	}
+
 	@Override
 	void click(int x, int y)
 	{
@@ -255,6 +276,16 @@ class CollectionLogOverlay extends GameWindow
 		{
 			close();
 			return;
+		}
+		List<Rectangle> buttons = journalButtons;
+		List<int[]> tabs = journalTabs;
+		for (int i = 0; i < buttons.size() && i < tabs.size(); i++)
+		{
+			if (buttons.get(i).contains(x, y))
+			{
+				plugin.openJournal(tabs.get(i)[0], tabs.get(i)[1]);
+				return;
+			}
 		}
 		if (y >= TAB_Y && y < TAB_Y + TAB_HEIGHT && x >= TAB_X)
 		{
@@ -443,19 +474,38 @@ class CollectionLogOverlay extends GameWindow
 		graphics.setColor(SEPARATOR);
 		graphics.drawLine(x + LIST_RIGHT + 4, y + CONTENT_TOP - 5, x + RIGHT_END, y + CONTENT_TOP - 5);
 
+		List<Rectangle> buttons = new ArrayList<>();
+		List<int[]> tabs = new ArrayList<>();
 		if (shown.noted())
 		{
 			contentRows = 0;
 			scroll = 0;
 			int lineY = y + CONTENT_TOP + 2;
+			Point mouse = client.getMouseCanvasPosition();
 			if (shown.rows != null)
 			{
 				for (Row row : shown.rows)
 				{
 					int valueX = art.plain.drawShadowed(graphics, row.label + ": ", left, lineY, ORANGE);
 					Color colour = row.done == 0 ? RED : row.done == row.total ? GREEN : YELLOW;
-					art.plain.drawShadowed(graphics, row.done + "/" + row.total, valueX, lineY, colour);
-					lineY += LINE + 2;
+					int end = art.plain.drawShadowed(graphics, row.done + "/" + row.total, valueX, lineY, colour);
+					if (row.journal >= 0 && row.done > 0)
+					{
+						Rectangle button = new Rectangle(end + 6, lineY + (art.plain.height() - JOURNAL_SIZE) / 2,
+							JOURNAL_SIZE, JOURNAL_SIZE);
+						GuideArt.drawIcon(graphics, art.itemIcon(JOURNAL_ICON, false), button.x, button.y, JOURNAL_SIZE);
+						if (row.unread)
+						{
+							GuideArt.star(graphics, button.x + JOURNAL_SIZE, button.y + 1, 4);
+						}
+						if (button.contains(mouse.getX(), mouse.getY()))
+						{
+							tooltip = "Read the ones you've found";
+						}
+						buttons.add(new Rectangle(button.x - x, button.y - y, button.width, button.height));
+						tabs.add(new int[]{row.journalBook, row.journal});
+					}
+					lineY += LINE + 6;
 				}
 				lineY += LINE / 2;
 			}
@@ -467,8 +517,12 @@ class CollectionLogOverlay extends GameWindow
 					lineY += LINE;
 				}
 			}
+			journalButtons = buttons;
+			journalTabs = tabs;
 			return;
 		}
+		journalButtons = buttons;
+		journalTabs = tabs;
 
 		Point mouse = client.getMouseCanvasPosition();
 		boolean grid = shown.grid();
@@ -628,7 +682,11 @@ class CollectionLogOverlay extends GameWindow
 			for (Map.Entry<Keywords.Group, int[]> group : PHRASES.foundByGroup(progress).entrySet())
 			{
 				int[] count = group.getValue();
-				phrases.rows.add(new Row(group.getKey().title, count[0], count[1]));
+				Row row = new Row(group.getKey().title, count[0], count[1]);
+				row.journalBook = JournalOverlay.PHRASES;
+				row.journal = group.getKey().ordinal();
+				row.unread = PHRASES.unread(progress, group.getKey());
+				phrases.rows.add(row);
 				for (int i = 0; i < count[1]; i++)
 				{
 					phrases.slots.add(new Slot("Secret phrase", i < count[0], -1, false, "", 0));
@@ -640,7 +698,11 @@ class CollectionLogOverlay extends GameWindow
 			for (Map.Entry<String, int[]> group : Modifiers.foundByGroup(progress.moments).entrySet())
 			{
 				int[] count = group.getValue();
-				dressed.rows.add(new Row(group.getKey(), count[0], count[1]));
+				Row row = new Row(group.getKey(), count[0], count[1]);
+				row.journalBook = JournalOverlay.DRESSED;
+				row.journal = dressed.rows.size();
+				row.unread = dressedUnread(progress, group.getKey());
+				dressed.rows.add(row);
 				for (int i = 0; i < count[1]; i++)
 				{
 					dressed.slots.add(new Slot("Secret", i < count[0], -1, false, "", 0));
@@ -683,6 +745,15 @@ class CollectionLogOverlay extends GameWindow
 				}
 				entries.add(gear);
 			}
+			// Secret until found: stand at the right bank on each spellbook.
+			Entry books = new Entry("Spellbooks");
+			for (Spellbook book : Spellbook.values())
+			{
+				Long at = progress.moments.get(book.momentKey());
+				books.slots.add(at == null ? new Slot(SECRET, false, SECRET_ICON, false, "Not found yet", 0)
+					: new Slot(book.title, true, book.icon, false, first(at), 0));
+			}
+			entries.add(books);
 		}
 		else
 		{
@@ -730,6 +801,19 @@ class CollectionLogOverlay extends GameWindow
 	 * The stand length shown in the log, in whole hours: the longest stand is called 6 hours
 	 * though it counts at 5:50, since the game logs you out at 6.
 	 */
+	private static boolean dressedUnread(Progress progress, String group)
+	{
+		for (Modifiers.Dressed dressed : Modifiers.dressed())
+		{
+			Long at = dressed.group.equals(group) ? progress.moments.get(dressed.key) : null;
+			if (at != null && at >= progress.journalSince && !progress.journalRead.contains(dressed.key))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private static String standLength(int minutes)
 	{
 		int hours = (minutes + 59) / 60;

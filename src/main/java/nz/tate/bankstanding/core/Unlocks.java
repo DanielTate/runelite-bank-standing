@@ -37,9 +37,11 @@ public final class Unlocks
 	public static final int MAX = Experience.MAX_LEVEL;
 	public static final int FIDGETS = 25;
 	public static final int BANKERS = 30;
-	public static final int QUICK_PEEK = 65;
-	/** How long the bank can stay open without ending a stand, once Quick peek is unlocked. */
+	public static final int TEA = 85;
+	/** The longest the bank can stay open without ending a stand, once Peek is unlocked. */
 	public static final int PEEK_TICKS = 17;
+	/** Level, ticks the bank can be open, and the name: a glance, then a quick peek, then a peek. */
+	private static final Object[][] PEEKS = {{40, 2, "Glance"}, {50, 8, "Quick peek"}, {65, PEEK_TICKS, "Peek"}};
 
 	/** The rug laid out under you while you stand. */
 	public enum Rug
@@ -79,8 +81,8 @@ public final class Unlocks
 
 	private static final int[][] START_DELAY = {{1, 50}, {15, 42}, {45, 33}, {75, 25}, {MAX, 17}};
 	private static final String[][] TITLES = {
-		{"1", "Loiterer"}, {"15", "Regular"}, {"35", "Fixture"}, {"55", "Furniture"},
-		{"75", "Part of the Bank"}, {"99", "Bank Standing Master"},
+		{"1", "Loiterer"}, {"15", "Regular"}, {"35", "Fixture"}, {"45", "Queue Jumper"}, {"55", "Furniture"},
+		{"75", "Part of the Bank"}, {"90", "Honorary Banker"}, {"99", "Bank Standing Master"},
 	};
 
 	private Unlocks()
@@ -111,10 +113,24 @@ public final class Unlocks
 		return ticks;
 	}
 
-	/** Ticks the bank can be open without ending a stand; 0 before Quick peek. */
+	/** Ticks the bank can be open without ending a stand; 0 before Glance. */
 	public static int peekTicks(int level)
 	{
-		return level >= QUICK_PEEK ? PEEK_TICKS : 0;
+		int ticks = 0;
+		for (Object[] peek : PEEKS)
+		{
+			if (level >= (int) peek[0])
+			{
+				ticks = (int) peek[1];
+			}
+		}
+		return ticks;
+	}
+
+	/** Whether bankers sometimes bring you a cup of tea. */
+	public static boolean tea(int level)
+	{
+		return level >= TEA;
 	}
 
 	public static Rug rug(int level)
@@ -184,6 +200,8 @@ public final class Unlocks
 	private static final int STOOL_ICON = 8826;
 	private static final int THRONE_ICON = 8360;
 	private static final int COINS = 995;
+	/** A porcelain cup of tea; the same cup appears beside you. */
+	public static final int CUP_OF_TEA = 4245;
 	private static final int SCROLL = 10485;
 	private static final int CAPE_ICON = 23351;
 	private static final int YAWN_SPRITE = 718;
@@ -255,10 +273,18 @@ public final class Unlocks
 			{
 				all.add(new Unlock(level, "Bankers notice you", Category.COMPANY, COINS, -1, false));
 			}
-			if (level == QUICK_PEEK)
+			for (Object[] peek : PEEKS)
 			{
-				all.add(new Unlock(level, "Quick peek: open the bank for 10 seconds", Category.TIMING,
-					BANKERS_NOTE, -1, false));
+				if (level == (int) peek[0])
+				{
+					long seconds = Math.round((int) peek[1] * 0.6);
+					all.add(new Unlock(level, peek[2] + ": open the bank for " + seconds
+						+ (seconds == 1 ? " second" : " seconds"), Category.TIMING, BANKERS_NOTE, -1, false));
+				}
+			}
+			if (level == TEA)
+			{
+				all.add(new Unlock(level, "Bankers bring you tea", Category.COMPANY, CUP_OF_TEA, -1, false));
 			}
 			if (level == 1 || !title(level).equals(title(level - 1)))
 			{

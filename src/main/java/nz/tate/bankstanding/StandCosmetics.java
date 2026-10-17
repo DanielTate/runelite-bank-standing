@@ -90,6 +90,12 @@ class StandCosmetics
 		"Good to see a regular!", "We saved your spot.", "Standing like a pro.",
 		"The bank wouldn't be the same without you.",
 	};
+	/** Said when a banker brings you tea, from level 85. */
+	private static final String[] TEA_LINES = {
+		"Cup of tea?", "Fancy a cuppa?", "Tea's on the house.", "Thought you could use a brew.",
+	};
+	/** The cup sits on the floor beside you, bigger than its inventory model. */
+	private static final int TEA_SCALE = 256;
 	private static final String[] MASTER_LINES = {
 		"Good day, Master.", "An honour, Master.", "Master of the bank floor!",
 		"Can I get you anything, Master?",
@@ -102,6 +108,8 @@ class StandCosmetics
 	private Unlocks.Rug rugShown = Unlocks.Rug.NONE;
 	private RuneLiteObject seatObject;
 	private RuneLiteObject petObject;
+	/** The cup of tea a banker brought this stand, or null. */
+	private RuneLiteObject teaObject;
 	/** Whether the pet has been tried this stand, so a model that won't load isn't retried every tick. */
 	private boolean petTried;
 	private Unlocks.Seat seatShown = Unlocks.Seat.NONE;
@@ -190,6 +198,11 @@ class StandCosmetics
 		}
 		seatShown = Unlocks.Seat.NONE;
 		removePet();
+		if (teaObject != null)
+		{
+			teaObject.setActive(false);
+			teaObject = null;
+		}
 		standUp(client.getLocalPlayer());
 	}
 
@@ -440,8 +453,22 @@ class StandCosmetics
 		{
 			return;
 		}
-		String[] lines = level >= Unlocks.MAX ? MASTER_LINES : level >= 70 && random.nextBoolean() ? REGULAR_LINES : BANKER_LINES;
 		NPC banker = bankers.get(random.nextInt(bankers.size()));
+		if (Unlocks.tea(level) && teaObject == null && random.nextInt(3) == 0)
+		{
+			// One cup a stand, set down beside you.
+			banker.setOverheadText(TEA_LINES[random.nextInt(TEA_LINES.length)]);
+			banker.setOverheadCycle(150);
+			int model = client.getItemDefinition(Unlocks.CUP_OF_TEA).getInventoryModel();
+			ModelData data = model < 0 ? null : client.loadModelData(model);
+			if (data != null)
+			{
+				teaObject = spawn(player, data.cloneVertices().scale(TEA_SCALE, TEA_SCALE, TEA_SCALE), -1, 0,
+					player.getOrientation());
+			}
+			return;
+		}
+		String[] lines = level >= Unlocks.MAX ? MASTER_LINES : level >= 70 && random.nextBoolean() ? REGULAR_LINES : BANKER_LINES;
 		banker.setOverheadText(lines[random.nextInt(lines.length)]);
 		banker.setOverheadCycle(150);
 	}

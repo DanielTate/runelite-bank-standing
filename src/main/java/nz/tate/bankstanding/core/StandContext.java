@@ -47,6 +47,8 @@ public final class StandContext
 	public boolean skulled;
 	public int streakDays;
 	public double hoursAtBank;
+	/** The spellbook you're on, or null if unknown. */
+	public Spellbook spellbook;
 	/** Item IDs in each inventory slot, -1 for an empty slot. */
 	public int[] inventory = new int[0];
 

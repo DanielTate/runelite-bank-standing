@@ -470,4 +470,20 @@ public class MomentsTest
 		assertFalse(Moments.onFire(p, start + Moments.SIT_COOLDOWN_MILLIS - 1, odd));
 		assertTrue(Moments.onFire(p, start + Moments.SIT_COOLDOWN_MILLIS, odd));
 	}
+
+	@Test
+	public void theWrongBookOnLunarIsle()
+	{
+		Moments.Tick lunar = at("lunar-isle", DAY, 12);
+		lunar.spellbook = Spellbook.LUNAR;
+		assertFalse(stand(new Progress(), new Moments.Watch(), lunar).contains(Moments.Odd.FORGOT_SOMETHING));
+
+		Moments.Tick standard = at("lunar-isle", DAY, 12);
+		standard.spellbook = Spellbook.STANDARD;
+		assertTrue(stand(new Progress(), new Moments.Watch(), standard).contains(Moments.Odd.FORGOT_SOMETHING));
+
+		Moments.Tick elsewhere = at("ge", DAY, 12);
+		elsewhere.spellbook = Spellbook.STANDARD;
+		assertFalse(stand(new Progress(), new Moments.Watch(), elsewhere).contains(Moments.Odd.FORGOT_SOMETHING));
+	}
 }
