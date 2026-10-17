@@ -63,6 +63,18 @@ public class KeywordsTest
 	}
 
 	@Test
+	public void trailingPunctuationStillCounts()
+	{
+		assertTrue(claim(new Progress(), "Test phrase?", 0, DAY));
+		assertTrue(claim(new Progress(), "test phrase!!", 0, DAY));
+		assertTrue(claim(new Progress(), "test phrase...", 0, DAY));
+		assertFalse(claim(new Progress(), "test, phrase", 0, DAY));
+		Progress p = new Progress();
+		assertTrue(claim(p, "test phrase?", 0, DAY));
+		assertEquals("test phrase", keywords.found(p, Keywords.Group.ANYWHERE).get(0).said);
+	}
+
+	@Test
 	public void eachPhrasePaysOncePerHour()
 	{
 		Progress p = new Progress();

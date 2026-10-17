@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Secret phrases that pay out a bonus roll when said in public chat during a stand.
@@ -53,6 +54,7 @@ public final class Keywords
 	static final long COOLDOWN_MILLIS = 60 * 60 * 1000L;
 	static final int DAILY_CAP = 10;
 	private static final String SALT = "bankstanding:";
+	private static final Pattern TRAILING_PUNCTUATION = Pattern.compile("[\\s!?.,~]+$");
 
 	/** What a phrase is tied to, which decides the colour of its hitsplat. */
 	public enum Kind
@@ -702,29 +704,21 @@ public final class Keywords
 	public Kind claim(Progress p, String message, long nowMillis, LocalDate today, String bankKey, Set<Integer> worn,
 		String clanName, Spellbook book)
 	{
-		String said = normalise(message);
-		String hash = hash(said);
-		String clanHash = null;
-		String clan = clanName == null ? "" : normalise(clanName);
-		if (!clan.isEmpty() && said.endsWith(" " + clan))
+		// Typed like a person would, "why fletch?" counts too: trailing punctuation is dropped
+		// when the message as typed doesn't match.
+		String typed = normalise(message);
+		String said = typed;
+		Phrase match = match(typed, clanName, bankKey, today, worn, book);
+		if (match == null)
 		{
-			clanHash = hash(said.substring(0, said.length() - clan.length() - 1).trim());
-		}
-		Phrase match = null;
-		for (Phrase phrase : phrases)
-		{
-			String compared = phrase.beforeClanName ? clanHash : hash;
-			if (phrase.hash.equals(compared) && phrase.works(bankKey, today, worn, book))
-			{
-				match = phrase;
-				break;
-			}
+			said = TRAILING_PUNCTUATION.matcher(typed).replaceAll("");
+			match = said.equals(typed) ? null : match(said, clanName, bankKey, today, worn, book);
 		}
 		if (match == null)
 		{
 			return null;
 		}
-		hash = match.hash;
+		String hash = match.hash;
 
 		Long last = p.keywordPaid.get(hash);
 		if (last != null && nowMillis - last < COOLDOWN_MILLIS)
@@ -747,6 +741,27 @@ public final class Keywords
 		p.keywordPaid.put(hash, nowMillis);
 		p.phraseNotes.putIfAbsent(hash, new Noted(said, bankKey, nowMillis));
 		return match.kind();
+	}
+
+	/** The phrase this whole message is, if it works here and now; otherwise null. */
+	private Phrase match(String said, String clanName, String bankKey, LocalDate today, Set<Integer> worn, Spellbook book)
+	{
+		String hash = hash(said);
+		String clanHash = null;
+		String clan = clanName == null ? "" : normalise(clanName);
+		if (!clan.isEmpty() && said.endsWith(" " + clan))
+		{
+			clanHash = hash(said.substring(0, said.length() - clan.length() - 1).trim());
+		}
+		for (Phrase phrase : phrases)
+		{
+			String compared = phrase.beforeClanName ? clanHash : hash;
+			if (phrase.hash.equals(compared) && phrase.works(bankKey, today, worn, book))
+			{
+				return phrase;
+			}
+		}
+		return null;
 	}
 
 	static String normalise(String message)

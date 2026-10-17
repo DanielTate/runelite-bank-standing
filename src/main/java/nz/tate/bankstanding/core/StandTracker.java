@@ -114,6 +114,12 @@ public final class StandTracker
 		return bankTicks > 0 && isStanding() ? peekTicks - bankTicks + 1 : 0;
 	}
 
+	/** True while standing still in range of a bank, including the wait before the first drop. */
+	public boolean isIdleAtBank()
+	{
+		return idleTicks > 0;
+	}
+
 	/** True once the start delay has passed and drops are being rolled. */
 	public boolean isStanding()
 	{

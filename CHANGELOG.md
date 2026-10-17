@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1
+
+- Finding a secret phrase for the first time now shows the collection log popup, like
+  everything else in the log.
+- A phrase still counts with punctuation on the end, like a question mark.
+- Phrases now count as soon as you're standing still at a bank, including the 30 seconds
+  before your first drop.
+
 ## 1.3
 
 Plenty more to find. As always, please don't spoil the secrets for other players.

@@ -59,6 +59,19 @@ public class StandTrackerTest
 	}
 
 	@Test
+	public void idleAtBankFromTheFirstStillTick()
+	{
+		assertFalse(tracker.isIdleAtBank());
+		stand(1);
+		assertTrue(tracker.isIdleAtBank());
+		assertFalse(tracker.isStanding());
+		tracker.tick(3186, 3436, 0, true, false);
+		assertFalse(tracker.isIdleAtBank());
+		tracker.tick(3186, 3436, 0, false, false);
+		assertFalse(tracker.isIdleAtBank());
+	}
+
+	@Test
 	public void walkingRestartsTheDelay()
 	{
 		stand(60);

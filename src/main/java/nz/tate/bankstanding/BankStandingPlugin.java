@@ -620,7 +620,7 @@ public class BankStandingPlugin extends Plugin
 	{
 		Player player = client.getLocalPlayer();
 		if (event.getType() != ChatMessageType.PUBLICCHAT || player == null || progress == null
-			|| !tracker.isStanding() || player.getName() == null
+			|| !tracker.isIdleAtBank() || player.getName() == null
 			|| !Text.sanitize(event.getName()).equals(Text.sanitize(player.getName())))
 		{
 			return;
@@ -629,6 +629,7 @@ public class BankStandingPlugin extends Plugin
 		WorldPoint location = mapLocation(player);
 		String bankKey = BankNames.keyFor(location.getX(), location.getY());
 		ClanSettings clan = client.getClanSettings();
+		Map<Keywords.Group, int[]> before = keywords.foundByGroup(progress);
 		Keywords.Kind phrase = keywords.claim(progress, Text.removeTags(event.getMessage()),
 			System.currentTimeMillis(), today(), bankKey, worn, clan == null ? null : clan.getName(), spellbook());
 		if (phrase != null)
@@ -637,6 +638,22 @@ public class BankStandingPlugin extends Plugin
 			int level = progress.level();
 			Modifiers.Effect effect = evaluate(bank, location);
 			drop(roller.keywordRoll(level, effect.bonusHit), bank, level, phrase);
+			newPhrase(before);
+		}
+	}
+
+	/** The first time a phrase pays out, it's new in the log: say which kind, never which one. */
+	private void newPhrase(Map<Keywords.Group, int[]> before)
+	{
+		for (Map.Entry<Keywords.Group, int[]> after : keywords.foundByGroup(progress).entrySet())
+		{
+			int[] count = after.getValue();
+			if (count[0] > before.get(after.getKey())[0])
+			{
+				collected("Secret phrase: ", after.getKey().title.toLowerCase(Locale.ENGLISH)
+					+ " (" + count[0] + "/" + count[1] + ")", -1, false);
+				dirty = true;
+			}
 		}
 	}
 
