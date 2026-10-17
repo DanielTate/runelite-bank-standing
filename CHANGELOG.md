@@ -4,7 +4,8 @@
 
 - Progress syncing between computers is safer. If two copies of your progress end up out of
   step, for example from having RuneLite open on two computers at once, Bank Standing now
-  keeps the one with the most XP instead of whichever saved last.
+  combines them instead of keeping whichever saved last: the copy with the most XP, plus
+  any collection log entries, phrases and journal entries found only on the other.
 - The README now explains that your progress follows your RuneLite account when RuneLite
   syncs your settings.
 

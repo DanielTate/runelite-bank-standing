@@ -134,4 +134,91 @@ public final class Progress
 		}
 		return best;
 	}
+
+	/**
+	 * One save made from several copies of the same account's progress: the one with the most
+	 * XP (see {@link #best}), plus anything found in the others that it's missing. Counts that
+	 * the copies share, like XP and time at each bank, aren't added together, since both
+	 * copies usually include the same history; the bigger one is kept. Null if there are none.
+	 */
+	public static Progress merge(List<Progress> saves)
+	{
+		Progress merged = best(saves);
+		for (Progress other : saves)
+		{
+			if (other != merged)
+			{
+				merged.add(other);
+			}
+		}
+		return merged;
+	}
+
+	private void add(Progress other)
+	{
+		for (Map.Entry<String, BankRecord> entry : other.banks.entrySet())
+		{
+			BankRecord theirs = entry.getValue();
+			BankRecord ours = banks.get(entry.getKey());
+			if (ours == null)
+			{
+				banks.put(entry.getKey(), theirs);
+				continue;
+			}
+			ours.ticks = Math.max(ours.ticks, theirs.ticks);
+			ours.xp = Math.max(ours.xp, theirs.xp);
+			ours.visits = Math.max(ours.visits, theirs.visits);
+			ours.firstAt = earliest(ours.firstAt, theirs.firstAt);
+		}
+
+		for (Map.Entry<String, CollectionLog.Obtained> entry : other.collection.entrySet())
+		{
+			CollectionLog.Obtained theirs = entry.getValue();
+			CollectionLog.Obtained ours = collection.get(entry.getKey());
+			if (ours == null)
+			{
+				collection.put(entry.getKey(), theirs);
+				continue;
+			}
+			if (theirs.firstAt != 0 && (ours.firstAt == 0 || theirs.firstAt < ours.firstAt))
+			{
+				ours.firstAt = theirs.firstAt;
+				ours.firstRolls = theirs.firstRolls;
+			}
+			ours.count = Math.max(ours.count, theirs.count);
+		}
+
+		for (Map.Entry<String, Long> entry : other.moments.entrySet())
+		{
+			moments.merge(entry.getKey(), entry.getValue(), Math::min);
+		}
+		// The latest payout of each phrase, so its hour's wait still holds.
+		for (Map.Entry<String, Long> entry : other.keywordPaid.entrySet())
+		{
+			keywordPaid.merge(entry.getKey(), entry.getValue(), Math::max);
+		}
+		if (other.keywordDate != null && other.keywordDate.equals(keywordDate))
+		{
+			keywordCount = Math.max(keywordCount, other.keywordCount);
+		}
+		for (Map.Entry<String, Keywords.Noted> entry : other.phraseNotes.entrySet())
+		{
+			phraseNotes.putIfAbsent(entry.getKey(), entry.getValue());
+		}
+		journalRead.addAll(other.journalRead);
+		journalSince = earliest(journalSince, other.journalSince);
+		daysStood.addAll(other.daysStood);
+		if (other.notesDate != null && other.notesDate.equals(notesDate))
+		{
+			notes.addAll(other.notes);
+		}
+		lastSitRoll = Math.max(lastSitRoll, other.lastSitRoll);
+		lastFireRoll = Math.max(lastFireRoll, other.lastFireRoll);
+	}
+
+	/** The earlier of two times, where 0 means unknown. */
+	private static long earliest(long a, long b)
+	{
+		return a == 0 ? b : b == 0 ? a : Math.min(a, b);
+	}
 }

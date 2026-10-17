@@ -41,8 +41,9 @@ import nz.tate.bankstanding.core.Progress;
  *
  * <p>RuneLite only pulls in other computers' settings when it starts, so two RuneLites open at
  * once would each save over the other's progress. To keep that from losing anything for good,
- * every RuneLite also saves its own copy under a key of its own, and loading picks whichever
- * copy has the most XP. The main key is still written, for older versions of the plugin.
+ * every RuneLite also saves its own copy under a key of its own, and loading merges them: the
+ * copy with the most XP, plus anything found in the others. The main key is still written, for
+ * older versions of the plugin.
  */
 @Slf4j
 @Singleton
@@ -83,16 +84,16 @@ class ProgressStore
 		// Saves from before the first release used RuneLite's own per-account keys.
 		add(saves, "the first save", configManager.getRSProfileConfiguration(BankStandingConfig.GROUP, KEY));
 
-		Progress best = Progress.best(saves);
+		Progress best = Progress.merge(saves);
 		if (best == null)
 		{
 			return new Progress();
 		}
 		if (saves.size() > 1)
 		{
-			log.info("Found {} Bank Standing saves for this account; using the one with {} xp", saves.size(), best.xp);
+			log.info("Found {} Bank Standing saves for this account; merged them onto the one with {} xp", saves.size(), best.xp);
 		}
-		// Keep the best one, then tidy away the other copies: any RuneLite still open writes
+		// Keep the merged one, then tidy away the other copies: any RuneLite still open writes
 		// its copy again on its next save.
 		save(best);
 		for (String copy : copies)

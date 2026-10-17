@@ -86,7 +86,8 @@ Yes. Progress is saved separately for each OSRS account.
 Yes, if you're logged in to the same RuneLite account on both and it syncs your settings.
 Close RuneLite on one computer before playing on the other: RuneLite only picks up the other
 computer's progress when it starts. If two copies of your progress ever end up out of step,
-Bank Standing keeps the one with the most XP.
+Bank Standing combines them: it keeps the one with the most XP and adds anything you found
+on the other.
 
 ## Credits
 
