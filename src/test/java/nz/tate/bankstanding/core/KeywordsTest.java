@@ -170,7 +170,7 @@ public class KeywordsTest
 		{
 			assertTrue(hashes.add(phrase.hash));
 		}
-		assertEquals(389, hashes.size());
+		assertEquals(407, hashes.size());
 	}
 
 	@Test

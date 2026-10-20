@@ -56,6 +56,9 @@ final class Items
 	static final int ZAMORAK_CAPE = 2414;
 	static final int IMBUED_ZAMORAK_CAPE = 21795;
 
+	private static final String ARCHIVE_WEST = "fractured-archive-west";
+	private static final String ARCHIVE_EAST = "fractured-archive-east";
+
 	/** Boss uniques, keyed by the bank nearest that boss. */
 	static final Map<String, Set<Integer>> BOSS_ITEMS = new HashMap<>();
 
@@ -140,7 +143,12 @@ final class Items
 		new Outfit("ape-atoll").piece(4024, 4025, 4026, 4027, 4028, 4029, 4030, 4031, 19525),
 		new Outfit("clan-hall").piece(25712, 25714, 25715, 25716, 25717, 25718, 25719, 25720)
 			.piece(25721, 25723, 25724, 25725, 25726, 25727, 25728, 25729),
-		new Outfit("jatizso").piece(10836).piece(10837).piece(10838).piece(10839).piece(10840)
+		new Outfit("jatizso").piece(10836).piece(10837).piece(10838).piece(10839).piece(10840),
+		new Outfit(ARCHIVE_WEST, ARCHIVE_EAST).named("archivist").carried(34722, 34723),
+		new Outfit(ARCHIVE_WEST, ARCHIVE_EAST).named("fresh-from-the-archive").piece(34719, 34725, 34727),
+		new Outfit(ARCHIVE_WEST, ARCHIVE_EAST).named("obligated").piece(34715, 34717),
+		new Outfit(ARCHIVE_WEST, ARCHIVE_EAST).named("zealous").icon(34679).zeal(),
+		new Outfit(ARCHIVE_WEST, ARCHIVE_EAST).named("dual-wield").piece(34681)
 	));
 
 	/** Raw fish, for a full inventory at the Fishing Guild. */

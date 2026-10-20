@@ -57,7 +57,8 @@ public class UnlocksTest
 	@Test
 	public void nextUnlock()
 	{
-		assertEquals(10, Unlocks.nextUnlockLevel(1));
+		assertEquals(5, Unlocks.nextUnlockLevel(1));
+		assertEquals(10, Unlocks.nextUnlockLevel(5));
 		assertEquals(15, Unlocks.nextUnlockLevel(10));
 		assertEquals(85, Unlocks.nextUnlockLevel(80));
 		assertEquals(90, Unlocks.nextUnlockLevel(85));
@@ -85,11 +86,13 @@ public class UnlocksTest
 		assertEquals(Unlocks.Seat.THRONE, Unlocks.seat(99));
 		assertEquals("Loiterer", Unlocks.title(1));
 		assertEquals("Bank Standing Master", Unlocks.title(99));
-		assertEquals(0, Unlocks.peekTicks(39));
-		assertEquals(2, Unlocks.peekTicks(40));
+		assertEquals(0, Unlocks.peekTicks(4));
+		assertEquals(2, Unlocks.peekTicks(5));
+		assertEquals(3, Unlocks.peekTicks(10));
 		assertEquals(8, Unlocks.peekTicks(50));
-		assertEquals(8, Unlocks.peekTicks(64));
-		assertEquals(Unlocks.PEEK_TICKS, Unlocks.peekTicks(65));
+		assertEquals(10, Unlocks.peekTicks(69));
+		assertEquals(17, Unlocks.peekTicks(70));
+		assertEquals(Unlocks.PEEK_TICKS, Unlocks.peekTicks(85));
 		assertEquals(Unlocks.PEEK_TICKS, Unlocks.peekTicks(99));
 	}
 

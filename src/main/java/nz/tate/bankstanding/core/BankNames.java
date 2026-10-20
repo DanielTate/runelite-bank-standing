@@ -180,7 +180,9 @@ public final class BankNames
 		area("aldarin-dock", "Aldarin Dock", 1444, 2966),
 		area("great-conch-dock", "Great Conch Dock", 3182, 2368),
 		area("gauntlet", "The Gauntlet", 3038, 6129),
-		area("zul-andra", "Zul-Andra", 2196, 3051)
+		area("zul-andra", "Zul-Andra", 2196, 3051),
+		area("fractured-archive-west", "Fractured Archive West", 4121, 5552),
+		area("fractured-archive-east", "Fractured Archive East", 4133, 5552)
 	));
 
 	/**
@@ -191,7 +193,8 @@ public final class BankNames
 		"lunar-isle", "zanaris", "shilo", "piscatoris", "mor-ul-rek", "nex", "colosseum", "lletya",
 		"prifddinas-north", "prifddinas-south", "sophanem", "neitiznot", "jatizso", "burgh-de-rott",
 		"darkmeyer", "myths-guild", "fossil-island", "tzhaar", "mage-arena", "keldagrim", "dorgesh-kaan",
-		"mos-le-harmless", "ape-atoll", "tarns-lair", "etceteria", "corsair-cove", "hallowed-sepulchre"
+		"mos-le-harmless", "ape-atoll", "tarns-lair", "etceteria", "corsair-cove", "hallowed-sepulchre",
+		"fractured-archive-west", "fractured-archive-east"
 	)));
 
 	private BankNames()

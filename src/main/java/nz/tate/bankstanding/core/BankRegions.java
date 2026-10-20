@@ -42,7 +42,8 @@ public final class BankRegions
 	static
 	{
 		region("Misthalin", "varrock-west", "varrock-east", "ge", "edgeville", "edgeville-pvp", "draynor",
-			"lumbridge", "lumbridge-pvp", "cooking-guild");
+			"lumbridge", "lumbridge-pvp", "cooking-guild",
+			"fractured-archive-west", "fractured-archive-east");
 		region("Asgarnia", "falador-west", "falador-east", "falador-pvp", "port-sarim", "crafting-guild",
 			"warriors-guild", "mining-guild", "rogues-den", "motherlode", "camdozaal", "nex");
 		region("Kandarin", "seers", "catherby", "camelot-pvp", "ardougne-north", "ardougne-south",

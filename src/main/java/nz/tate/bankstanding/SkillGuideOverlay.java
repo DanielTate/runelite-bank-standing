@@ -155,7 +155,7 @@ class SkillGuideOverlay extends ParchmentWindow
 			return;
 		}
 		Unlocks.Unlock unlock = lines.get(row);
-		Image icon = unlock.sprite > 0 ? art.sprite(unlock.sprite) : art.itemIcon(unlock.item, unlock.gold);
+		Image icon = unlock.sprite > 0 ? art.sprite(unlock.sprite) : art.itemIcon(unlock.item, unlock.tint);
 		GuideArt.drawIcon(graphics, icon, x, y + (ROW - ICON) / 2, ICON);
 
 		Progress progress = plugin.getProgress();

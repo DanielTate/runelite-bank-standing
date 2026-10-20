@@ -144,6 +144,10 @@ class CollectionLogOverlay extends GameWindow
 		final int count;
 		/** A picture to show instead of an item icon, or null. */
 		BufferedImage image;
+		/** For a pet you own, its drop key: clicking the slot puts it away or brings it out. */
+		String pet;
+		/** A pet put away, drawn faded. */
+		boolean away;
 
 		Slot(String name, boolean done, int icon, boolean gold, String detail, int count)
 		{
@@ -238,6 +242,9 @@ class CollectionLogOverlay extends GameWindow
 	/** The journal icons as last drawn, in window coordinates, and the book and tab each opens. */
 	private volatile List<Rectangle> journalButtons = new ArrayList<>();
 	private volatile List<int[]> journalTabs = new ArrayList<>();
+	/** Owned pets' slots as last drawn, in window coordinates, and which pet each is. */
+	private volatile List<Rectangle> petButtons = new ArrayList<>();
+	private volatile List<String> petKeys = new ArrayList<>();
 
 	@Inject
 	CollectionLogOverlay(BankStandingPlugin plugin, Client client, GuideArt art, RuneLiteConfig runeLiteConfig,
@@ -276,6 +283,16 @@ class CollectionLogOverlay extends GameWindow
 		{
 			close();
 			return;
+		}
+		List<Rectangle> pets = petButtons;
+		List<String> keys = petKeys;
+		for (int i = 0; i < pets.size() && i < keys.size(); i++)
+		{
+			if (pets.get(i).contains(x, y))
+			{
+				plugin.togglePet(keys.get(i));
+				return;
+			}
 		}
 		List<Rectangle> buttons = journalButtons;
 		List<int[]> tabs = journalTabs;
@@ -530,6 +547,8 @@ class CollectionLogOverlay extends GameWindow
 		}
 		journalButtons = buttons;
 		journalTabs = tabs;
+		List<Rectangle> pets = new ArrayList<>();
+		List<String> keys = new ArrayList<>();
 
 		Point mouse = client.getMouseCanvasPosition();
 		boolean grid = shown.grid();
@@ -565,8 +584,15 @@ class CollectionLogOverlay extends GameWindow
 				{
 					tooltip = slot.name + "</br>" + slot.detail;
 				}
+				if (slot.pet != null)
+				{
+					pets.add(new Rectangle(hover.x - x, hover.y - y, hover.width, hover.height));
+					keys.add(slot.pet);
+				}
 			}
 		}
+		petButtons = pets;
+		petKeys = keys;
 		if (contentRows > visibleContentRows)
 		{
 			int height = visibleContentRows * rowHeight;
@@ -582,6 +608,10 @@ class CollectionLogOverlay extends GameWindow
 		{
 			// Like the game's log: what you haven't got is faded.
 			graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+		}
+		else if (slot.away)
+		{
+			graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f));
 		}
 		GuideArt.drawIcon(graphics, slot.image != null ? slot.image : art.itemIcon(slot.icon, slot.gold), x, y, SLOT);
 		graphics.setComposite(before);
@@ -633,8 +663,23 @@ class CollectionLogOverlay extends GameWindow
 					{
 						detail += "</br>Only drops at " + holidayName(drop.holiday);
 					}
-					each.slots.add(new Slot(drop.name, obtained != null, drop.icon, drop.gold, detail,
-						obtained == null ? 0 : obtained.count));
+					if (obtained == null && !drop.banks.isEmpty())
+					{
+						detail += "</br>Only drops at the Fractured Archive";
+					}
+					boolean away = progress.hiddenPets.contains(drop.key);
+					if (drop.pet && obtained != null)
+					{
+						detail += away ? "</br>Put away. Click to bring it out." : "</br>Keeps you company. Click to put it away.";
+					}
+					Slot slot = new Slot(drop.name, obtained != null, drop.icon, drop.gold, detail,
+						obtained == null ? 0 : obtained.count);
+					if (drop.pet && obtained != null)
+					{
+						slot.pet = drop.key;
+						slot.away = away;
+					}
+					each.slots.add(slot);
 				}
 				each.extraLabel = "Rolls";
 				each.extraValue = format.format(progress.rolls);

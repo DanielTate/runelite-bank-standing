@@ -60,6 +60,8 @@ public final class Progress
 	/** Collection log drops by key, and how many XP rolls there have been since it began. */
 	public Map<String, CollectionLog.Obtained> collection = new LinkedHashMap<>();
 	public long rolls;
+	/** Pets put away from the collection log, by drop key, so they don't come out while you stand. */
+	public Set<String> hiddenPets = new TreeSet<>();
 
 	/** {@link Moments} by key, with when each first happened. */
 	public Map<String, Long> moments = new LinkedHashMap<>();

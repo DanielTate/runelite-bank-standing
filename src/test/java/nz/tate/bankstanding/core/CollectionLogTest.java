@@ -58,7 +58,7 @@ public class CollectionLogTest
 				return 0;
 			}
 		};
-		CollectionLog.Drop rarest = CollectionLog.roll(everyRollHits, LocalDate.of(2026, 8, 1));
+		CollectionLog.Drop rarest = CollectionLog.roll(everyRollHits, LocalDate.of(2026, 8, 1), "ge");
 		assertFalse(rarest.hidden);
 		assertTrue(CollectionLog.find(CollectionLog.BANDAGES).hidden);
 	}
@@ -72,7 +72,7 @@ public class CollectionLogTest
 		int junk = 0;
 		for (int i = 0; i < 1_000_000; i++)
 		{
-			CollectionLog.Drop drop = CollectionLog.roll(random, ordinaryDay);
+			CollectionLog.Drop drop = CollectionLog.roll(random, ordinaryDay, "ge");
 			if (drop == null)
 			{
 				continue;
@@ -99,11 +99,29 @@ public class CollectionLogTest
 		boolean cobweb = false;
 		for (int i = 0; i < 200_000; i++)
 		{
-			CollectionLog.Drop drop = CollectionLog.roll(random, LocalDate.of(2026, 10, 31));
+			CollectionLog.Drop drop = CollectionLog.roll(random, LocalDate.of(2026, 10, 31), "ge");
 			cobweb |= drop != null && drop.key.equals("cobweb");
 			assertTrue(drop == null || drop.holiday == null || drop.holiday == Holiday.HALLOWEEN);
 		}
 		assertTrue(cobweb);
+	}
+
+	@Test
+	public void archiveJunkOnlyAtTheArchive()
+	{
+		Random random = new Random(3);
+		boolean archiveJunk = false;
+		for (int i = 0; i < 200_000; i++)
+		{
+			CollectionLog.Drop drop = CollectionLog.roll(random, LocalDate.of(2026, 8, 1), "fractured-archive-east");
+			archiveJunk |= drop != null && drop.group == CollectionLog.Group.ARCHIVE;
+		}
+		assertTrue(archiveJunk);
+		for (int i = 0; i < 200_000; i++)
+		{
+			CollectionLog.Drop drop = CollectionLog.roll(random, LocalDate.of(2026, 8, 1), "ge");
+			assertTrue(drop == null || drop.group != CollectionLog.Group.ARCHIVE);
+		}
 	}
 
 	@Test

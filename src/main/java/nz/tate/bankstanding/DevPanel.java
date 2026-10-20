@@ -27,6 +27,10 @@ package nz.tate.bankstanding;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
+import java.util.Map;
+import java.util.TreeMap;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -36,8 +40,10 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
+import javax.swing.JTextArea;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.ChangeListener;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
@@ -83,6 +89,84 @@ class DevPanel extends PluginPanel
 			button("99 celebration", plugin::devCelebrate),
 			button("Cape emote", plugin::capeEmote)));
 
+		body.add(heading("Tea delivery"));
+		JComboBox<String> teaBanker = new JComboBox<>();
+		teaBanker.addItem("Any (as in game)");
+		teaBanker.addItem("This bank's banker");
+		teaBanker.addItem("Classic banker");
+		for (String bank : TeaDelivery.visitorBanks())
+		{
+			teaBanker.addItem(bank);
+		}
+		body.add(wide(teaBanker));
+		body.add(buttons(button("Send tea", () ->
+		{
+			int chosen = teaBanker.getSelectedIndex();
+			plugin.devTea(chosen == 0 ? null : chosen == 1 ? TeaDelivery.LOCAL : chosen == 2 ? TeaDelivery.CLASSIC
+				: (String) teaBanker.getSelectedItem());
+		})));
+
+		body.add(heading("Tea cup tuner"));
+		JComboBox<String> tuneBanker = new JComboBox<>();
+		for (String choice : TeaDelivery.tunerChoices())
+		{
+			tuneBanker.addItem(choice);
+		}
+		body.add(wide(tuneBanker));
+		JSpinner height = new JSpinner(new SpinnerNumberModel(0, -400, 100, 1));
+		JSpinner forward = new JSpinner(new SpinnerNumberModel(0, -200, 200, 1));
+		JSpinner side = new JSpinner(new SpinnerNumberModel(0, -200, 200, 1));
+		body.add(row(new JLabel("Height (up is -)"), height));
+		body.add(row(new JLabel("Forward (-)/back (+)"), forward));
+		body.add(row(new JLabel("Left/right"), side));
+		JTextArea tuned = new JTextArea(4, 20);
+		tuned.setEditable(false);
+		tuned.setLineWrap(true);
+		// Each banker's values once changed, to copy back.
+		Map<String, int[]> changed = new TreeMap<>();
+		boolean[] loading = {false};
+		Runnable load = () ->
+		{
+			String choice = (String) tuneBanker.getSelectedItem();
+			int[] cup = changed.containsKey(choice) ? changed.get(choice) : TeaDelivery.cupOf(choice);
+			loading[0] = true;
+			height.setValue(cup[0]);
+			forward.setValue(cup[1]);
+			side.setValue(cup[2]);
+			loading[0] = false;
+			plugin.devTune(choice, cup);
+		};
+		ChangeListener update = e ->
+		{
+			if (loading[0])
+			{
+				return;
+			}
+			String choice = (String) tuneBanker.getSelectedItem();
+			int[] cup = {(Integer) height.getValue(), (Integer) forward.getValue(), (Integer) side.getValue()};
+			changed.put(choice, cup);
+			StringBuilder text = new StringBuilder();
+			for (Map.Entry<String, int[]> each : changed.entrySet())
+			{
+				int[] v = each.getValue();
+				text.append(each.getKey()).append(": height ").append(v[0]).append(", forward ").append(v[1])
+					.append(", side ").append(v[2]).append('\n');
+			}
+			tuned.setText(text.toString());
+			plugin.devTune(choice, cup);
+		};
+		height.addChangeListener(update);
+		forward.addChangeListener(update);
+		side.addChangeListener(update);
+		tuneBanker.addActionListener(e -> load.run());
+		body.add(buttons(
+			button("Show banker", load),
+			button("Turn a quarter", plugin::devTurnTuner),
+			button("Hide banker", plugin::devStopTuning),
+			button("Copy values", () -> Toolkit.getDefaultToolkit().getSystemClipboard()
+				.setContents(new StringSelection(tuned.getText()), null))));
+		body.add(wide(tuned));
+
 		body.add(heading("Cape"));
 		JCheckBox cape = new JCheckBox("Show the 99 cape at any level", dev.previewCape);
 		cape.setOpaque(false);
@@ -113,17 +197,28 @@ class DevPanel extends PluginPanel
 		{
 			drop.addItem(each.name);
 		}
-		body.add(drop);
+		body.add(wide(drop));
 		body.add(buttons(
 			button("Give drop", () -> plugin.devGiveDrop(CollectionLog.DROPS.get(drop.getSelectedIndex()).key)),
 			button("Give next missing", plugin::devGiveNextDrop),
 			button("Test popup", plugin::devTestPopup),
 			button("Open log", plugin::openCollectionLog),
 			button("Reset log", plugin::devResetCollection)));
-		JCheckBox pet = new JCheckBox("Show the pet without owning it", dev.previewPet);
+		JCheckBox pet = new JCheckBox("Show the pets without owning them", dev.previewPet);
 		pet.setOpaque(false);
 		pet.addActionListener(e -> plugin.devPreviewPet(pet.isSelected()));
 		body.add(pet);
+		JComboBox<String> rat = new JComboBox<>();
+		for (Object[] each : Pets.DEV_RATS)
+		{
+			rat.addItem((String) each[0]);
+		}
+		rat.addActionListener(e ->
+		{
+			Object[] chosen = Pets.DEV_RATS[rat.getSelectedIndex()];
+			plugin.devRat(new int[]{(int) chosen[1], (int) chosen[2], (int) chosen[3]});
+		});
+		body.add(row(new JLabel("Bank rat"), rat));
 
 		body.add(heading("Progress (changes your save)"));
 		JSpinner level = new JSpinner(new SpinnerNumberModel(99, 1, Experience.MAX_LEVEL, 1));
@@ -147,6 +242,17 @@ class DevPanel extends PluginPanel
 		label.setBorder(new EmptyBorder(10, 0, 4, 0));
 		label.setAlignmentX(LEFT_ALIGNMENT);
 		return label;
+	}
+
+	/** A full-width control lined up with the rest; a bare combo box would shift everything right. */
+	private static JPanel wide(JComponent component)
+	{
+		JPanel panel = new JPanel(new BorderLayout());
+		panel.setOpaque(false);
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+		panel.add(component, BorderLayout.CENTER);
+		return panel;
 	}
 
 	private static JPanel buttons(JButton... buttons)

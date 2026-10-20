@@ -34,6 +34,11 @@ final class Outfit
 {
 	private final String[] bankKeys;
 	private final List<Set<Integer>> pieces = new ArrayList<>();
+	/** Pieces that count worn or just carried, like a book that isn't wielded. */
+	private final List<Set<Integer>> carried = new ArrayList<>();
+	private String name;
+	private int icon = -1;
+	private boolean zeal;
 
 	Outfit(String... bankKeys)
 	{
@@ -46,6 +51,33 @@ final class Outfit
 		return this;
 	}
 
+	/** One item from these, worn or in the inventory. */
+	Outfit carried(Integer... ids)
+	{
+		carried.add(Items.ids(ids));
+		return this;
+	}
+
+	/** Its own key, for a bank with more than one set. */
+	Outfit named(String name)
+	{
+		this.name = name;
+		return this;
+	}
+
+	Outfit icon(int item)
+	{
+		icon = item;
+		return this;
+	}
+
+	/** Counts only with the Zeal prayer unlocked. */
+	Outfit zeal()
+	{
+		zeal = true;
+		return this;
+	}
+
 	String[] bankKeys()
 	{
 		return bankKeys;
@@ -54,13 +86,17 @@ final class Outfit
 	/** An item from its first piece, to show for it. */
 	int icon()
 	{
-		return Collections.min(pieces.get(0));
+		if (icon != -1)
+		{
+			return icon;
+		}
+		return Collections.min(pieces.isEmpty() ? carried.get(0) : pieces.get(0));
 	}
 
-	/** Saved in the collection log, so it must never change: the first bank's key. */
+	/** Saved in the collection log, so it must never change: its name, or else the first bank's key. */
 	String key()
 	{
-		return bankKeys[0];
+		return name != null ? name : bankKeys[0];
 	}
 
 	boolean wornBy(StandContext context)
@@ -72,6 +108,13 @@ final class Outfit
 				return false;
 			}
 		}
-		return true;
+		for (Set<Integer> piece : carried)
+		{
+			if (!context.wearingAny(piece) && !context.carryingAny(piece))
+			{
+				return false;
+			}
+		}
+		return !zeal || context.zealUnlocked;
 	}
 }

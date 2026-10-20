@@ -62,6 +62,7 @@ import net.runelite.api.clan.ClanSettings;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
@@ -169,6 +170,18 @@ public class BankStandingPlugin extends Plugin
 	private StandCosmetics cosmetics;
 
 	@Inject
+	private TeaDelivery teaDelivery;
+
+	@Inject
+	private Pets pets;
+
+	@Inject
+	private ConfigManager configManager;
+
+	/** The version whose changelog was last opened from the side panel. */
+	private static final String CHANGELOG_SEEN = "changelogSeen";
+
+	@Inject
 	private MouseManager mouseManager;
 
 	@Inject
@@ -258,6 +271,8 @@ public class BankStandingPlugin extends Plugin
 	private final Set<NPC> randomEvents = new HashSet<>();
 	/** The tick you were hit on during a stand, or -1. */
 	private int hitOnTick = -1;
+	/** When you last died, for the Archive's sad ghost; 0 if not this session. */
+	private long diedAt;
 
 	private Set<Integer> worn = Collections.emptySet();
 	private int[] inventory = new int[0];
@@ -307,12 +322,15 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.add(hitsplatOverlay);
 		overlayManager.add(peekTimer);
 		overlayManager.add(modifierWidget);
+		overlayManager.add(teaDelivery);
 		// Only the half that runs after the message is sent: the message is never changed
 		// on its way out, only your own copy of it is redrawn.
 		chatCommandManager.registerCommand(ChatCommands.SHORT, this::onChatCommand);
 		chatCommandManager.registerCommand(ChatCommands.LONG, this::onChatCommand);
 
-		panel = new BankStandingPanel(icons, this::capeEmote, this::openCollectionLog);
+		panel = new BankStandingPanel(icons, this::capeEmote, this::openCollectionLog,
+			!BankStandingPanel.VERSION.equals(configManager.getConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN)),
+			() -> configManager.setConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN, BankStandingPanel.VERSION));
 		navButton = NavigationButton.builder()
 			.tooltip("Bank Standing")
 			.icon(icons.small())
@@ -360,6 +378,7 @@ public class BankStandingPlugin extends Plugin
 			save();
 			capeDisplay.restore(wornCape);
 			cosmetics.clear();
+			teaDelivery.stopTuning();
 			realXp.clear();
 			progress = null;
 			worn = Collections.emptySet();
@@ -384,6 +403,7 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.remove(peekTimer);
 		peekTimer.ticksLeft(0);
 		overlayManager.remove(modifierWidget);
+		overlayManager.remove(teaDelivery);
 		chatCommandManager.unregisterCommand(ChatCommands.SHORT);
 		chatCommandManager.unregisterCommand(ChatCommands.LONG);
 		modifierWidget.show(Collections.emptyList());
@@ -476,6 +496,15 @@ public class BankStandingPlugin extends Plugin
 		if (event.getActor() == client.getLocalPlayer() && event.getHitsplat().getAmount() > 0 && tracker.isStanding())
 		{
 			hitOnTick = client.getTickCount();
+		}
+	}
+
+	@Subscribe
+	public void onActorDeath(ActorDeath event)
+	{
+		if (event.getActor() == client.getLocalPlayer())
+		{
+			diedAt = System.currentTimeMillis();
 		}
 	}
 
@@ -650,10 +679,17 @@ public class BankStandingPlugin extends Plugin
 		String bankKey = BankNames.keyFor(location.getX(), location.getY());
 		ClanSettings clan = client.getClanSettings();
 		Map<Keywords.Group, int[]> before = keywords.foundByGroup(progress);
+		long now = System.currentTimeMillis();
 		Keywords.Kind phrase = keywords.claim(progress, Text.removeTags(event.getMessage()),
-			System.currentTimeMillis(), today(), bankKey, worn, clan == null ? null : clan.getName(), spellbook());
+			now, today(), bankKey, worn, clan == null ? null : clan.getName(), spellbook());
 		if (phrase != null)
 		{
+			if (keywords.paidOnlyHere(progress, now, bankKey))
+			{
+				Set<Moments.Odd> odd = EnumSet.noneOf(Moments.Odd.class);
+				Moments.archivePhrase(progress, bankKey, now, odd);
+				announce(Collections.emptySet(), odd);
+			}
 			BankRecord bank = progress.bank(bankKey, location.getX(), location.getY());
 			int level = progress.level();
 			Modifiers.Effect effect = evaluate(bank, location);
@@ -751,6 +787,8 @@ public class BankStandingPlugin extends Plugin
 			celebration.start();
 		}
 		celebration.tick();
+		teaDelivery.frame();
+		pets.frame();
 	}
 
 	@Subscribe
@@ -790,8 +828,12 @@ public class BankStandingPlugin extends Plugin
 		// The cape and the other unlocks only show while bank standing; the dev options show
 		// them anywhere.
 		boolean standing = tracker.isStanding() || dev.pretendStanding;
-		boolean pet = config.showPet() && (CollectionLog.hasPet(progress) || dev.previewPet);
-		cosmetics.tick(standing, currentLevel, config, pet);
+		boolean moneybag = config.showPet() && (CollectionLog.petOut(progress, CollectionLog.MONEYBAG) || dev.previewPet);
+		boolean rat = config.showPet() && (CollectionLog.petOut(progress, CollectionLog.RAT) || dev.previewPet);
+		boolean butterfly = config.showPet() && (CollectionLog.petOut(progress, CollectionLog.BUTTERFLY) || dev.previewPet);
+		WorldPoint here = mapLocation(player);
+		cosmetics.tick(standing, currentLevel, config, moneybag, rat, butterfly, BankNames.keyFor(here.getX(), here.getY()),
+			progress.banks.keySet());
 		if (dev.previewCape
 			|| config.showCape() && currentLevel >= Experience.MAX_LEVEL && standing)
 		{
@@ -858,7 +900,7 @@ public class BankStandingPlugin extends Plugin
 			}
 			Moments.outfitsWorn(progress, today(), outfits, System.currentTimeMillis(), changed);
 			announce(Collections.emptySet(), changed);
-			CollectionLog.Drop found = CollectionLog.roll(collectionRandom, today());
+			CollectionLog.Drop found = CollectionLog.roll(collectionRandom, today(), bankKey);
 			if (found != null)
 			{
 				obtain(found);
@@ -903,6 +945,24 @@ public class BankStandingPlugin extends Plugin
 	{
 		collectionLogOverlay.showSecrets(book == JournalOverlay.DRESSED);
 		collectionLogOverlay.open();
+	}
+
+	/** Puts a pet away, or brings it back out, from its slot in the collection log. */
+	void togglePet(String key)
+	{
+		clientThread.invoke(() ->
+		{
+			if (progress == null || !progress.collection.containsKey(key))
+			{
+				return;
+			}
+			if (!progress.hiddenPets.remove(key))
+			{
+				progress.hiddenPets.add(key);
+			}
+			dirty = true;
+			save();
+		});
 	}
 
 	/** Opens the collection log, from the side panel or the skill tile's menu. */
@@ -1126,6 +1186,7 @@ public class BankStandingPlugin extends Plugin
 		context.hoursAtBank = bank.hours();
 		context.inventory = inventory;
 		context.spellbook = spellbook();
+		context.zealUnlocked = client.getVarbitValue(VarbitID.PRAYER_ZEAL_UNLOCKED) == 1;
 		return context;
 	}
 
@@ -1180,13 +1241,15 @@ public class BankStandingPlugin extends Plugin
 		Player me = client.getLocalPlayer();
 		tick.hitpoints = client.getBoostedSkillLevel(Skill.HITPOINTS);
 		tick.maxHitpoints = client.getRealSkillLevel(Skill.HITPOINTS);
-		tick.eating = EATING.contains(me.getAnimation());
+		tick.eating = EATING.contains(me.getAnimation()) && !cosmetics.isOwnAnimation(me.getAnimation());
 		tick.balloons = !balloons.isEmpty();
 		tick.maxCash = maxCash;
 		tick.clueTiers = clueTiers;
 		tick.wornValue = wornValue;
 		tick.spellbook = spellbook();
-		tick.emptyHanded = worn.isEmpty() && Arrays.stream(inventory).allMatch(id -> id <= 0);
+		tick.inventoryEmpty = Arrays.stream(inventory).allMatch(id -> id <= 0);
+		tick.emptyHanded = worn.isEmpty() && tick.inventoryEmpty;
+		tick.diedAt = diedAt;
 		watchNeighbours(tick);
 		watchRandomEvents(me);
 		Set<Moments.HolidayEntry> holidays = EnumSet.noneOf(Moments.HolidayEntry.class);
@@ -1483,6 +1546,40 @@ public class BankStandingPlugin extends Plugin
 				refreshPanel();
 			}
 		});
+	}
+
+	/** Sends tea now: {@code banker} is a bank whose banker comes, one of TeaDelivery's choices, or null for any. */
+	void devTea(String banker)
+	{
+		clientThread.invoke(() ->
+		{
+			Player player = client.getLocalPlayer();
+			if (player != null && progress != null)
+			{
+				WorldPoint here = mapLocation(player);
+				cosmetics.devTea(BankNames.keyFor(here.getX(), here.getY()), progress.banks.keySet(), banker);
+			}
+		});
+	}
+
+	void devTune(String banker, int[] cup)
+	{
+		clientThread.invoke(() -> teaDelivery.tune(banker, cup));
+	}
+
+	void devTurnTuner()
+	{
+		clientThread.invoke(teaDelivery::turnTuner);
+	}
+
+	void devStopTuning()
+	{
+		clientThread.invoke(teaDelivery::stopTuning);
+	}
+
+	void devRat(int[] rat)
+	{
+		clientThread.invoke(() -> pets.devRat(rat));
 	}
 
 	void devPreviewPet(boolean on)

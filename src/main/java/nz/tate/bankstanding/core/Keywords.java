@@ -54,6 +54,8 @@ public final class Keywords
 	static final long COOLDOWN_MILLIS = 60 * 60 * 1000L;
 	static final int DAILY_CAP = 10;
 	private static final String SALT = "bankstanding:";
+	private static final String ARCHIVE_WEST = "fractured-archive-west";
+	private static final String ARCHIVE_EAST = "fractured-archive-east";
 	private static final Pattern TRAILING_PUNCTUATION = Pattern.compile("[\\s!?.,~]+$");
 
 	/** What a phrase is tied to, which decides the colour of its hitsplat. */
@@ -577,7 +579,25 @@ public final class Keywords
 		phrase("84b8d1acda8deec0f640f4fac69f1b564386f1bc93098dea9b3d05e1bc6fae26", Holiday.BIRTHDAY),
 		phrase("85b97fb3beb5929dc7330a9cce82165e7b57e4aadd3ec4d9693c165c316a863a", Holiday.EASTER),
 		phrase("f827388dff718b39d5f7ecfeee97b387077631f917bae9e68ea0e835b839cb38", null, "edgeville").onSpellbook(Spellbook.ANCIENT),
-		phrase("f7ff38a86f0e7de60d3972cf10d006f29760becab5d3254c168fa0d9c1a0676e", null).onSpellbook(Spellbook.LUNAR)
+		phrase("f7ff38a86f0e7de60d3972cf10d006f29760becab5d3254c168fa0d9c1a0676e", null).onSpellbook(Spellbook.LUNAR),
+		phrase("39d48e3ef5fddefcca93bc0c50c35d5d7c4b7e063ce8caee9e718099bf1d3b41", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("cd0dbdcf101f4a71b03af6b5fa88304b254e5c3124128a09ea915bcb0e1a01f9", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("27d6047aefa74f4e44cecb4eb3e0f9802488eaefcb98b1a2da6b794758313a61", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("a7b241d68b83bba2b686dd9c8018ea61e39b7e8feaba7a13bf97e65be976dae8", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("36c0a40f6e82e616732faf6dbb2b13ce28f943f271ea528ab47f6a1524800ec9", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("a2634033ef71843e78418a75636681c50f5da6aecf2b8d2e7f5cdd55e22d6b66", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("f1c1054371cab2a76cecc9c3057af28a5e0b6c019a5122734a9a29ddacc10a96", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("c4ad7665f0974ef14a295eff0e856c0d487f6f3bb83e555a81482e3c2e81f0bc", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("f32886d7b01015fd390b5b452e368c89986a43af0ce2486e5eb84a6397a575cf", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("05c8ffb9e67dc00cb0471cf02f11a76f2ea2f3dcd1f6e40d6e5c8449849e7869", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("b5345fa06c8ac2b9cc3b98c4a81504555d8a02d95e57b7caf8c9fe1a879e5f66", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("e8573522b97d3687b5da065c20520bc34f6cc2614ea238c0d8df37d75c9aad24", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("02ac6ac48bb5aa6df3b0a2fd73c93bc26ff2ea2ac000ccfab8fd6c2b01ad99d6", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("47080647ce1f5532c9318e5f94842a5851e07b9cb7b2ee92790d497f901071db", null, ARCHIVE_WEST, ARCHIVE_EAST),
+		phrase("b7d0d626d7ab33f7afe1f0fdd1905b93fe40445e7e2d647863dc87e5c2b1f0f6", null, ARCHIVE_WEST),
+		phrase("d57b48efebc5fed1d6c99660364cdb89b6582c6fee91261c7737a90c170977cd", null, ARCHIVE_WEST),
+		phrase("3485882c7840fe29e5367b6e4ff0c1a1c69909309e5f6716ea00e02a57df03e5", null, ARCHIVE_EAST),
+		phrase("b7de3735d36cb2feeb83e69671653e4ed436b790c1becc5acc07e71d53709568", null, ARCHIVE_EAST)
 	));
 
 	private final List<Phrase> phrases;
@@ -741,6 +761,20 @@ public final class Keywords
 		p.keywordPaid.put(hash, nowMillis);
 		p.phraseNotes.putIfAbsent(hash, new Noted(said, bankKey, nowMillis));
 		return match.kind();
+	}
+
+	/** Whether the phrase that paid out at {@code nowMillis} works only at this one bank. */
+	public boolean paidOnlyHere(Progress p, long nowMillis, String bankKey)
+	{
+		for (Phrase phrase : phrases)
+		{
+			Long paid = p.keywordPaid.get(phrase.hash);
+			if (paid != null && paid == nowMillis)
+			{
+				return phrase.banks.size() == 1 && phrase.banks.contains(bankKey);
+			}
+		}
+		return false;
 	}
 
 	/** The phrase this whole message is, if it works here and now; otherwise null. */

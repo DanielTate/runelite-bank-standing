@@ -74,6 +74,10 @@ public final class Moments
 	static final List<String> ISLAND_BANKS = Arrays.asList("lunar-isle", "neitiznot", "jatizso", "ape-atoll",
 		"fossil-island", "mos-le-harmless", "isle-of-souls", "etceteria");
 	static final int ISLAND_HOPPER_BANKS = 5;
+	static final int QUEUE_FOR_FRED_PLAYERS = 5;
+	static final long SAD_GHOST_MILLIS = 10 * 60 * 1000L;
+	static final String ARCHIVE_WEST = "fractured-archive-west";
+	static final String ARCHIVE_EAST = "fractured-archive-east";
 	static final List<String> KOUREND_BANKS = Arrays.asList("hosidius", "arceuus", "lovakengj", "shayzien",
 		"port-piscarilius");
 
@@ -182,6 +186,9 @@ public final class Moments
 		FRIDAY_13TH("odd:friday-13th", "Unlucky for some", "Stand on a Friday the 13th", Category.ODD),
 		LEAP_DAY("odd:leap-day", "Leap day", "Stand on 29 February", Category.ODD),
 		TAKE_A_SEAT("odd:take-a-seat", "Take a seat", "Do the Sit emote while bank standing", Category.ODD),
+		SAD_GHOST("odd:sad-ghost", "Sad ghost", "Stand at the Fractured Archive within 10 minutes of dying",
+			Category.ODD),
+		SPECTATOR("odd:spectator", "Spectator", "Stand for an hour at the Fractured Archive's west chest", Category.ODD),
 
 		EARLY_BIRD("odd:early-bird", "Early bird", "Stand between 5 and 6 in the morning, your time", Category.CALENDAR),
 		LUNCH_BREAK("odd:lunch-break", "Lunch break", "Stand between 12 and 1 in the afternoon, your time",
@@ -189,6 +196,8 @@ public final class Moments
 		WEEKEND_WARRIOR("odd:weekend-warrior", "Weekend warrior", "Stand on both days of a weekend", Category.CALENDAR),
 		FULL_WEEK("odd:full-week", "Full week", "Stand on every day of the week", Category.CALENDAR),
 		ALL_YEAR("odd:all-year", "All year round", "Stand in every month of the year", Category.CALENDAR),
+		ARCHIVE_ANNIVERSARY("odd:archive-anniversary", "Anniversary",
+			"Stand at the Fractured Archive on 20 October, the day it opened", Category.CALENDAR),
 
 		STREAK_7("odd:streak-7", "Regular", "Stand 7 days in a row", Category.STREAKS),
 		STREAK_30("odd:streak-30", "Devoted", "Stand 30 days in a row", Category.STREAKS),
@@ -208,6 +217,10 @@ public final class Moments
 			Category.CROWDS),
 		GOOD_COMPANY("odd:good-company", "Good company", "Stand beside another player who's been still for 10 minutes",
 			Category.CROWDS),
+		QUEUE_FOR_FRED("odd:queue-for-fred", "Queue for Fred",
+			"Stand at the Fractured Archive with 5 or more players around you", Category.CROWDS),
+		ALONE_IN_THE_ARCHIVE("odd:alone-in-the-archive", "Alone in the archive",
+			"Stand at the Fractured Archive with nobody else in sight", Category.CROWDS),
 
 		LIVING_DANGEROUSLY("odd:living-dangerously", "Living dangerously", "Stand on a PvP world", Category.WORLDS),
 		THE_ORIGINAL("odd:the-original", "The original", "Stand on world 301", Category.WORLDS),
@@ -228,6 +241,10 @@ public final class Moments
 		PERSONAL_SPACE("odd:personal-space", "Personal space", "A little too close for comfort.", Category.CROWDS,
 			true),
 		FORGOT_SOMETHING("odd:forgot-something", "Forgot something?", "Some islanders expect the right book.",
+			Category.ODD, true),
+		MONTOYAS_BRIEFING("odd:montoyas-briefing", "Montoya's briefing", "The west side has its own word.",
+			Category.ODD, true),
+		SIGNED_THE_REGISTER("odd:signed-the-register", "Signed the register", "The east side keeps records.",
 			Category.ODD, true),
 
 		WHERE_IT_BEGAN("place:where-it-all-began", "Where it all began", "Before the mainland."),
@@ -250,7 +267,11 @@ public final class Moments
 		SEA_LEGS("place:sea-legs", "Sea legs", "Steady on."),
 		NEIGHBOURHOOD_WATCH("place:neighbourhood-watch", "Neighbourhood watch", "Someone has to keep an eye on it."),
 		HIGH_SOCIETY("place:high-society", "High society", "Dress for the bank you want."),
-		QUICK_CHANGE("place:quick-change", "Quick change", "Dress for every occasion.");
+		QUICK_CHANGE("place:quick-change", "Quick change", "Dress for every occasion."),
+		FREDS_WAITING_ROOM("place:freds-waiting-room", "Fred's waiting room", "Beneath Lumbridge, behind a cliff face."),
+		WEST_WING_EAST_WING("place:west-wing-east-wing", "West wing, east wing", "Strategy or grouping?"),
+		LAST_STOP("place:last-stop", "Last stop", "No banking once you're inside."),
+		GUTHIX_SLEEPS("place:guthix-sleeps", "Guthix sleeps", "Balance in all things.");
 
 		public final String key;
 		public final String title;
@@ -679,6 +700,7 @@ public final class Moments
 		placeAt(p, bank, "mage-arena", Odd.BOLD_CHOICE, t.now, odd);
 		placeAt(p, bank, "culinaromancers-chest", Odd.KITCHEN_NIGHTMARE, t.now, odd);
 		placeAt(p, bank, "lletya", Odd.ELVEN_WELCOME, t.now, odd);
+		archive(p, t, bank, odd);
 
 		if (visited(notes, MOLE_BANKS) >= MOLE_PEOPLE_BANKS)
 		{
@@ -756,6 +778,66 @@ public final class Moments
 			}
 			w.lastRegion = region;
 			w.lastRegionAt = t.now;
+		}
+	}
+
+	/** The Fractured Archive's two chests, in the raid lobby under Lumbridge. */
+	public static boolean atArchive(String bank)
+	{
+		return ARCHIVE_WEST.equals(bank) || ARCHIVE_EAST.equals(bank);
+	}
+
+	private static void archive(Progress p, Tick t, String bank, Set<Odd> odd)
+	{
+		if (!atArchive(bank))
+		{
+			return;
+		}
+		note(p, Odd.FREDS_WAITING_ROOM, t.now, odd);
+		if (p.banks.containsKey(ARCHIVE_WEST) && p.banks.containsKey(ARCHIVE_EAST))
+		{
+			note(p, Odd.WEST_WING_EAST_WING, t.now, odd);
+		}
+		if (t.inventoryEmpty)
+		{
+			note(p, Odd.LAST_STOP, t.now, odd);
+		}
+		if (t.prayer == 0)
+		{
+			note(p, Odd.GUTHIX_SLEEPS, t.now, odd);
+		}
+		if (t.playersAround >= QUEUE_FOR_FRED_PLAYERS)
+		{
+			note(p, Odd.QUEUE_FOR_FRED, t.now, odd);
+		}
+		if (t.playersAround == 0)
+		{
+			note(p, Odd.ALONE_IN_THE_ARCHIVE, t.now, odd);
+		}
+		if (t.diedAt > 0 && t.now - t.diedAt <= SAD_GHOST_MILLIS)
+		{
+			note(p, Odd.SAD_GHOST, t.now, odd);
+		}
+		if (t.local.getMonth() == Month.OCTOBER && t.local.getDayOfMonth() == 20)
+		{
+			note(p, Odd.ARCHIVE_ANNIVERSARY, t.now, odd);
+		}
+		if (bank.equals(ARCHIVE_WEST) && t.standTicks >= Records.TICKS_PER_HOUR)
+		{
+			note(p, Odd.SPECTATOR, t.now, odd);
+		}
+	}
+
+	/** A phrase that only works at one of the Archive's chests was said there. */
+	public static void archivePhrase(Progress p, String bank, long now, Set<Odd> odd)
+	{
+		if (ARCHIVE_WEST.equals(bank))
+		{
+			note(p, Odd.MONTOYAS_BRIEFING, now, odd);
+		}
+		else if (ARCHIVE_EAST.equals(bank))
+		{
+			note(p, Odd.SIGNED_THE_REGISTER, now, odd);
 		}
 	}
 
@@ -884,6 +966,10 @@ public final class Moments
 		public int clueTiers;
 		/** Nothing worn and nothing carried. */
 		public boolean emptyHanded;
+		/** Nothing in the inventory, whatever's worn. */
+		public boolean inventoryEmpty;
+		/** When you last died, in epoch milliseconds, or 0 if not this session. */
+		public long diedAt;
 		public long wornValue;
 		/** The spellbook you're on, or null if unknown. */
 		public Spellbook spellbook;

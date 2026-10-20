@@ -38,27 +38,35 @@ public final class Unlocks
 	public static final int FIDGETS = 25;
 	public static final int BANKERS = 30;
 	public static final int TEA = 85;
-	/** The longest the bank can stay open without ending a stand, once Peek is unlocked. */
-	public static final int PEEK_TICKS = 17;
-	/** Level, ticks the bank can be open, and the name: a glance, then a quick peek, then a peek. */
-	private static final Object[][] PEEKS = {{40, 2, "Glance"}, {50, 8, "Quick peek"}, {65, PEEK_TICKS, "Peek"}};
+	/** The longest the bank can stay open without ending a stand, once every peek is unlocked. */
+	public static final int PEEK_TICKS = 50;
+	/** The tint that turns an icon gold. */
+	public static final int GOLD_TINT = 0xffc83c;
+	/** Level, ticks the bank can be open, and the name, from a blink to a leisurely browse. */
+	private static final Object[][] PEEKS = {
+		{5, 2, "Blink"}, {10, 3, "Glance"}, {20, 5, "Quick look"}, {30, 7, "Peek"}, {50, 8, "Long look"},
+		{60, 10, "Browse"}, {70, 17, "Rummage"}, {85, PEEK_TICKS, "Leisurely browse"},
+	};
 
 	/** The rug laid out under you while you stand. */
 	public enum Rug
 	{
-		NONE(0, ""),
-		WORN(10, "A worn rug to stand on"),
-		BLUE(40, "A blue rug"),
-		RED(70, "A red carpet"),
-		GOLD(MAX, "A gold carpet");
+		NONE(0, "", 0),
+		WORN(10, "A worn rug to stand on", 0x96734f),
+		BLUE(40, "A blue rug", 0x466ee6),
+		RED(70, "A red carpet", 0xdc2828),
+		GOLD(MAX, "A gold carpet", GOLD_TINT);
 
 		public final int level;
 		public final String text;
+		/** The colour its skill guide icon is tinted. */
+		final int tint;
 
-		Rug(int level, String text)
+		Rug(int level, String text, int tint)
 		{
 			this.level = level;
 			this.text = text;
+			this.tint = tint;
 		}
 	}
 
@@ -113,7 +121,7 @@ public final class Unlocks
 		return ticks;
 	}
 
-	/** Ticks the bank can be open without ending a stand; 0 before Glance. */
+	/** Ticks the bank can be open without ending a stand; 0 before Blink. */
 	public static int peekTicks(int level)
 	{
 		int ticks = 0;
@@ -161,6 +169,34 @@ public final class Unlocks
 		return level >= BANKERS;
 	}
 
+	/** Which START_DELAY step this level is on, from 0. */
+	private static int startStep(int level)
+	{
+		int step = 0;
+		for (int i = 0; i < START_DELAY.length; i++)
+		{
+			if (level >= START_DELAY[i][0])
+			{
+				step = i;
+			}
+		}
+		return step;
+	}
+
+	/** Which title this level has, from 0. */
+	private static int titleStep(int level)
+	{
+		int step = 0;
+		for (int i = 0; i < TITLES.length; i++)
+		{
+			if (level >= Integer.parseInt(TITLES[i][0]))
+			{
+				step = i;
+			}
+		}
+		return step;
+	}
+
 	public static String title(int level)
 	{
 		String title = TITLES[0][1];
@@ -193,16 +229,24 @@ public final class Unlocks
 	}
 
 	// Icons: item IDs, or sprite IDs for the emotes.
-	private static final int BOOTS = 11860;
-	private static final int WATCH = 2575;
-	private static final int BANKERS_NOTE = 28767;
-	private static final int[] RUG_ICONS = {8316, 8317, 8318, 8318};
+	/** Boots for each tile of reach, better boots the further you can stand. */
+	private static final int[] REACH_ICONS = {1061, 4119, 4121, 4123, 4127, 4129, 4131, 11840, 13239};
+	/** An hourglass, an ornate hourglass, a watch and a stopwatch, one per START_DELAY step after the first. */
+	private static final int[] START_ICONS = {5610, 33742, 2575, 27414};
+	/**
+	 * One per peek: an eye of newt, an eye patch, a lens, a lantern, goggles, a bank key, a
+	 * coin pouch and a banker's note.
+	 */
+	private static final int[] PEEK_ICONS = {221, 1025, 603, 4550, 9472, 13302, 22521, 28767};
+	/** One per title: an old boot, a beer, nails, boots of lightness, a chair, a gold bar, a briefcase, a crown. */
+	private static final int[] TITLE_ICONS = {685, 1917, 1539, 88, 8310, 2357, 30361, 12397};
+	/** A flat rug, tinted to match each rug laid out under you. */
+	private static final int RUG_ICON = 25362;
 	private static final int STOOL_ICON = 8826;
 	private static final int THRONE_ICON = 8360;
 	private static final int COINS = 995;
 	/** A porcelain cup of tea; the same cup appears beside you. */
 	public static final int CUP_OF_TEA = 4245;
-	private static final int SCROLL = 10485;
 	private static final int CAPE_ICON = 23351;
 	private static final int YAWN_SPRITE = 718;
 	private static final int SKILLCAPE_SPRITE = 736;
@@ -217,17 +261,22 @@ public final class Unlocks
 		public final int item;
 		/** The icon when it's a sprite instead of an item, or -1. */
 		public final int sprite;
-		/** Whether the icon is shown turned gold. */
-		public final boolean gold;
+		/** The colour the icon is tinted, keeping its light and shade, or 0 for none. */
+		public final int tint;
 
 		Unlock(int level, String text, Category category, int item, int sprite, boolean gold)
+		{
+			this(level, text, category, item, sprite, gold ? GOLD_TINT : 0);
+		}
+
+		Unlock(int level, String text, Category category, int item, int sprite, int tint)
 		{
 			this.level = level;
 			this.text = text;
 			this.category = category;
 			this.item = item;
 			this.sprite = sprite;
-			this.gold = gold;
+			this.tint = tint;
 		}
 	}
 
@@ -242,19 +291,18 @@ public final class Unlocks
 			if (level == 1 || bankRange(level) > bankRange(level - 1))
 			{
 				all.add(new Unlock(level, "Bank stand within " + bankRange(level) + (level == 1 ? " tile" : " tiles"),
-					Category.REACH, BOOTS, -1, false));
+					Category.REACH, REACH_ICONS[Math.min(bankRange(level), REACH_ICONS.length) - 1], -1, false));
 			}
 			if (level > 1 && startDelayTicks(level) < startDelayTicks(level - 1))
 			{
 				all.add(new Unlock(level, "XP starts after " + Math.round(startDelayTicks(level) * 0.6) + " seconds",
-					Category.TIMING, WATCH, -1, false));
+					Category.TIMING, START_ICONS[Math.min(startStep(level), START_ICONS.length) - 1], -1, false));
 			}
 			for (Rug rug : Rug.values())
 			{
 				if (rug != Rug.NONE && rug.level == level)
 				{
-					all.add(new Unlock(level, rug.text, Category.COMFORT, RUG_ICONS[rug.ordinal() - 1], -1,
-						rug == Rug.GOLD));
+					all.add(new Unlock(level, rug.text, Category.COMFORT, RUG_ICON, -1, rug.tint));
 				}
 			}
 			for (Seat seat : Seat.values())
@@ -273,13 +321,14 @@ public final class Unlocks
 			{
 				all.add(new Unlock(level, "Bankers notice you", Category.COMPANY, COINS, -1, false));
 			}
-			for (Object[] peek : PEEKS)
+			for (int i = 0; i < PEEKS.length; i++)
 			{
+				Object[] peek = PEEKS[i];
 				if (level == (int) peek[0])
 				{
 					long seconds = Math.round((int) peek[1] * 0.6);
 					all.add(new Unlock(level, peek[2] + ": open the bank for " + seconds
-						+ (seconds == 1 ? " second" : " seconds"), Category.TIMING, BANKERS_NOTE, -1, false));
+						+ (seconds == 1 ? " second" : " seconds"), Category.TIMING, PEEK_ICONS[i], -1, false));
 				}
 			}
 			if (level == TEA)
@@ -288,7 +337,7 @@ public final class Unlocks
 			}
 			if (level == 1 || !title(level).equals(title(level - 1)))
 			{
-				all.add(new Unlock(level, title(level), Category.TITLES, SCROLL, -1, level >= MAX));
+				all.add(new Unlock(level, title(level), Category.TITLES, TITLE_ICONS[titleStep(level)], -1, false));
 			}
 		}
 		all.add(new Unlock(MAX, "Bank Standing cape, worn while you stand", Category.CAPE, CAPE_ICON, -1, true));

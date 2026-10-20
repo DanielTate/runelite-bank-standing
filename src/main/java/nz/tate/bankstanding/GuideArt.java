@@ -36,6 +36,7 @@ import net.runelite.api.Client;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.util.AsyncBufferedImage;
+import nz.tate.bankstanding.core.Unlocks;
 
 /**
  * The game art the parchment windows share: the scroll, close button and scrollbar sprites,
@@ -83,7 +84,8 @@ class GuideArt
 	private final Map<Integer, BufferedImage> sprites = new ConcurrentHashMap<>();
 	/** Mirrored copies of sprites, by the original's ID. */
 	private final Map<Integer, BufferedImage> flipped = new ConcurrentHashMap<>();
-	private final Map<Integer, Image> goldIcons = new ConcurrentHashMap<>();
+	/** Tinted icons, keyed by item ID and tint. */
+	private final Map<Long, Image> tintedIcons = new ConcurrentHashMap<>();
 	private BufferedImage sideParchment;
 	/** The game's fonts: the skill guide's title, small, plain, bold and larger bold. */
 	GameFont quill;
@@ -301,16 +303,23 @@ class GuideArt
 	/** An item's icon (coins as a big stack, without the number), optionally turned gold. */
 	Image itemIcon(int item, boolean gold)
 	{
-		if (!gold)
+		return itemIcon(item, gold ? Unlocks.GOLD_TINT : 0);
+	}
+
+	/** An item's icon tinted to an RGB colour, keeping its light and shade; 0 leaves it as it is. */
+	Image itemIcon(int item, int tint)
+	{
+		if (tint == 0)
 		{
 			return itemManager.getImage(item, item == COINS ? 10_000 : 1, false);
 		}
-		Image icon = goldIcons.get(item);
+		long key = (long) item << 32 | tint;
+		Image icon = tintedIcons.get(key);
 		if (icon == null)
 		{
 			AsyncBufferedImage image = itemManager.getImage(item);
-			goldIcons.put(item, image);
-			image.onLoaded(() -> goldIcons.put(item, gilded(image)));
+			tintedIcons.put(key, image);
+			image.onLoaded(() -> tintedIcons.put(key, tinted(image, tint)));
 			return image;
 		}
 		return icon;
@@ -379,9 +388,12 @@ class GuideArt
 		}
 	}
 
-	/** The same picture in gold, keeping its light and shade. */
-	static BufferedImage gilded(BufferedImage image)
+	/** The same picture in one colour, keeping its light and shade. */
+	static BufferedImage tinted(BufferedImage image, int tint)
 	{
+		int tr = (tint >> 16) & 0xff;
+		int tg = (tint >> 8) & 0xff;
+		int tb = tint & 0xff;
 		BufferedImage out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
 		for (int py = 0; py < image.getHeight(); py++)
 		{
@@ -397,8 +409,8 @@ class GuideArt
 				int g = (argb >> 8) & 0xff;
 				int b = argb & 0xff;
 				float light = Math.min(1f, (0.3f * r + 0.59f * g + 0.11f * b) / 255f * 1.6f + 0.1f);
-				out.setRGB(px, py, alpha << 24 | Math.round(255 * light) << 16 | Math.round(200 * light) << 8
-					| Math.round(60 * light));
+				out.setRGB(px, py, alpha << 24 | Math.round(tr * light) << 16 | Math.round(tg * light) << 8
+					| Math.round(tb * light));
 			}
 		}
 		return out;

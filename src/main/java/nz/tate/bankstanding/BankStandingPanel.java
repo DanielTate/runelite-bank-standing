@@ -26,7 +26,10 @@ package nz.tate.bankstanding;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.GridLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -38,6 +41,7 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.ProgressBar;
+import net.runelite.client.util.LinkBrowser;
 import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.StatsView;
 
@@ -49,7 +53,8 @@ class BankStandingPanel extends PluginPanel
 {
 	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and Hochep.";
 	/** Must match runelite-plugin.properties; a test checks it does. */
-	static final String VERSION = "1.4.1";
+	static final String VERSION = "1.5";
+	static final String CHANGELOG_URL = "https://github.com/DanielTate/runelite-bank-standing/blob/main/CHANGELOG.md";
 
 	private static final Color GOLD = new Color(214, 176, 48);
 
@@ -71,7 +76,12 @@ class BankStandingPanel extends PluginPanel
 	private final JPanel recordRows = new JPanel(new GridLayout(0, 2, 0, 4));
 	private final JPanel recordSection = new JPanel(new BorderLayout(0, 6));
 
-	BankStandingPanel(Icons icons, Runnable onCapeEmote, Runnable onCollectionLog)
+	/**
+	 * {@code changelogUnseen} is whether this version's changelog hasn't been opened yet;
+	 * {@code onChangelogSeen} runs when it is.
+	 */
+	BankStandingPanel(Icons icons, Runnable onCapeEmote, Runnable onCollectionLog, boolean changelogUnseen,
+		Runnable onChangelogSeen)
 	{
 		setLayout(new BorderLayout(0, 10));
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -162,13 +172,38 @@ class BankStandingPanel extends PluginPanel
 		JLabel version = new JLabel("v" + VERSION, SwingConstants.RIGHT);
 		version.setFont(FontManager.getRunescapeSmallFont());
 		version.setForeground(ColorScheme.LIGHT_GRAY_COLOR.darker());
+		JLabel whatsNew = new JLabel(whatsNewText(changelogUnseen));
+		whatsNew.setFont(FontManager.getRunescapeSmallFont());
+		whatsNew.setForeground(GOLD);
+		whatsNew.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		whatsNew.setToolTipText("Open the changelog");
+		whatsNew.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				LinkBrowser.browse(CHANGELOG_URL);
+				whatsNew.setText(whatsNewText(false));
+				onChangelogSeen.run();
+			}
+		});
+		JPanel versionRow = new JPanel(new BorderLayout());
+		versionRow.setOpaque(false);
+		versionRow.add(whatsNew, BorderLayout.WEST);
+		versionRow.add(version, BorderLayout.EAST);
 		JPanel footer = new JPanel(new BorderLayout(0, 2));
 		footer.setOpaque(false);
 		footer.add(credits, BorderLayout.CENTER);
-		footer.add(version, BorderLayout.SOUTH);
+		footer.add(versionRow, BorderLayout.SOUTH);
 		add(footer, BorderLayout.SOUTH);
 
 		showLoggedOut();
+	}
+
+	/** "What's new", with a NEW tag until this version's changelog has been opened. */
+	private static String whatsNewText(boolean unseen)
+	{
+		return unseen ? "<html><u>What's new</u> <font color='#ffd700'>NEW</font></html>" : "<html><u>What's new</u></html>";
 	}
 
 	void showLoggedOut()

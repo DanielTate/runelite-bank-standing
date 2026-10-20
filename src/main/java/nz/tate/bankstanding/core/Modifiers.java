@@ -153,7 +153,7 @@ public final class Modifiers
 		List<Dressed> all = new ArrayList<>();
 		for (Outfit outfit : Items.OUTFITS)
 		{
-			all.add(new Dressed("Outfits", OUTFIT + outfit.key(), outfit.key(), outfit.icon(), null));
+			all.add(new Dressed("Outfits", OUTFIT + outfit.key(), outfit.bankKeys()[0], outfit.icon(), null));
 		}
 		for (Outfit diary : Items.DIARY)
 		{

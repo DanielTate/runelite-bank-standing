@@ -28,8 +28,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * The collection log: rare cosmetic drops that can come with any XP roll, and the banks you've
@@ -43,6 +45,7 @@ public final class CollectionLog
 		RARE("Rare drops"),
 		OUTFIT("Banker's outfit"),
 		JUNK("Pocket junk"),
+		ARCHIVE("Archive junk"),
 		SEASONAL("Seasonal"),
 		PET("Pets");
 
@@ -70,6 +73,8 @@ public final class CollectionLog
 		public final Holiday holiday;
 		/** Never rolled: earned by doing something, and shown as a secret until then. */
 		public final boolean hidden;
+		/** The banks it only drops at, or empty for anywhere. */
+		public final Set<String> banks;
 
 		Drop(String key, String name, int icon, int rate, boolean gold, boolean pet)
 		{
@@ -92,6 +97,22 @@ public final class CollectionLog
 			this.group = group;
 			this.holiday = holiday;
 			this.hidden = hidden;
+			this.banks = Collections.emptySet();
+		}
+
+		/** Pocket junk that only drops at these banks. */
+		Drop(String key, String name, int icon, int rate, String... banks)
+		{
+			this.key = key;
+			this.name = name;
+			this.icon = icon;
+			this.rate = rate;
+			this.gold = false;
+			this.pet = false;
+			this.group = Group.ARCHIVE;
+			this.holiday = null;
+			this.hidden = false;
+			this.banks = new HashSet<>(Arrays.asList(banks));
 		}
 
 		public boolean rare()
@@ -101,9 +122,14 @@ public final class CollectionLog
 	}
 
 	private static final int SEASONAL_RATE = 2_000;
+	private static final String ARCHIVE_WEST = "fractured-archive-west";
+	private static final String ARCHIVE_EAST = "fractured-archive-east";
 	/** Hidden drops are never rolled, so they have no rate. */
 	private static final int NEVER = 0;
 	public static final String BANDAGES = "bandages";
+	public static final String MONEYBAG = "pet-moneybag";
+	public static final String RAT = "bank-rat";
+	public static final String BUTTERFLY = "gold-butterfly";
 
 	/** In log order within each group. About 5.3 million rolls reach 99. */
 	public static final List<Drop> DROPS = Collections.unmodifiableList(Arrays.asList(
@@ -124,14 +150,18 @@ public final class CollectionLog
 		new Drop("loose-button", "Loose button", 688, 2_500, false, Group.JUNK, null),
 		new Drop("lost-earring", "Lost earring", 1635, 4_000, false, Group.JUNK, null),
 		new Drop("bank-queue-ticket", "Bank queue ticket", 2996, 5_000, false, Group.JUNK, null),
+		new Drop("grimy-note", "Grimy note", 29558, 1_500, ARCHIVE_WEST, ARCHIVE_EAST),
+		new Drop("ascension-shard-dust", "Ascension shard dust", 34669, 3_000, ARCHIVE_WEST, ARCHIVE_EAST),
+		new Drop("montoyas-memo", "Montoya's memo", 34657, 5_000, ARCHIVE_WEST, ARCHIVE_EAST),
 		new Drop("cracker-crumb", "Cracker crumb", 962, SEASONAL_RATE, false, Group.SEASONAL, Holiday.CHRISTMAS),
 		new Drop("cobweb", "Cobweb", 28601, SEASONAL_RATE, false, Group.SEASONAL, Holiday.HALLOWEEN),
 		new Drop("chocolate-coin", "Chocolate coin", 1973, SEASONAL_RATE, false, Group.SEASONAL, Holiday.EASTER),
 		new Drop("party-balloon", "Party balloon", 9937, SEASONAL_RATE, false, Group.SEASONAL, Holiday.BIRTHDAY),
 		new Drop("singed-note", "Singed note", 20718, SEASONAL_RATE, false, Group.SEASONAL,
 			Holiday.FALADOR_MASSACRE),
-		new Drop("pet-moneybag", "Pet moneybag", 22533, 10_000_000, false, true),
-		new Drop("bank-rat", "Bank rat", 523, 25_000_000, false, true)
+		new Drop(BUTTERFLY, "Gold butterfly", 9970, 7_500_000, true, true),
+		new Drop(MONEYBAG, "Pet moneybag", 22533, 10_000_000, false, true),
+		new Drop(RAT, "Bank rat", 28801, 25_000_000, false, true)
 	));
 
 	/** Rarest first, which is the order drops are rolled in. Hidden drops are left out. */
@@ -167,13 +197,14 @@ public final class CollectionLog
 
 	/**
 	 * Rolls for a drop alongside one XP roll; the rarest is checked first and at most one
-	 * drops. Seasonal drops only roll on their holiday.
+	 * drops. Seasonal drops only roll on their holiday, and a bank's own junk only at that bank.
 	 */
-	public static Drop roll(Random random, LocalDate today)
+	public static Drop roll(Random random, LocalDate today, String bankKey)
 	{
 		for (Drop drop : BY_RARITY)
 		{
-			if ((drop.holiday == null || drop.holiday.isOn(today)) && random.nextInt(drop.rate) == 0)
+			if ((drop.holiday == null || drop.holiday.isOn(today))
+				&& (drop.banks.isEmpty() || drop.banks.contains(bankKey)) && random.nextInt(drop.rate) == 0)
 			{
 				return drop;
 			}
@@ -209,10 +240,22 @@ public final class CollectionLog
 		return first;
 	}
 
-	/** Whether the moneybag, the pet that sits beside you, has dropped. */
+	/** Whether the moneybag, the pet that hops round you, has dropped. */
 	public static boolean hasPet(Progress progress)
 	{
-		return progress.collection.containsKey("pet-moneybag");
+		return progress.collection.containsKey(MONEYBAG);
+	}
+
+	/** Whether the bank rat, the pet that scurries round you, has dropped. */
+	public static boolean hasRat(Progress progress)
+	{
+		return progress.collection.containsKey(RAT);
+	}
+
+	/** Whether this pet comes out while you stand: you have it, and haven't put it away in the log. */
+	public static boolean petOut(Progress progress, String key)
+	{
+		return progress.collection.containsKey(key) && !progress.hiddenPets.contains(key);
 	}
 
 	/** How many of the banks listed in the log you've stood at. */

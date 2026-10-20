@@ -51,6 +51,8 @@ public final class StandContext
 	public Spellbook spellbook;
 	/** Item IDs in each inventory slot, -1 for an empty slot. */
 	public int[] inventory = new int[0];
+	/** Whether the Zeal prayer, from the Fractured Archive, is unlocked. */
+	public boolean zealUnlocked;
 
 	boolean wearing(int id)
 	{
@@ -62,6 +64,18 @@ public final class StandContext
 		for (int id : ids)
 		{
 			if (worn.contains(id))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	boolean carryingAny(Set<Integer> ids)
+	{
+		for (int id : inventory)
+		{
+			if (ids.contains(id))
 			{
 				return true;
 			}

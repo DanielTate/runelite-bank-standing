@@ -27,9 +27,11 @@ package nz.tate.bankstanding;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.ModelData;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
@@ -39,6 +41,7 @@ import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.AnimationID;
+import nz.tate.bankstanding.core.Moments;
 import nz.tate.bankstanding.core.Unlocks;
 
 /**
@@ -70,9 +73,10 @@ class StandCosmetics
 	private static final int THRONE_MODEL = 12594;
 	private static final int THRONE_SIT = AnimationID.CHAIR_SIT_READY_THRONE_4;
 
-	/** The pet is the moneybag item's own model, made bigger, sitting beside you. */
-	private static final int PET_ITEM = 22533;
-	private static final int PET_SCALE = 256;
+	/** At 99 the gold carpet comes with riches: coin piles on its corners and gold bars at the front and back. */
+	private static final int COIN_PILE = 1004;
+	private static final int GOLD_BAR = 2357;
+	private static final int RICHES_SCALE = 192;
 
 	private static final int[] FIDGETS = {AnimationID.EMOTE_THINK, AnimationID.EMOTE_SHRUG, AnimationID.EMOTE_YAWN};
 	private static final int CAPE_EMOTE = AnimationID.MAX_CAPE_PLAYER_ANIM;
@@ -90,12 +94,30 @@ class StandCosmetics
 		"Good to see a regular!", "We saved your spot.", "Standing like a pro.",
 		"The bank wouldn't be the same without you.",
 	};
-	/** Said when a banker brings you tea, from level 85. */
+	/** Said when a banker hands you tea, from level 85. */
 	private static final String[] TEA_LINES = {
-		"Cup of tea?", "Fancy a cuppa?", "Tea's on the house.", "Thought you could use a brew.",
+		"Here's your cuppa.", "Milk, no sugar, right?", "Fresh from the pot.", "Careful, it's hot.",
+		"Tea's on the house.", "Thought you could use a brew.",
 	};
-	/** The cup sits on the floor beside you, bigger than its inventory model. */
-	private static final int TEA_SCALE = 256;
+	/**
+	 * Said by the banker at the Fractured Archive: hints toward the phrases that work there,
+	 * never the phrases themselves.
+	 */
+	private static final String[] ARCHIVE_LINES = {
+		"Last chance to deposit before the cliff face.", "Everyone calls this place by a nickname from the trailer.",
+		"The builders' note ends with a prayer to their god.", "They left this place for something more important.",
+		"The Guthixians named that stone after a hand.", "Juna says these rocks once cried.",
+		"He sent the gods away by decree, you know.", "That megarare hammer has two ways to swing.",
+		"Everyone's begging for the megarare.", "A Mahjarrat took the stone that opened this place.",
+		"An assassin once told you it wasn't personal.", "Bork brought friends this time.",
+		"Stop pinging your inventory at people.", "The general plans at a board out west.",
+		"Looking for a team? There's a board east of me.", "A new prayer takes more than a bit of reading.",
+	};
+	/** At the Archive the banker sits on the east chest and calls across to the west one. */
+	private static final int ARCHIVE_BANKER_TILES = 20;
+	private static final int BANKER_TILES = 10;
+	/** The drink animation you do when the tea arrives, if you aren't sitting. */
+	private static final int DRINK = AnimationID.HUMAN_EAT;
 	private static final String[] MASTER_LINES = {
 		"Good day, Master.", "An honour, Master.", "Master of the bank floor!",
 		"Can I get you anything, Master?",
@@ -107,11 +129,11 @@ class StandCosmetics
 	private final List<RuneLiteObject> rugPieces = new ArrayList<>();
 	private Unlocks.Rug rugShown = Unlocks.Rug.NONE;
 	private RuneLiteObject seatObject;
-	private RuneLiteObject petObject;
-	/** The cup of tea a banker brought this stand, or null. */
-	private RuneLiteObject teaObject;
-	/** Whether the pet has been tried this stand, so a model that won't load isn't retried every tick. */
-	private boolean petTried;
+	private final List<RuneLiteObject> riches = new ArrayList<>();
+	private final TeaDelivery teaDelivery;
+	private final Pets pets;
+	/** Whether tea has come this stand: one cup a stand. */
+	private boolean teaServed;
 	private Unlocks.Seat seatShown = Unlocks.Seat.NONE;
 	private int sitAnimation = -1;
 	private int standingIdlePose = -1;
@@ -122,13 +144,19 @@ class StandCosmetics
 	private int ownAnimationUntilTick;
 
 	@Inject
-	StandCosmetics(Client client)
+	StandCosmetics(Client client, TeaDelivery teaDelivery, Pets pets)
 	{
 		this.client = client;
+		this.teaDelivery = teaDelivery;
+		this.pets = pets;
 	}
 
-	/** Called every game tick with whether a stand is under way and what's switched on. */
-	void tick(boolean standing, int level, BankStandingConfig config, boolean pet)
+	/**
+	 * Called every game tick with whether a stand is under way, what's switched on, the bank
+	 * you're at and the banks you've stood at.
+	 */
+	void tick(boolean standing, int level, BankStandingConfig config, boolean moneybag, boolean rat, boolean butterfly,
+		String bankKey, Set<String> visited)
 	{
 		Player player = client.getLocalPlayer();
 		if (player == null || !standing || !onLand(player))
@@ -151,19 +179,7 @@ class StandCosmetics
 			placeSeat(player, seat);
 		}
 		keepSitting(player);
-		if (pet && (started || !petTried))
-		{
-			placePet(player);
-			petTried = true;
-		}
-		else if (!pet)
-		{
-			removePet();
-		}
-		if (petObject != null)
-		{
-			petObject.setOrientation(player.getOrientation());
-		}
+		pets.tick(player, moneybag, rat, butterfly);
 
 		if (started)
 		{
@@ -173,7 +189,8 @@ class StandCosmetics
 		if (config.fidgets() && Unlocks.fidgets(level) && now >= nextFidgetTick)
 		{
 			nextFidgetTick = now + 40 + random.nextInt(60);
-			if (player.getAnimation() == -1)
+			// The fidgets are standing emotes, so they'd pull you half out of your seat.
+			if (player.getAnimation() == -1 && sitAnimation == -1)
 			{
 				play(player, FIDGETS[random.nextInt(FIDGETS.length)]);
 			}
@@ -181,7 +198,7 @@ class StandCosmetics
 		if (config.bankerChat() && Unlocks.bankersNotice(level) && now >= nextBankerTick)
 		{
 			nextBankerTick = now + 60 + random.nextInt(120);
-			bankerSays(player, level);
+			bankerSays(player, level, bankKey, visited);
 		}
 	}
 
@@ -197,35 +214,36 @@ class StandCosmetics
 			seatObject = null;
 		}
 		seatShown = Unlocks.Seat.NONE;
-		removePet();
-		if (teaObject != null)
-		{
-			teaObject.setActive(false);
-			teaObject = null;
-		}
+		pets.clear();
+		teaDelivery.clear();
+		teaServed = false;
 		standUp(client.getLocalPlayer());
 	}
 
-	private void placePet(Player player)
+	/**
+	 * An item's model as it looks on the ground, with the item's own colours: a gold bar is the
+	 * bronze bar model recoloured, for one. A copy, safe to scale.
+	 */
+	static ModelData itemModel(Client client, int item)
 	{
-		removePet();
-		int model = client.getItemDefinition(PET_ITEM).getInventoryModel();
-		ModelData data = model < 0 ? null : client.loadModelData(model);
-		if (data != null)
+		ItemComposition composition = client.getItemDefinition(item);
+		int id = composition.getInventoryModel();
+		ModelData data = id < 0 ? null : client.loadModelData(id);
+		if (data == null)
 		{
-			petObject = spawn(player, data.cloneVertices().scale(PET_SCALE, PET_SCALE, PET_SCALE), 1, 0,
-				player.getOrientation());
+			return null;
 		}
-	}
-
-	private void removePet()
-	{
-		petTried = false;
-		if (petObject != null)
+		ModelData model = data.cloneVertices().cloneColors();
+		short[] from = composition.getColorToReplace();
+		short[] to = composition.getColorToReplaceWith();
+		if (from != null && to != null)
 		{
-			petObject.setActive(false);
-			petObject = null;
+			for (int i = 0; i < Math.min(from.length, to.length); i++)
+			{
+				model.recolor(from[i], to[i]);
+			}
 		}
+		return model;
 	}
 
 	/** The 99 cape emote: the max cape animation, played in this client only. */
@@ -302,6 +320,37 @@ class StandCosmetics
 				}
 			}
 		}
+		if (rug == Unlocks.Rug.GOLD)
+		{
+			placeRiches(player);
+		}
+	}
+
+	/** Coin piles on the gold carpet's corners and gold bars front and back: you've made it. */
+	private void placeRiches(Player player)
+	{
+		int[][] corners = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
+		for (int[] corner : corners)
+		{
+			addRiches(player, COIN_PILE, corner[0], corner[1]);
+		}
+		addRiches(player, GOLD_BAR, 0, -1);
+		addRiches(player, GOLD_BAR, 0, 1);
+	}
+
+	private void addRiches(Player player, int item, int dx, int dy)
+	{
+		ModelData data = itemModel(client, item);
+		if (data == null)
+		{
+			return;
+		}
+		RuneLiteObject object = spawn(player, data.scale(RICHES_SCALE, RICHES_SCALE, RICHES_SCALE), dx, dy,
+			random.nextInt(2048));
+		if (object != null)
+		{
+			riches.add(object);
+		}
 	}
 
 	private void removeRug()
@@ -311,6 +360,11 @@ class StandCosmetics
 			piece.setActive(false);
 		}
 		rugPieces.clear();
+		for (RuneLiteObject piece : riches)
+		{
+			piece.setActive(false);
+		}
+		riches.clear();
 	}
 
 	/**
@@ -436,41 +490,72 @@ class StandCosmetics
 		return object;
 	}
 
-	private void bankerSays(Player player, int level)
+	private void bankerSays(Player player, int level, String bankKey, Set<String> visited)
 	{
 		WorldPoint here = player.getWorldLocation();
+		boolean archive = Moments.atArchive(bankKey);
+		int range = archive ? ARCHIVE_BANKER_TILES : BANKER_TILES;
 		List<NPC> bankers = new ArrayList<>();
 		for (NPC npc : client.getTopLevelWorldView().npcs())
 		{
 			NPCComposition composition = npc.getTransformedComposition();
 			if (composition != null && hasBankAction(composition.getActions())
-				&& npc.getWorldLocation().distanceTo2D(here) <= 10)
+				&& npc.getWorldLocation().distanceTo2D(here) <= range)
 			{
 				bankers.add(npc);
 			}
 		}
-		if (bankers.isEmpty())
+		NPC banker = bankers.isEmpty() ? null : bankers.get(random.nextInt(bankers.size()));
+		if (Unlocks.tea(level) && !teaServed && !teaDelivery.isBusy() && random.nextInt(3) == 0)
+		{
+			// One cup a stand, carried over by a banker.
+			teaServed = true;
+			teaDelivery.start(player, banker, bankKey, visited, TEA_LINES[random.nextInt(TEA_LINES.length)],
+				() -> drinkTea(player));
+			return;
+		}
+		if (banker == null)
 		{
 			return;
 		}
-		NPC banker = bankers.get(random.nextInt(bankers.size()));
-		if (Unlocks.tea(level) && teaObject == null && random.nextInt(3) == 0)
-		{
-			// One cup a stand, set down beside you.
-			banker.setOverheadText(TEA_LINES[random.nextInt(TEA_LINES.length)]);
-			banker.setOverheadCycle(150);
-			int model = client.getItemDefinition(Unlocks.CUP_OF_TEA).getInventoryModel();
-			ModelData data = model < 0 ? null : client.loadModelData(model);
-			if (data != null)
-			{
-				teaObject = spawn(player, data.cloneVertices().scale(TEA_SCALE, TEA_SCALE, TEA_SCALE), -1, 0,
-					player.getOrientation());
-			}
-			return;
-		}
-		String[] lines = level >= Unlocks.MAX ? MASTER_LINES : level >= 70 && random.nextBoolean() ? REGULAR_LINES : BANKER_LINES;
+		String[] lines = archive && random.nextBoolean() ? ARCHIVE_LINES
+			: level >= Unlocks.MAX ? MASTER_LINES : level >= 70 && random.nextBoolean() ? REGULAR_LINES : BANKER_LINES;
 		banker.setOverheadText(lines[random.nextInt(lines.length)]);
 		banker.setOverheadCycle(150);
+	}
+
+	/** Sends a banker over with tea now, for the dev panel. */
+	void devTea(String bankKey, Set<String> visited, String banker)
+	{
+		Player player = client.getLocalPlayer();
+		if (player != null)
+		{
+			teaDelivery.clear();
+			teaServed = false;
+			nextBankerTick = 0;
+			NPC local = null;
+			for (NPC npc : client.getTopLevelWorldView().npcs())
+			{
+				NPCComposition composition = npc.getTransformedComposition();
+				if (composition != null && hasBankAction(composition.getActions())
+					&& npc.getWorldLocation().distanceTo2D(player.getWorldLocation()) <= ARCHIVE_BANKER_TILES)
+				{
+					local = npc;
+				}
+			}
+			teaServed = true;
+			teaDelivery.start(player, local, bankKey, visited, TEA_LINES[random.nextInt(TEA_LINES.length)],
+				() -> drinkTea(player), banker);
+		}
+	}
+
+	/** You take a sip when the tea arrives, unless you're sitting, where a standing animation looks wrong. */
+	private void drinkTea(Player player)
+	{
+		if (sitAnimation == -1 && player.getAnimation() == -1)
+		{
+			play(player, DRINK);
+		}
 	}
 
 	private static boolean hasBankAction(String[] actions)

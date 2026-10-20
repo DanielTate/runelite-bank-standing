@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.5
+
+### The Fractured Archive
+- The two bank chests in the Fractured Archive's lobby are in the collection log, west and
+  east as separate banks. Time already stood there moves to the east bank.
+- Archive junk: three things that only turn up in your pockets at the Archive.
+- New moments for the Archive, including one for standing there on its anniversary, 20 October.
+- The banker on the east chest has things to say about the place, and calls across to the
+  west chest too.
+- More secrets to find down there.
+
+### Tea
+- At level 85, instead of a giant cup appearing beside you, a banker now walks over and hands
+  you your tea. Now and then it's a banker from another bank you've stood at.
+
+### Peeking in the bank
+- Eight peeks instead of three, starting much sooner: open the bank for 1 second at level 5,
+  rising to 30 seconds at level 85, without ending your stand.
+
+### Skill guide and log
+- Every line of the skill guide has its own icon: better boots as your reach grows, clocks as
+  XP starts sooner, rugs in their real colours, and something fitting for each title.
+- The bank rat pet looks like a rat, and now joins you while you stand: a rat of solid gold
+  that scurries off for a look round now and then, leaving a trail of coins and jewellery.
+- The moneybag pet hops around you every so often, flinging coins as it goes.
+- A new pet, a gold butterfly, a little more common than the others. It flutters round you
+  while you stand.
+- Click a pet you own in the collection log to put it away, or bring it back out.
+- The gold carpet at 99 comes with coin piles and gold bars.
+
+### Side panel
+- A "What's new" link next to the version number opens this changelog. It's marked NEW
+  after an update until you've opened it.
+
+### Fixes
+- You no longer fidget while sitting on the stool or the throne.
+
 ## 1.4.1
 
 - Progress syncing between computers is safer. If two copies of your progress end up out of

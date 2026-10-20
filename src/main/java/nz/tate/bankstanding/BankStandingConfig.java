@@ -65,8 +65,8 @@ public interface BankStandingConfig extends Config
 
 	@ConfigItem(
 		keyName = "showPet",
-		name = "Show pet",
-		description = "Once you have the Bank Standing pet, it sits beside you while you bank stand. Only you can see it."
+		name = "Show pets",
+		description = "Once you have a Bank Standing pet, it keeps you company while you bank stand. Only you can see it."
 	)
 	default boolean showPet()
 	{
