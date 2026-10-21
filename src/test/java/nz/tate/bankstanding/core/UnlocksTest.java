@@ -87,13 +87,14 @@ public class UnlocksTest
 		assertEquals("Loiterer", Unlocks.title(1));
 		assertEquals("Bank Standing Master", Unlocks.title(99));
 		assertEquals(0, Unlocks.peekTicks(4));
-		assertEquals(2, Unlocks.peekTicks(5));
-		assertEquals(3, Unlocks.peekTicks(10));
-		assertEquals(8, Unlocks.peekTicks(50));
-		assertEquals(10, Unlocks.peekTicks(69));
-		assertEquals(17, Unlocks.peekTicks(70));
+		assertEquals(8, Unlocks.peekTicks(5));
+		assertEquals(17, Unlocks.peekTicks(10));
+		assertEquals(75, Unlocks.peekTicks(50));
+		assertEquals(100, Unlocks.peekTicks(69));
+		assertEquals(200, Unlocks.peekTicks(70));
 		assertEquals(Unlocks.PEEK_TICKS, Unlocks.peekTicks(85));
-		assertEquals(Unlocks.PEEK_TICKS, Unlocks.peekTicks(99));
+		assertEquals(Unlocks.PEEK_TICKS, Unlocks.peekTicks(98));
+		assertEquals(Unlocks.NO_PEEK_LIMIT, Unlocks.peekTicks(99));
 	}
 
 	@Test

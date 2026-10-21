@@ -38,14 +38,17 @@ public final class Unlocks
 	public static final int FIDGETS = 25;
 	public static final int BANKERS = 30;
 	public static final int TEA = 85;
-	/** The longest the bank can stay open without ending a stand, once every peek is unlocked. */
-	public static final int PEEK_TICKS = 50;
+	/** The longest timed peek: five minutes with the bank open, from level 85. */
+	public static final int PEEK_TICKS = 500;
+	/** At 99 the bank can stay open as long as you like, with no timer. */
+	public static final int NO_PEEK_LIMIT = Integer.MAX_VALUE;
 	/** The tint that turns an icon gold. */
 	public static final int GOLD_TINT = 0xffc83c;
-	/** Level, ticks the bank can be open, and the name, from a blink to a leisurely browse. */
+	/** Level, ticks the bank can be open, and the name, from a blink to making yourself at home. */
 	private static final Object[][] PEEKS = {
-		{5, 2, "Blink"}, {10, 3, "Glance"}, {20, 5, "Quick look"}, {30, 7, "Peek"}, {50, 8, "Long look"},
-		{60, 10, "Browse"}, {70, 17, "Rummage"}, {85, PEEK_TICKS, "Leisurely browse"},
+		{5, 8, "Blink"}, {10, 17, "Glance"}, {20, 33, "Quick look"}, {30, 50, "Peek"}, {50, 75, "Long look"},
+		{60, 100, "Browse"}, {70, 200, "Rummage"}, {85, PEEK_TICKS, "Leisurely browse"},
+		{MAX, NO_PEEK_LIMIT, "Make yourself at home"},
 	};
 
 	/** The rug laid out under you while you stand. */
@@ -121,7 +124,7 @@ public final class Unlocks
 		return ticks;
 	}
 
-	/** Ticks the bank can be open without ending a stand; 0 before Blink. */
+	/** Ticks the bank can be open without ending a stand; 0 before Blink, {@link #NO_PEEK_LIMIT} at 99. */
 	public static int peekTicks(int level)
 	{
 		int ticks = 0;
@@ -167,6 +170,18 @@ public final class Unlocks
 	public static boolean bankersNotice(int level)
 	{
 		return level >= BANKERS;
+	}
+
+	/** Ticks as "5 seconds" or, from a minute, "2 minutes". */
+	private static String duration(int ticks)
+	{
+		long seconds = Math.round(ticks * 0.6);
+		if (seconds < 60)
+		{
+			return seconds + (seconds == 1 ? " second" : " seconds");
+		}
+		long minutes = seconds / 60;
+		return minutes + (minutes == 1 ? " minute" : " minutes");
 	}
 
 	/** Which START_DELAY step this level is on, from 0. */
@@ -235,9 +250,9 @@ public final class Unlocks
 	private static final int[] START_ICONS = {5610, 33742, 2575, 27414};
 	/**
 	 * One per peek: an eye of newt, an eye patch, a lens, a lantern, goggles, a bank key, a
-	 * coin pouch and a banker's note.
+	 * coin pouch and a banker's note, then a gold banker's note at 99.
 	 */
-	private static final int[] PEEK_ICONS = {221, 1025, 603, 4550, 9472, 13302, 22521, 28767};
+	private static final int[] PEEK_ICONS = {221, 1025, 603, 4550, 9472, 13302, 22521, 28767, 28767};
 	/** One per title: an old boot, a beer, nails, boots of lightness, a chair, a gold bar, a briefcase, a crown. */
 	private static final int[] TITLE_ICONS = {685, 1917, 1539, 88, 8310, 2357, 30361, 12397};
 	/** A flat rug, tinted to match each rug laid out under you. */
@@ -326,9 +341,10 @@ public final class Unlocks
 				Object[] peek = PEEKS[i];
 				if (level == (int) peek[0])
 				{
-					long seconds = Math.round((int) peek[1] * 0.6);
-					all.add(new Unlock(level, peek[2] + ": open the bank for " + seconds
-						+ (seconds == 1 ? " second" : " seconds"), Category.TIMING, PEEK_ICONS[i], -1, false));
+					int ticks = (int) peek[1];
+					String time = ticks == NO_PEEK_LIMIT ? "as long as you like" : "for " + duration(ticks);
+					all.add(new Unlock(level, peek[2] + ": open the bank " + time, Category.TIMING, PEEK_ICONS[i], -1,
+						ticks == NO_PEEK_LIMIT));
 				}
 			}
 			if (level == TEA)

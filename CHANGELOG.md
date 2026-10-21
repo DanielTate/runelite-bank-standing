@@ -6,6 +6,10 @@
   skill tile to get to it.
 - A **Show skill tile** checkbox in the side panel hides or shows the skill tile. It's also
   in the settings.
+- Peeks last much longer: 5 seconds at level 5, 10 at 10, 20 at 20, 30 at 30, 45 at 50,
+  a minute at 60, 2 minutes at 70 and 5 minutes at 85.
+- New at 99, **Make yourself at home**: keep the bank open as long as you like. The stand
+  never ends and the timer doesn't show.
 
 ## 1.5
 

@@ -108,9 +108,13 @@ public final class StandTracker
 		hasPosition = false;
 	}
 
-	/** While a peek is holding the stand open: ticks left before it ends, else 0. */
+	/** While a peek is holding the stand open: ticks left before it ends, else 0. No limit, no countdown. */
 	public int peekTicksLeft()
 	{
+		if (peekTicks == Unlocks.NO_PEEK_LIMIT)
+		{
+			return 0;
+		}
 		return bankTicks > 0 && isStanding() ? peekTicks - bankTicks + 1 : 0;
 	}
 

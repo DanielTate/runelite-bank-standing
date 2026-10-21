@@ -124,6 +124,19 @@ public class StandTrackerTest
 	}
 
 	@Test
+	public void noPeekLimitAt99()
+	{
+		tracker.setUnlocks(StandTracker.START_DELAY_TICKS, Unlocks.NO_PEEK_LIMIT);
+		stand(60);
+		for (int i = 0; i < 10_000; i++)
+		{
+			tracker.tick(3185, 3436, 0, true, true);
+		}
+		assertTrue(tracker.isStanding());
+		assertEquals(0, tracker.peekTicksLeft());
+	}
+
+	@Test
 	public void noCountdownWithoutQuickPeek()
 	{
 		stand(60);
