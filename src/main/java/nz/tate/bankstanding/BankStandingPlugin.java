@@ -295,7 +295,10 @@ public class BankStandingPlugin extends Plugin
 	protected void startUp()
 	{
 		tracker.reset();
-		overlayManager.add(skillTileOverlay);
+		if (config.showSkillTile())
+		{
+			overlayManager.add(skillTileOverlay);
+		}
 		for (GameWindow window : windows())
 		{
 			overlayManager.add(window);
@@ -328,7 +331,9 @@ public class BankStandingPlugin extends Plugin
 		chatCommandManager.registerCommand(ChatCommands.SHORT, this::onChatCommand);
 		chatCommandManager.registerCommand(ChatCommands.LONG, this::onChatCommand);
 
-		panel = new BankStandingPanel(icons, this::capeEmote, this::openCollectionLog,
+		panel = new BankStandingPanel(icons, this::capeEmote, this::openCollectionLog, this::toggleSkillGuide,
+			config.showSkillTile(),
+			shown -> configManager.setConfiguration(BankStandingConfig.GROUP, "showSkillTile", shown),
 			!BankStandingPanel.VERSION.equals(configManager.getConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN)),
 			() -> configManager.setConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN, BankStandingPanel.VERSION));
 		navButton = NavigationButton.builder()
@@ -618,6 +623,23 @@ public class BankStandingPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
+		if (BankStandingConfig.GROUP.equals(event.getGroup()) && "showSkillTile".equals(event.getKey()))
+		{
+			boolean shown = config.showSkillTile();
+			if (shown)
+			{
+				overlayManager.add(skillTileOverlay);
+			}
+			else
+			{
+				overlayManager.remove(skillTileOverlay);
+			}
+			BankStandingPanel shownPanel = panel;
+			if (shownPanel != null)
+			{
+				SwingUtilities.invokeLater(() -> shownPanel.setSkillTileShown(shown));
+			}
+		}
 		if (BankStandingConfig.GROUP.equals(event.getGroup()) && "showCape".equals(event.getKey()) && !config.showCape())
 		{
 			clientThread.invoke(() -> capeDisplay.restore(wornCape));
@@ -963,6 +985,15 @@ public class BankStandingPlugin extends Plugin
 			dirty = true;
 			save();
 		});
+	}
+
+	/** Opens or closes the skill guide, from the side panel. */
+	void toggleSkillGuide()
+	{
+		if (skillGuideOverlay.available())
+		{
+			skillGuideOverlay.toggle();
+		}
 	}
 
 	/** Opens the collection log, from the side panel or the skill tile's menu. */

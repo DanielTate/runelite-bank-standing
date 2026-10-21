@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6
+
+- A **Skill guide** button in the side panel opens the skill guide, so you don't need the
+  skill tile to get to it.
+- A **Show skill tile** checkbox in the side panel hides or shows the skill tile. It's also
+  in the settings.
+
 ## 1.5
 
 ### The Fractured Archive

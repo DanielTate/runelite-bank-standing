@@ -29,10 +29,13 @@ time, your records, and how long you've spent at each bank.
 
 ## The skill guide
 
-A Bank Standing skill tile sits on your screen, and you can drag it anywhere. Click it to
-see what each level unlocks: you can stand further from the bank, your stand starts sooner,
+A Bank Standing skill tile sits on your screen, and you can drag it anywhere. Click it, or
+the **Skill guide** button in the side panel, to see what each level unlocks: you can stand further from the bank, your stand starts sooner,
 and you get a rug, a seat, titles and more. At 99 you get a cape and a cape emote. Only you
 can see them, and each one can be turned off in the settings.
+
+Don't want the tile on screen? Untick **Show skill tile** in the side panel (or the
+settings) to hide it. The skill guide still opens from the side panel.
 
 ![The Bank Standing skill guide](https://raw.githubusercontent.com/DanielTate/runelite-bank-standing/main/docs/images/skill-guide.png)
 

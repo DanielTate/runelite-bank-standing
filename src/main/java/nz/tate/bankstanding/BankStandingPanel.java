@@ -30,9 +30,11 @@ import java.awt.Cursor;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
@@ -53,7 +55,7 @@ class BankStandingPanel extends PluginPanel
 {
 	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and Hochep.";
 	/** Must match runelite-plugin.properties; a test checks it does. */
-	static final String VERSION = "1.5";
+	static final String VERSION = "1.6";
 	static final String CHANGELOG_URL = "https://github.com/DanielTate/runelite-bank-standing/blob/main/CHANGELOG.md";
 
 	private static final Color GOLD = new Color(214, 176, 48);
@@ -62,6 +64,8 @@ class BankStandingPanel extends PluginPanel
 	private final JLabel title = new JLabel();
 	private final JButton capeEmote = new JButton("Cape emote");
 	private final JButton collectionLog = new JButton("Collection log");
+	private final JButton skillGuide = new JButton("Skill guide");
+	private final JCheckBox showSkillTile = new JCheckBox("Show skill tile");
 	private final JPanel stats = new JPanel(new GridLayout(0, 2, 0, 4));
 	private final JLabel level = value();
 	private final JLabel totalXp = value();
@@ -78,10 +82,11 @@ class BankStandingPanel extends PluginPanel
 
 	/**
 	 * {@code changelogUnseen} is whether this version's changelog hasn't been opened yet;
-	 * {@code onChangelogSeen} runs when it is.
+	 * {@code onChangelogSeen} runs when it is. {@code onShowSkillTile} gets the checkbox's new
+	 * state whenever it's clicked.
 	 */
-	BankStandingPanel(Icons icons, Runnable onCapeEmote, Runnable onCollectionLog, boolean changelogUnseen,
-		Runnable onChangelogSeen)
+	BankStandingPanel(Icons icons, Runnable onCapeEmote, Runnable onCollectionLog, Runnable onSkillGuide,
+		boolean skillTileShown, Consumer<Boolean> onShowSkillTile, boolean changelogUnseen, Runnable onChangelogSeen)
 	{
 		setLayout(new BorderLayout(0, 10));
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -101,10 +106,18 @@ class BankStandingPanel extends PluginPanel
 		capeEmote.addActionListener(e -> onCapeEmote.run());
 		collectionLog.setFocusPainted(false);
 		collectionLog.addActionListener(e -> onCollectionLog.run());
+		skillGuide.setFocusPainted(false);
+		skillGuide.addActionListener(e -> onSkillGuide.run());
+		showSkillTile.setOpaque(false);
+		showSkillTile.setFocusPainted(false);
+		showSkillTile.setSelected(skillTileShown);
+		showSkillTile.addActionListener(e -> onShowSkillTile.accept(showSkillTile.isSelected()));
 		JPanel buttons = new JPanel(new GridLayout(0, 1, 0, 4));
 		buttons.setOpaque(false);
+		buttons.add(skillGuide);
 		buttons.add(collectionLog);
 		buttons.add(capeEmote);
+		buttons.add(showSkillTile);
 		JPanel heading = new JPanel(new BorderLayout(0, 2));
 		heading.setOpaque(false);
 		heading.add(name, BorderLayout.NORTH);
@@ -206,6 +219,12 @@ class BankStandingPanel extends PluginPanel
 		return unseen ? "<html><u>What's new</u> <font color='#ffd700'>NEW</font></html>" : "<html><u>What's new</u></html>";
 	}
 
+	/** Keeps the checkbox in step when the setting changes from the config panel. */
+	void setSkillTileShown(boolean shown)
+	{
+		showSkillTile.setSelected(shown);
+	}
+
 	void showLoggedOut()
 	{
 		status.setText("Log in to see your progress.");
@@ -213,6 +232,7 @@ class BankStandingPanel extends PluginPanel
 		title.setVisible(false);
 		capeEmote.setVisible(false);
 		collectionLog.setVisible(false);
+		skillGuide.setVisible(false);
 		stats.setVisible(false);
 		sessionSection.setVisible(false);
 		recordSection.setVisible(false);
@@ -231,6 +251,7 @@ class BankStandingPanel extends PluginPanel
 		title.setVisible(true);
 		capeEmote.setVisible(view.level >= Experience.MAX_LEVEL);
 		collectionLog.setVisible(true);
+		skillGuide.setVisible(true);
 		stats.setVisible(true);
 		sessionSection.setVisible(true);
 		recordSection.setVisible(true);

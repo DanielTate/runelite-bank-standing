@@ -81,6 +81,13 @@ class SkillGuideOverlay extends ParchmentWindow
 		{
 			return false;
 		}
+		toggle();
+		return true;
+	}
+
+	/** Opens or closes the guide, from the skill tile or the side panel. */
+	void toggle()
+	{
 		if (isOpen())
 		{
 			close();
@@ -91,7 +98,6 @@ class SkillGuideOverlay extends ParchmentWindow
 			showTab(0);
 			open();
 		}
-		return true;
 	}
 
 	private Unlocks.Category category()

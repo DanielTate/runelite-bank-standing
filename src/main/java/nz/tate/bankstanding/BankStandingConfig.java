@@ -34,6 +34,16 @@ public interface BankStandingConfig extends Config
 	String GROUP = "bankstanding";
 
 	@ConfigItem(
+		keyName = "showSkillTile",
+		name = "Show skill tile",
+		description = "Show the skills-tab style tile with your level. The skill guide also opens from the side panel."
+	)
+	default boolean showSkillTile()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "showCape",
 		name = "Show 99 cape",
 		description = "At level 99, wear the Bank Standing cape while you bank stand. Only you can see it."
