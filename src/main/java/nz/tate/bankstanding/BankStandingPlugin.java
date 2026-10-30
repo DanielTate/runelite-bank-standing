@@ -55,6 +55,7 @@ import net.runelite.api.MessageNode;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.Player;
+import net.runelite.api.ScriptID;
 import net.runelite.api.Skill;
 import net.runelite.api.Tile;
 import net.runelite.api.WorldType;
@@ -82,6 +83,7 @@ import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.ObjectID;
 import net.runelite.api.gameval.SpotanimID;
 import net.runelite.api.gameval.SpriteID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -734,14 +736,16 @@ public class BankStandingPlugin extends Plugin
 	}
 
 	/**
-	 * {@code !bs} on its way out: the typed text, last on the script's string stack, is
-	 * swapped for the answer, so everyone sees it. Players without the plugin read it as
-	 * typed text. The player still sends it; the plugin never sends chat itself.
+	 * {@code !bs} on its way out. The game sends what was typed whatever the stack holds, and
+	 * only an empty message stops it, so the typed {@code !bs} is stopped and the answer put in
+	 * the chatbox instead: Enter again sends it, so everyone sees it. Players without the
+	 * plugin read it as typed text. The player sends it; the plugin never sends chat itself.
+	 * Private messages go out as typed.
 	 */
 	@Subscribe
 	public void onScriptCallbackEvent(ScriptCallbackEvent event)
 	{
-		if (!"chatboxInput".equals(event.getEventName()) && !"privateMessage".equals(event.getEventName()))
+		if (!"chatboxInput".equals(event.getEventName()))
 		{
 			return;
 		}
@@ -761,7 +765,13 @@ public class BankStandingPlugin extends Plugin
 		String shared = ChatCommands.shared(typed.substring(start), chatFacts());
 		if (shared != null)
 		{
-			stack[size - 1] = typed.substring(0, start) + shared;
+			stack[size - 1] = "";
+			String answer = typed.substring(0, start) + shared;
+			clientThread.invokeLater(() ->
+			{
+				client.setVarcStrValue(VarClientID.CHATINPUT, answer);
+				client.runScript(ScriptID.CHAT_PROMPT_INIT);
+			});
 		}
 	}
 

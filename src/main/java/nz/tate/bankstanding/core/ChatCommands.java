@@ -31,9 +31,10 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * The answers to {@code !bs} (or {@code !bankstanding}) in chat. On its way out the message
- * is swapped for {@link #SHARED} plus a short answer, so other players see it too: as plain
- * text without the plugin, and with the command hidden with it. Nothing here ever names a
+ * The answers to {@code !bs} (or {@code !bankstanding}) in chat. The typed message is held
+ * back and {@link #SHARED} plus a short answer put in the chatbox to send, so other players
+ * see it too: as plain text without the plugin, and with the command hidden with it. Nothing
+ * here ever names a
  * secret: secrets are only counted.
  */
 public final class ChatCommands

@@ -4,6 +4,9 @@
 
 - The Tombs of Amascut lobby bank is now named Tombs of Amascut, not "Bank near Guardians
   of the Rift". Time you've already stood there moves across.
+- Other players can now actually see your `!bs` answers. 1.7 tried to put the answer in your
+  message, but the game sent what you'd typed, so everyone else only saw `!bs`. Now pressing
+  Enter on `!bs` puts the answer in your chatbox, and pressing Enter again sends it.
 
 ## 1.7
 

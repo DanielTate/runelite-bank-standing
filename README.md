@@ -54,10 +54,11 @@ Type `!bs` in any chat to show off your level, XP and time stood. Add a word for
 `here`, a bank's name (like `!bs varrock west`), `fav`, `regulars`, `banks`, `log`, `pet`,
 `secrets`, `session`, `streak` or `title`. `!bs help` lists them.
 
-When you press Enter, the plugin puts the answer in your message, like
-`!bs - Bank Standing level 87 (...)`, so other players see it too. Anyone with the plugin
-sees just the answer; everyone else sees the message as it went out. Long answers are
-shortened to fit in a chat message. `!bs help` goes out as typed, and only you see the list.
+When you press Enter, the plugin swaps `!bs` in your chatbox for the answer, like
+`!bs - Bank Standing level 87 (...)`. Press Enter again to send it, and other players see it
+too. Anyone with the plugin sees just the answer; everyone else sees the message as it went
+out. Long answers are shortened to fit in a chat message. `!bs help`, and `!bs` in a private
+message, go out as typed, and only you see the answer.
 
 ## FAQ
 
