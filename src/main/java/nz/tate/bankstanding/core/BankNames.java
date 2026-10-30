@@ -141,7 +141,7 @@ public final class BankNames
 		area("nex", "Ancient Prison (Nex)", 2904, 5205),
 		area("guardians-of-the-rift", "Guardians of the Rift", 3619, 9473),
 		area("giants-foundry", "Giants' Foundry", 3462, 9588),
-		area("tombs-of-amascut", "Tombs of Amascut", 3345, 2725),
+		area("tombs-of-amascut", "Tombs of Amascut", 3354, 9120),
 		area("chambers-of-xeric", "Chambers of Xeric", 3303, 5199),
 		area("daimons-crater", "Daimon's Crater", 3426, 4064),
 		area("cam-torum", "Cam Torum", 1456, 9568),

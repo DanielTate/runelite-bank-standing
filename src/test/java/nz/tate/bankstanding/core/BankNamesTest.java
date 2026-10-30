@@ -44,6 +44,12 @@ public class BankNamesTest
 	}
 
 	@Test
+	public void namesTheTombsOfAmascutLobby()
+	{
+		assertEquals("tombs-of-amascut", BankNames.keyFor(3354, 9120));
+	}
+
+	@Test
 	public void unknownBanksFallBackToTheirRegionAndCoordinates()
 	{
 		assertEquals("region-" + ((1000 >> 6) << 8 | (1000 >> 6)), BankNames.keyFor(1000, 1000));

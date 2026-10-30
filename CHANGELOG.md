@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1
+
+- The Tombs of Amascut lobby bank is now named Tombs of Amascut, not "Bank near Guardians
+  of the Rift". Time you've already stood there moves across.
+
 ## 1.7
 
 ### Chat commands
