@@ -29,6 +29,7 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.text.NumberFormat;
 import javax.inject.Inject;
@@ -62,12 +63,15 @@ class SkillTileOverlay extends Overlay
 	private final BankStandingPlugin plugin;
 	private final Client client;
 	private final TooltipManager tooltipManager;
+	private final BankStandingConfig config;
 	private final BufferedImage icon;
 	private volatile long renderedAt;
 
 	@Inject
-	SkillTileOverlay(BankStandingPlugin plugin, Client client, TooltipManager tooltipManager, Icons icons)
+	SkillTileOverlay(BankStandingPlugin plugin, Client client, TooltipManager tooltipManager, Icons icons,
+		BankStandingConfig config)
 	{
+		this.config = config;
 		this.plugin = plugin;
 		this.client = client;
 		this.tooltipManager = tooltipManager;
@@ -92,6 +96,9 @@ class SkillTileOverlay extends Overlay
 			return null;
 		}
 		renderedAt = System.nanoTime();
+		double scale = config.compactOverlays() ? BankStandingConfig.COMPACT_SCALE : 1;
+		AffineTransform transform = graphics.getTransform();
+		graphics.scale(scale, scale);
 
 		graphics.setColor(FACE);
 		graphics.fillRect(0, 0, WIDTH, HEIGHT);
@@ -109,13 +116,14 @@ class SkillTileOverlay extends Overlay
 		shadowed(graphics, level, 44 - metrics.stringWidth(level) / 2, 13);
 		shadowed(graphics, "/", 47, 20);
 		shadowed(graphics, level, 54 - metrics.stringWidth(level) / 2, 28);
+		graphics.setTransform(transform);
 
 		Point mouse = client.getMouseCanvasPosition();
 		if (getBounds().contains(mouse.getX(), mouse.getY()))
 		{
 			tooltipManager.add(new Tooltip(tooltip(progress)));
 		}
-		return new Dimension(WIDTH, HEIGHT);
+		return new Dimension((int) Math.ceil(WIDTH * scale), (int) Math.ceil(HEIGHT * scale));
 	}
 
 	/** Like the skills tab: XP, then the next level and what's left, until 99. */

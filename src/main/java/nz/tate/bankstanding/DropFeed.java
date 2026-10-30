@@ -57,6 +57,8 @@ class DropFeed
 
 	synchronized void add(int amount, boolean maxHit, boolean boosted, Keywords.Kind phrase, int previewSprite)
 	{
+		// Also pruned here, since nothing reads the feed while both overlays are turned off.
+		prune(System.currentTimeMillis());
 		drops.addLast(new Drop(amount, maxHit, boosted, phrase, previewSprite, System.currentTimeMillis()));
 	}
 
@@ -64,6 +66,12 @@ class DropFeed
 	synchronized Drop[] recent(long millis)
 	{
 		long now = System.currentTimeMillis();
+		prune(now);
+		return drops.stream().filter(d -> now - d.getCreatedMillis() <= millis).toArray(Drop[]::new);
+	}
+
+	private void prune(long now)
+	{
 		for (Iterator<Drop> it = drops.iterator(); it.hasNext(); )
 		{
 			if (now - it.next().getCreatedMillis() > XP_DROP_MILLIS)
@@ -71,7 +79,6 @@ class DropFeed
 				it.remove();
 			}
 		}
-		return drops.stream().filter(d -> now - d.getCreatedMillis() <= millis).toArray(Drop[]::new);
 	}
 
 	synchronized void clear()

@@ -30,6 +30,7 @@ import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import net.runelite.client.ui.FontManager;
@@ -49,11 +50,13 @@ class XpDropOverlay extends Overlay
 
 	private final DropFeed feed;
 	private final BufferedImage icon;
+	private final BankStandingConfig config;
 
 	@Inject
-	XpDropOverlay(DropFeed feed, Icons icons)
+	XpDropOverlay(DropFeed feed, Icons icons, BankStandingConfig config)
 	{
 		this.feed = feed;
+		this.config = config;
 		this.icon = icons.small();
 		setPosition(OverlayPosition.TOP_RIGHT);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
@@ -63,6 +66,13 @@ class XpDropOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
+		if (!config.showXpDrops())
+		{
+			return null;
+		}
+		double scale = config.compactOverlays() ? BankStandingConfig.COMPACT_SCALE : 1;
+		AffineTransform transform = graphics.getTransform();
+		graphics.scale(scale, scale);
 		graphics.setFont(FontManager.getRunescapeBoldFont());
 		FontMetrics metrics = graphics.getFontMetrics();
 		long now = System.currentTimeMillis();
@@ -85,6 +95,7 @@ class XpDropOverlay extends Overlay
 		}
 
 		graphics.setComposite(original);
-		return new Dimension(WIDTH, HEIGHT);
+		graphics.setTransform(transform);
+		return new Dimension((int) Math.ceil(WIDTH * scale), (int) Math.ceil(HEIGHT * scale));
 	}
 }
