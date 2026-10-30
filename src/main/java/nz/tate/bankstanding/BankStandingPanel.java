@@ -53,9 +53,10 @@ import nz.tate.bankstanding.core.StatsView;
  */
 class BankStandingPanel extends PluginPanel
 {
-	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and Hochep.";
+	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and "
+		+ "Hochep, and to WyattSociety and GarlikStixx on Twitch.";
 	/** Must match runelite-plugin.properties; a test checks it does. */
-	static final String VERSION = "1.6";
+	static final String VERSION = "1.7";
 	static final String CHANGELOG_URL = "https://github.com/DanielTate/runelite-bank-standing/blob/main/CHANGELOG.md";
 
 	private static final Color GOLD = new Color(214, 176, 48);
@@ -70,6 +71,8 @@ class BankStandingPanel extends PluginPanel
 	private final JLabel level = value();
 	private final JLabel totalXp = value();
 	private final JLabel toNext = value();
+	private final JLabel timeToLevelName = name("Time to level");
+	private final JLabel timeToLevel = value();
 	private final JPanel sessionSection = new JPanel(new BorderLayout(0, 6));
 	private final JLabel sessionXp = value();
 	private final JLabel sessionTime = value();
@@ -83,10 +86,11 @@ class BankStandingPanel extends PluginPanel
 	/**
 	 * {@code changelogUnseen} is whether this version's changelog hasn't been opened yet;
 	 * {@code onChangelogSeen} runs when it is. {@code onShowSkillTile} gets the checkbox's new
-	 * state whenever it's clicked.
+	 * state whenever it's clicked. {@code onResetSession} starts "This session" again from zero.
 	 */
 	BankStandingPanel(Icons icons, Runnable onCapeEmote, Runnable onCollectionLog, Runnable onSkillGuide,
-		boolean skillTileShown, Consumer<Boolean> onShowSkillTile, boolean changelogUnseen, Runnable onChangelogSeen)
+		boolean skillTileShown, Consumer<Boolean> onShowSkillTile, boolean changelogUnseen, Runnable onChangelogSeen,
+		Runnable onResetSession)
 	{
 		setLayout(new BorderLayout(0, 10));
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -132,6 +136,8 @@ class BankStandingPanel extends PluginPanel
 		stats.add(totalXp);
 		stats.add(name("To next level"));
 		stats.add(toNext);
+		stats.add(timeToLevelName);
+		stats.add(timeToLevel);
 		status.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		JPanel middle = new JPanel(new BorderLayout());
 		middle.setOpaque(false);
@@ -153,7 +159,15 @@ class BankStandingPanel extends PluginPanel
 		sessionStats.add(name("Standing today"));
 		sessionStats.add(todayTime);
 		sessionSection.setOpaque(false);
-		sessionSection.add(heading("This session"), BorderLayout.NORTH);
+		JButton resetSession = new JButton("Reset");
+		resetSession.setFocusPainted(false);
+		resetSession.setToolTipText("Start this session's XP, time and XP per hour again from zero");
+		resetSession.addActionListener(e -> onResetSession.run());
+		JPanel sessionHeading = new JPanel(new BorderLayout());
+		sessionHeading.setOpaque(false);
+		sessionHeading.add(heading("This session"), BorderLayout.WEST);
+		sessionHeading.add(resetSession, BorderLayout.EAST);
+		sessionSection.add(sessionHeading, BorderLayout.NORTH);
 		sessionSection.add(sessionStats, BorderLayout.CENTER);
 
 		recordRows.setOpaque(false);
@@ -270,6 +284,9 @@ class BankStandingPanel extends PluginPanel
 		level.setText(String.valueOf(view.level));
 		totalXp.setText(view.totalXp);
 		toNext.setText(view.toNextLevel);
+		timeToLevelName.setVisible(view.timeToLevel != null);
+		timeToLevel.setVisible(view.timeToLevel != null);
+		timeToLevel.setText(view.timeToLevel);
 		progressBar.setMaximumValue(100);
 		progressBar.setValue(view.percent);
 		progressBar.setCenterLabel(view.percent + "%");

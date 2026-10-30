@@ -54,8 +54,10 @@ Type `!bs` in any chat to show off your level, XP and time stood. Add a word for
 `here`, a bank's name (like `!bs varrock west`), `fav`, `regulars`, `banks`, `log`, `pet`,
 `secrets`, `session`, `streak` or `title`. `!bs help` lists them.
 
-Only you see the answer. Your message goes out exactly as you typed it, and the plugin
-redraws your own copy of it, the same way RuneLite's `!kc` works. Other players see `!bs`.
+When you press Enter, the plugin puts the answer in your message, like
+`!bs - Bank Standing level 87 (...)`, so other players see it too. Anyone with the plugin
+sees just the answer; everyone else sees the message as it went out. Long answers are
+shortened to fit in a chat message. `!bs help` goes out as typed, and only you see the list.
 
 ## FAQ
 
@@ -66,7 +68,8 @@ RuneLite's settings, so if you're logged in to a RuneLite account, RuneLite sync
 with the rest of your settings.
 
 **Can other players see my cape, rug or hitsplats?**
-No. Everything is drawn on your own client, and the game server never hears about it.
+No. Everything is drawn on your own client, and the game server never hears about it. The
+only thing other players see is a `!bs` answer you send in chat.
 
 **What's that row of boxes in the corner?**
 The modifiers helping your stand right now, like an emote's countdown or a full outfit at its
@@ -94,7 +97,8 @@ on the other.
 
 ## Credits
 
-Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and Hochep.
+Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and Hochep, and to
+WyattSociety and GarlikStixx on Twitch.
 
 For building and testing the plugin, see [DEVELOPMENT.md](DEVELOPMENT.md). For what's new,
 see [CHANGELOG.md](CHANGELOG.md).

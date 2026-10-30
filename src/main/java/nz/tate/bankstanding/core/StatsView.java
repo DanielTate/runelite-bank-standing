@@ -57,6 +57,8 @@ public final class StatsView
 	public final String title;
 	public final String totalXp;
 	public final String toNextLevel;
+	/** How long the next level takes at this session's XP per hour: "-" before there's a rate, null at 99. */
+	public final String timeToLevel;
 	/** Percent through the current level, 0 to 100. */
 	public final int percent;
 	public final List<BankRow> banks;
@@ -82,6 +84,7 @@ public final class StatsView
 		if (level >= Experience.MAX_LEVEL)
 		{
 			toNextLevel = "Maxed";
+			timeToLevel = null;
 			percent = 100;
 		}
 		else
@@ -89,6 +92,8 @@ public final class StatsView
 			int start = Experience.xpForLevel(level);
 			int next = Experience.xpForLevel(level + 1);
 			toNextLevel = number(next - progress.xp);
+			long rate = session.xpPerHour();
+			timeToLevel = rate == 0 ? "-" : duration((next - progress.xp) * Session.TICKS_PER_HOUR / rate);
 			percent = (int) ((progress.xp - start) * 100L / (next - start));
 		}
 

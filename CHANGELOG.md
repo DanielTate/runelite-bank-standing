@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.7
+
+### Chat commands
+- Other players now see your `!bs` answers too. Your message goes out with the answer in it,
+  like `!bs - Bank Standing level 87 (...)`. Anyone with the plugin sees just the answer, and
+  everyone else sees it as you sent it. Every command works this way except `!bs help`.
+  Long answers are shortened to fit in a chat message.
+
+### Settings
+- New switches for hitsplats, XP drops, collection log popups and Bank Standing's chat
+  messages. Turning one off only hides it: you still earn the XP and the finds.
+- Bankers bringing tea can now be turned off in the plugin settings.
+- The peek timer can be turned off, or moved to any side of the bank, above the chatbox or
+  beside the minimap.
+- **Compact overlays** draws the skill tile, active modifiers, XP drops and peek timer smaller.
+
+### Side panel
+- **Time to level** shows how long the next level will take at this session's XP per hour.
+- A **Reset** button starts this session's XP, time and XP per hour again from zero.
+
+### Credits
+- Thanks to WyattSociety and GarlikStixx on Twitch, now in the credits.
+
 ## 1.6
 
 - A **Skill guide** button in the side panel opens the skill guide, so you don't need the

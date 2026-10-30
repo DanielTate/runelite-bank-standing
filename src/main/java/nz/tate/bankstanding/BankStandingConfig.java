@@ -32,6 +32,32 @@ import net.runelite.client.config.ConfigItem;
 public interface BankStandingConfig extends Config
 {
 	String GROUP = "bankstanding";
+	/** How much smaller "Compact overlays" draws them. */
+	double COMPACT_SCALE = 0.7;
+
+	/** Where the peek timer sits: a side of the bank, above the chatbox or beside the minimap. */
+	enum PeekTimerPosition
+	{
+		ABOVE("Above the bank"),
+		BELOW("Below the bank"),
+		LEFT("Left of the bank"),
+		RIGHT("Right of the bank"),
+		ABOVE_CHAT("Above the chatbox"),
+		BY_MINIMAP("Beside the minimap");
+
+		private final String label;
+
+		PeekTimerPosition(String label)
+		{
+			this.label = label;
+		}
+
+		@Override
+		public String toString()
+		{
+			return label;
+		}
+	}
 
 	@ConfigItem(
 		keyName = "showSkillTile",
@@ -111,5 +137,85 @@ public interface BankStandingConfig extends Config
 	default boolean showModifiers()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "teaDelivery",
+		name = "Bankers bring tea",
+		description = "From level 85, a banker brings you a cup of tea now and then while you bank stand."
+	)
+	default boolean teaDelivery()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showHitsplats",
+		name = "Show hitsplats",
+		description = "Show a hitsplat over your character for each Bank Standing XP drop."
+	)
+	default boolean showHitsplats()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showXpDrops",
+		name = "Show XP drops",
+		description = "Show Bank Standing XP drops in the corner of the screen."
+	)
+	default boolean showXpDrops()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showCollectionPopups",
+		name = "Show collection log popups",
+		description = "Show a popup when something new goes in the collection log. It's still added to the log when this is off."
+	)
+	default boolean showCollectionPopups()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "chatMessages",
+		name = "Chat messages",
+		description = "Say in chat when you level up or find something new for the collection log."
+	)
+	default boolean chatMessages()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showPeekTimer",
+		name = "Show peek timer",
+		description = "While you peek in the bank, show a stopwatch counting down until your stand ends."
+	)
+	default boolean showPeekTimer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "peekTimerPosition",
+		name = "Peek timer position",
+		description = "Where the peek timer sits: a side of the bank, above the chatbox, or beside the minimap."
+	)
+	default PeekTimerPosition peekTimerPosition()
+	{
+		return PeekTimerPosition.ABOVE;
+	}
+
+	@ConfigItem(
+		keyName = "compactOverlays",
+		name = "Compact overlays",
+		description = "Draw the skill tile, active modifiers, XP drops and peek timer smaller."
+	)
+	default boolean compactOverlays()
+	{
+		return false;
 	}
 }

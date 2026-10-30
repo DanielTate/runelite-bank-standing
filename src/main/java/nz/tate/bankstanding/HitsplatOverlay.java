@@ -80,11 +80,13 @@ class HitsplatOverlay extends Overlay
 	private final Client client;
 	private final SpriteManager spriteManager;
 	private final DropFeed feed;
+	private final BankStandingConfig config;
 	private final Map<Integer, BufferedImage> scaledSprites = new HashMap<>();
 
 	@Inject
-	HitsplatOverlay(Client client, SpriteManager spriteManager, DropFeed feed)
+	HitsplatOverlay(Client client, SpriteManager spriteManager, DropFeed feed, BankStandingConfig config)
 	{
+		this.config = config;
 		this.client = client;
 		this.spriteManager = spriteManager;
 		this.feed = feed;
@@ -97,7 +99,7 @@ class HitsplatOverlay extends Overlay
 	{
 		DropFeed.Drop[] drops = feed.recent(DropFeed.HITSPLAT_MILLIS);
 		Player player = client.getLocalPlayer();
-		if (drops.length == 0 || player == null)
+		if (drops.length == 0 || player == null || !config.showHitsplats())
 		{
 			return null;
 		}

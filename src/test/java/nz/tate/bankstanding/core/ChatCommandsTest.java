@@ -26,6 +26,7 @@ package nz.tate.bankstanding.core;
 
 import java.time.LocalDate;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -109,5 +110,59 @@ public class ChatCommandsTest
 		assertNull(ChatCommands.answer("!bs tutorial island", f));
 		stood(f.progress, "tutorial-island", 100);
 		assertEquals("Tutorial Island: 1m stood", ChatCommands.answer("!bs tutorial island", f));
+	}
+
+	@Test
+	public void sharedAnswersCarryTheAnswer()
+	{
+		ChatCommands.Facts f = facts();
+		assertEquals("!bs - Bank Standing log: 212/480", ChatCommands.shared("!bs log", f));
+		assertEquals("!bs - Secrets found: 41", ChatCommands.shared("!BankStanding secrets", f));
+		assertTrue(ChatCommands.shared("!bs", f).startsWith("!bs - Bank Standing level 1 ("));
+		// Not commands, no answer, and help: sent as typed.
+		assertNull(ChatCommands.shared("hello", f));
+		assertNull(ChatCommands.shared("!bs fav", f));
+		assertNull(ChatCommands.shared("!bs help", f));
+		// Already an answer: left alone.
+		assertNull(ChatCommands.shared("!bs - Secrets found: 41", f));
+	}
+
+	@Test
+	public void sharedAnswersFitInAChatMessage()
+	{
+		ChatCommands.Facts f = facts();
+		BankRecord ge = stood(f.progress, "ge", 123456 * HOUR_TICKS);
+		ge.visits = 1234567;
+		ge.firstAt = 1_760_000_000_000L;
+		stood(f.progress, "varrock-west", 900 * HOUR_TICKS);
+		stood(f.progress, "edgeville", 800 * HOUR_TICKS);
+		for (String command : new String[]{"", " here", " grand exchange", " fav", " regulars", " banks", " log",
+			" pet", " secrets", " session", " streak", " title"})
+		{
+			f.hereKey = "ge";
+			String shared = ChatCommands.shared("!bs" + command, f);
+			if (shared != null)
+			{
+				assertTrue(shared, shared.length() <= ChatCommands.MAX_MESSAGE);
+			}
+		}
+		// The bank's full answer is too long, so "regular since" goes first.
+		assertEquals("!bs - Grand Exchange: 123456h 00m stood, 1,234,567 visits", ChatCommands.shared("!bs ge", f));
+		assertTrue(ChatCommands.answer("!bs ge", f).contains("regular since"));
+		// Three top banks don't fit, two do.
+		assertEquals("!bs - Top banks: 1. Grand Exchange 123456h 00m, 2. Varrock West 900h 00m",
+			ChatCommands.shared("!bs regulars", f));
+	}
+
+	@Test
+	public void readsSharedAnswers()
+	{
+		assertEquals("Secrets found: 41", ChatCommands.sharedAnswer("!bs - Secrets found: 41"));
+		assertEquals("Secrets found: 41", ChatCommands.sharedAnswer("!BS - Secrets found: 41 "));
+		assertNull(ChatCommands.sharedAnswer("!bs"));
+		assertNull(ChatCommands.sharedAnswer("!bs - "));
+		assertNull(ChatCommands.sharedAnswer("!bs log"));
+		assertNull(ChatCommands.sharedAnswer("hello !bs - hi"));
+		assertFalse(ChatCommands.SHARED.isEmpty());
 	}
 }

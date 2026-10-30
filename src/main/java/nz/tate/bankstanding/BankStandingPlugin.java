@@ -73,6 +73,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.InterfaceID;
@@ -326,8 +327,8 @@ public class BankStandingPlugin extends Plugin
 		overlayManager.add(peekTimer);
 		overlayManager.add(modifierWidget);
 		overlayManager.add(teaDelivery);
-		// Only the half that runs after the message is sent: the message is never changed
-		// on its way out, only your own copy of it is redrawn.
+		// The message is swapped for the answer on its way out, in onScriptCallbackEvent;
+		// this half redraws it in chat once it arrives.
 		chatCommandManager.registerCommand(ChatCommands.SHORT, this::onChatCommand);
 		chatCommandManager.registerCommand(ChatCommands.LONG, this::onChatCommand);
 
@@ -335,7 +336,8 @@ public class BankStandingPlugin extends Plugin
 			config.showSkillTile(),
 			shown -> configManager.setConfiguration(BankStandingConfig.GROUP, "showSkillTile", shown),
 			!BankStandingPanel.VERSION.equals(configManager.getConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN)),
-			() -> configManager.setConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN, BankStandingPanel.VERSION));
+			() -> configManager.setConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN, BankStandingPanel.VERSION),
+			this::resetSession);
 		navButton = NavigationButton.builder()
 			.tooltip("Bank Standing")
 			.icon(icons.small())
@@ -644,6 +646,15 @@ public class BankStandingPlugin extends Plugin
 		{
 			clientThread.invoke(() -> capeDisplay.restore(wornCape));
 		}
+		if (BankStandingConfig.GROUP.equals(event.getGroup()) && "teaDelivery".equals(event.getKey()) && !config.teaDelivery())
+		{
+			clientThread.invoke(teaDelivery::clear);
+		}
+		if (BankStandingConfig.GROUP.equals(event.getGroup()) && "showCollectionPopups".equals(event.getKey())
+			&& !config.showCollectionPopups())
+		{
+			clientThread.invoke(collectionPopup::clear);
+		}
 	}
 
 	@Subscribe
@@ -692,7 +703,9 @@ public class BankStandingPlugin extends Plugin
 		Player player = client.getLocalPlayer();
 		if (event.getType() != ChatMessageType.PUBLICCHAT || player == null || progress == null
 			|| !tracker.isIdleAtBank() || player.getName() == null
-			|| !Text.sanitize(event.getName()).equals(Text.sanitize(player.getName())))
+			|| !Text.sanitize(event.getName()).equals(Text.sanitize(player.getName()))
+			// A !bs answer is the plugin's words, not yours, so it can't say a phrase.
+			|| ChatCommands.sharedAnswer(Text.removeTags(event.getMessage())) != null)
 		{
 			return;
 		}
@@ -721,14 +734,58 @@ public class BankStandingPlugin extends Plugin
 	}
 
 	/**
-	 * {@code !bs} in chat: your own copy of the message is redrawn with the answer. Other
-	 * players, and other people's {@code !bs}, see the message as typed.
+	 * {@code !bs} on its way out: the typed text, last on the script's string stack, is
+	 * swapped for the answer, so everyone sees it. Players without the plugin read it as
+	 * typed text. The player still sends it; the plugin never sends chat itself.
+	 */
+	@Subscribe
+	public void onScriptCallbackEvent(ScriptCallbackEvent event)
+	{
+		if (!"chatboxInput".equals(event.getEventName()) && !"privateMessage".equals(event.getEventName()))
+		{
+			return;
+		}
+		Object[] stack = client.getObjectStack();
+		int size = client.getObjectStackSize();
+		if (progress == null || size < 1 || !(stack[size - 1] instanceof String))
+		{
+			return;
+		}
+		String typed = (String) stack[size - 1];
+		// Keep any leading slashes, which pick the friends, clan or group chat.
+		int start = 0;
+		while (start < typed.length() && typed.charAt(start) == '/')
+		{
+			start++;
+		}
+		String shared = ChatCommands.shared(typed.substring(start), chatFacts());
+		if (shared != null)
+		{
+			stack[size - 1] = typed.substring(0, start) + shared;
+		}
+	}
+
+	/**
+	 * {@code !bs} in chat. An answer sent with {@link ChatCommands#shared}, from anyone, shows
+	 * as the answer alone. Your own {@code !bs} that went out as typed, like {@code !bs help},
+	 * is redrawn with the answer in your client only.
 	 */
 	private void onChatCommand(ChatMessage chatMessage, String message)
 	{
 		Player player = client.getLocalPlayer();
 		MessageNode node = chatMessage.getMessageNode();
-		if (progress == null || player == null || player.getName() == null || node == null)
+		if (node == null)
+		{
+			return;
+		}
+		String shared = ChatCommands.sharedAnswer(Text.removeTags(message));
+		if (shared != null)
+		{
+			node.setValue(shared);
+			client.refreshChat();
+			return;
+		}
+		if (progress == null || player == null || player.getName() == null)
 		{
 			return;
 		}
@@ -738,23 +795,30 @@ public class BankStandingPlugin extends Plugin
 		{
 			return;
 		}
+		String answer = ChatCommands.answer(Text.removeTags(message), chatFacts());
+		if (answer != null)
+		{
+			node.setValue(answer);
+			client.refreshChat();
+		}
+	}
+
+	/** What the !bs answers are made from. Client thread, with progress loaded. */
+	private ChatCommands.Facts chatFacts()
+	{
+		Player player = client.getLocalPlayer();
 		ChatCommands.Facts facts = new ChatCommands.Facts();
 		facts.progress = progress;
 		facts.session = session;
 		facts.today = today();
-		if (tracker.isIdleAtBank())
+		if (player != null && tracker.isIdleAtBank())
 		{
 			WorldPoint location = mapLocation(player);
 			facts.hereKey = BankNames.keyFor(location.getX(), location.getY());
 		}
 		facts.log = collectionLogOverlay.total(progress);
 		facts.secrets = secretsFound();
-		String answer = ChatCommands.answer(Text.removeTags(message), facts);
-		if (answer != null)
-		{
-			node.setValue(answer);
-			client.refreshChat();
-		}
+		return facts;
 	}
 
 	/** Every secret found, of every kind, as one number: never which. */
@@ -1032,11 +1096,19 @@ public class BankStandingPlugin extends Plugin
 	private void collected(String what, String name, int icon, boolean gold)
 	{
 		chat("Bank Standing collection log - " + what + "<col=ef1020>" + name + "</col>");
-		collectionPopup.show(what + name, icon, gold);
+		if (config.showCollectionPopups())
+		{
+			collectionPopup.show(what + name, icon, gold);
+		}
 	}
 
+	/** A game message, unless "Chat messages" is turned off. */
 	private void chat(String message)
 	{
+		if (!config.chatMessages())
+		{
+			return;
+		}
 		chatMessageManager.queue(QueuedMessage.builder()
 			.type(ChatMessageType.GAMEMESSAGE)
 			.runeLiteFormattedMessage(message)
@@ -1638,6 +1710,19 @@ public class BankStandingPlugin extends Plugin
 		});
 	}
 
+	/** The side panel's Reset: this session starts again from zero. Records and progress stay. */
+	private void resetSession()
+	{
+		clientThread.invoke(() ->
+		{
+			session = new Session();
+			if (progress != null)
+			{
+				refreshPanel();
+			}
+		});
+	}
+
 	void devReset()
 	{
 		clientThread.invoke(() ->
@@ -1675,12 +1760,8 @@ public class BankStandingPlugin extends Plugin
 
 	private void announceLevel(int level)
 	{
-		String message = new ChatMessageBuilder()
+		chat(new ChatMessageBuilder()
 			.append("Congratulations, you've just advanced your Bank Standing level. You are now level " + level + ".")
-			.build();
-		chatMessageManager.queue(QueuedMessage.builder()
-			.type(ChatMessageType.GAMEMESSAGE)
-			.runeLiteFormattedMessage(message)
 			.build());
 
 		Player player = client.getLocalPlayer();

@@ -31,14 +31,19 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * The answers to {@code !bs} (or {@code !bankstanding}) in chat. The message goes to the
- * game exactly as typed; only your own copy of it is redrawn with the answer, so other
- * players see the command. Nothing here ever names a secret: secrets are only counted.
+ * The answers to {@code !bs} (or {@code !bankstanding}) in chat. On its way out the message
+ * is swapped for {@link #SHARED} plus a short answer, so other players see it too: as plain
+ * text without the plugin, and with the command hidden with it. Nothing here ever names a
+ * secret: secrets are only counted.
  */
 public final class ChatCommands
 {
 	public static final String SHORT = "!bs";
 	public static final String LONG = "!bankstanding";
+	/** Starts an answer sent to chat: "!bs - Bank Standing level 87 (...)". */
+	public static final String SHARED = SHORT + " - ";
+	/** The game's limit on a chat message. */
+	static final int MAX_MESSAGE = 80;
 	private static final int TOP = 3;
 
 	/** Everything the answers are made from, gathered by the plugin on the client thread. */
@@ -59,89 +64,152 @@ public final class ChatCommands
 	{
 	}
 
-	/** The answer to this message, or null to leave it as typed. */
+	/** The answer to this message, in full, or null to leave it as typed. */
 	public static String answer(String message, Facts f)
 	{
-		String text = message.trim().toLowerCase(Locale.ENGLISH).replaceAll("\\s+", " ");
-		String rest;
-		if (text.equals(LONG) || text.startsWith(LONG + " "))
-		{
-			rest = text.substring(LONG.length()).trim();
-		}
-		else if (text.equals(SHORT) || text.startsWith(SHORT + " "))
-		{
-			rest = text.substring(SHORT.length()).trim();
-		}
-		else
+		String rest = command(message);
+		List<String> answers = rest == null ? null : answers(rest, f);
+		return answers == null || answers.isEmpty() ? null : answers.get(0);
+	}
+
+	/**
+	 * What to send instead of this message, so other players see the answer: {@link #SHARED}
+	 * and the longest answer that fits in a chat message. Null to send it as typed, as for
+	 * {@code help}, which only lists the commands.
+	 */
+	public static String shared(String message, Facts f)
+	{
+		String rest = command(message);
+		if (rest == null || rest.equals("help") || rest.startsWith("-"))
 		{
 			return null;
 		}
+		for (String answer : answers(rest, f))
+		{
+			if (SHARED.length() + answer.length() <= MAX_MESSAGE)
+			{
+				return SHARED + answer;
+			}
+		}
+		return null;
+	}
+
+	/** The answer inside a message someone sent with {@link #shared}, or null if it isn't one. */
+	public static String sharedAnswer(String message)
+	{
+		String text = message.trim();
+		if (text.length() <= SHARED.length() || !text.substring(0, SHARED.length()).equalsIgnoreCase(SHARED))
+		{
+			return null;
+		}
+		String answer = text.substring(SHARED.length()).trim();
+		return answer.isEmpty() ? null : answer;
+	}
+
+	/** What follows {@code !bs} in the message, lower case; null if it isn't the command. */
+	private static String command(String message)
+	{
+		String text = message.trim().toLowerCase(Locale.ENGLISH).replaceAll("\\s+", " ");
+		if (text.equals(LONG) || text.startsWith(LONG + " "))
+		{
+			return text.substring(LONG.length()).trim();
+		}
+		if (text.equals(SHORT) || text.startsWith(SHORT + " "))
+		{
+			return text.substring(SHORT.length()).trim();
+		}
+		return null;
+	}
+
+	/** The answer, longest first, then shorter ways to say it for a chat message. Empty if there's none. */
+	private static List<String> answers(String rest, Facts f)
+	{
 		Progress p = f.progress;
 		switch (rest)
 		{
 			case "":
-				return "Bank Standing level " + p.level() + " (" + StatsView.number(p.xp) + " xp), "
-					+ StatsView.duration(p.records.totalTicks) + " stood";
+				return one("Bank Standing level " + p.level() + " (" + StatsView.number(p.xp) + " xp), "
+					+ StatsView.duration(p.records.totalTicks) + " stood");
 			case "here":
-				return f.hereKey == null ? null : bank(p, f.hereKey);
+				return f.hereKey == null ? new ArrayList<>() : bank(p, f.hereKey);
 			case "fav":
 				List<String> top = top(p, 1);
-				return top.isEmpty() ? null : "My home bank: " + name(p, top.get(0)) + ", "
-					+ StatsView.duration(p.banks.get(top.get(0)).ticks);
+				return one(top.isEmpty() ? null : "My home bank: " + name(p, top.get(0)) + ", "
+					+ StatsView.duration(p.banks.get(top.get(0)).ticks));
 			case "regulars":
 				return regulars(p);
 			case "banks":
-				return "Banks visited: " + CollectionLog.banksVisited(p) + "/" + BankRegions.total();
+				return one("Banks visited: " + CollectionLog.banksVisited(p) + "/" + BankRegions.total());
 			case "log":
-				return "Bank Standing log: " + f.log[0] + "/" + f.log[1];
+				return one("Bank Standing log: " + f.log[0] + "/" + f.log[1]);
 			case "pet":
 				return pets(p);
 			case "secrets":
-				return "Secrets found: " + f.secrets;
+				return one("Secrets found: " + f.secrets);
 			case "session":
-				return "This session: " + StatsView.duration(f.session.ticks) + ", "
-					+ StatsView.number(f.session.xp) + " xp";
+				return one("This session: " + StatsView.duration(f.session.ticks) + ", "
+					+ StatsView.number(f.session.xp) + " xp");
 			case "streak":
 				int days = DailyStreak.current(p, f.today);
-				return "Daily streak: " + days + (days == 1 ? " day" : " days");
+				return one("Daily streak: " + days + (days == 1 ? " day" : " days"));
 			case "title":
-				return Unlocks.title(p.level()) + " (level " + p.level() + ")";
+				return one(Unlocks.title(p.level()) + " (level " + p.level() + ")");
 			case "help":
-				return "!bs, then: here, a bank's name, fav, regulars, banks, log, pet, secrets, session, streak, title";
+				return one("!bs, then: here, a bank's name, fav, regulars, banks, log, pet, secrets, session, streak, title");
 			default:
 				String key = findBank(p, rest);
-				return key == null ? null : bank(p, key);
+				return key == null ? new ArrayList<>() : bank(p, key);
 		}
 	}
 
-	/** One bank's record: time, visits and since when, as far as they're known. */
-	private static String bank(Progress p, String key)
+	private static List<String> one(String answer)
+	{
+		List<String> answers = new ArrayList<>();
+		if (answer != null)
+		{
+			answers.add(answer);
+		}
+		return answers;
+	}
+
+	/** One bank's record: time, visits and since when, as far as they're known; then without since when, then visits. */
+	private static List<String> bank(Progress p, String key)
 	{
 		BankRecord record = p.banks.get(key);
 		if (record == null || record.ticks == 0)
 		{
-			return name(p, key) + ": not stood here yet";
+			return one(name(p, key) + ": not stood here yet");
 		}
-		StringBuilder line = new StringBuilder(name(p, key)).append(": ")
-			.append(StatsView.duration(record.ticks)).append(" stood");
-		if (record.visits > 0)
-		{
-			line.append(", ").append(StatsView.number(record.visits)).append(record.visits == 1 ? " visit" : " visits");
-		}
+		List<String> answers = new ArrayList<>();
+		String line = name(p, key) + ": " + StatsView.duration(record.ticks) + " stood";
+		String visits = record.visits == 0 ? line : line + ", " + StatsView.number(record.visits)
+			+ (record.visits == 1 ? " visit" : " visits");
 		if (record.firstAt > 0)
 		{
-			line.append(", regular since ").append(StatsView.date(record.firstAt));
+			answers.add(visits + ", regular since " + StatsView.date(record.firstAt));
 		}
-		return line.toString();
+		answers.add(visits);
+		if (!visits.equals(line))
+		{
+			answers.add(line);
+		}
+		return answers;
 	}
 
-	private static String regulars(Progress p)
+	/** The top banks, then fewer of them. */
+	private static List<String> regulars(Progress p)
 	{
 		List<String> top = top(p, TOP);
-		if (top.isEmpty())
+		List<String> answers = new ArrayList<>();
+		for (int count = top.size(); count >= 1; count--)
 		{
-			return null;
+			answers.add(regulars(p, top.subList(0, count)));
 		}
+		return answers;
+	}
+
+	private static String regulars(Progress p, List<String> top)
+	{
 		StringBuilder line = new StringBuilder("Top banks: ");
 		for (int i = 0; i < top.size(); i++)
 		{
@@ -155,10 +223,14 @@ public final class ChatCommands
 		return line.toString();
 	}
 
-	/** The pets you have and how long each took; a secret one isn't mentioned until it drops. */
-	private static String pets(Progress p)
+	/**
+	 * The pets you have and how long each took, then just their names, then how many; a
+	 * secret one isn't mentioned until it drops.
+	 */
+	private static List<String> pets(Progress p)
 	{
 		List<String> lines = new ArrayList<>();
+		List<String> names = new ArrayList<>();
 		boolean missing = false;
 		for (CollectionLog.Drop drop : CollectionLog.DROPS)
 		{
@@ -173,12 +245,18 @@ public final class ChatCommands
 				continue;
 			}
 			lines.add(drop.name + " after " + StatsView.duration(got.firstRolls * XpRoller.ROLL_INTERVAL_TICKS));
+			names.add(drop.name);
 		}
 		if (lines.isEmpty())
 		{
-			return "No pets yet";
+			return one("No pets yet");
 		}
-		return "Pets: " + String.join(", ", lines) + (missing ? ", still hunting" : "");
+		String hunting = missing ? ", still hunting" : "";
+		List<String> answers = new ArrayList<>();
+		answers.add("Pets: " + String.join(", ", lines) + hunting);
+		answers.add("Pets: " + String.join(", ", names) + hunting);
+		answers.add("Pets: " + names.size() + hunting);
+		return answers;
 	}
 
 	/** The banks you've stood at longest, longest first. */

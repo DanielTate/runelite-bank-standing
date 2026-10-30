@@ -198,7 +198,7 @@ class StandCosmetics
 		if (config.bankerChat() && Unlocks.bankersNotice(level) && now >= nextBankerTick)
 		{
 			nextBankerTick = now + 60 + random.nextInt(120);
-			bankerSays(player, level, bankKey, visited);
+			bankerSays(player, level, config.teaDelivery(), bankKey, visited);
 		}
 	}
 
@@ -490,7 +490,7 @@ class StandCosmetics
 		return object;
 	}
 
-	private void bankerSays(Player player, int level, String bankKey, Set<String> visited)
+	private void bankerSays(Player player, int level, boolean tea, String bankKey, Set<String> visited)
 	{
 		WorldPoint here = player.getWorldLocation();
 		boolean archive = Moments.atArchive(bankKey);
@@ -506,7 +506,7 @@ class StandCosmetics
 			}
 		}
 		NPC banker = bankers.isEmpty() ? null : bankers.get(random.nextInt(bankers.size()));
-		if (Unlocks.tea(level) && !teaServed && !teaDelivery.isBusy() && random.nextInt(3) == 0)
+		if (tea && Unlocks.tea(level) && !teaServed && !teaDelivery.isBusy() && random.nextInt(3) == 0)
 		{
 			// One cup a stand, carried over by a banker.
 			teaServed = true;

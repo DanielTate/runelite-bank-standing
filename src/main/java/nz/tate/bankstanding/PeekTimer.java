@@ -29,7 +29,9 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -45,7 +47,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.ComponentConstants;
 
 /**
- * A stopwatch pinned to the top of the bank while a peek holds a stand open, counting
+ * A stopwatch pinned to a side of the bank while a peek holds a stand open, counting
  * down to the millisecond until the stand ends.
  */
 @Singleton
@@ -59,16 +61,18 @@ class PeekTimer extends Overlay
 
 	private final Client client;
 	private final ItemManager itemManager;
+	private final BankStandingConfig config;
 	private final Font font = FontManager.getRunescapeBoldFont().deriveFont(FONT_SIZE);
 
 	/** When the stand ends, in epoch millis; 0 while there's no peek under way. */
 	private volatile long endsAt;
 
 	@Inject
-	PeekTimer(Client client, ItemManager itemManager)
+	PeekTimer(Client client, ItemManager itemManager, BankStandingConfig config)
 	{
 		this.client = client;
 		this.itemManager = itemManager;
+		this.config = config;
 		setPosition(OverlayPosition.DYNAMIC);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 	}
@@ -84,7 +88,7 @@ class PeekTimer extends Overlay
 	{
 		long ends = endsAt;
 		Widget bank = openBank();
-		if (ends == 0 || bank == null)
+		if (ends == 0 || bank == null || !config.showPeekTimer())
 		{
 			return null;
 		}
@@ -99,28 +103,84 @@ class PeekTimer extends Overlay
 		int width = PADDING + icon.getWidth() + GAP + textWidth + PADDING;
 		int height = Math.max(icon.getHeight(), metrics.getAscent()) + PADDING * 2;
 
-		Rectangle bounds = bank.getBounds();
-		int x = bounds.x + (bounds.width - width) / 2;
-		int y = Math.max(0, bounds.y - height - GAP);
+		// Placed in screen space, then drawn at full size into a scaled box when compact.
+		double scale = config.compactOverlays() ? BankStandingConfig.COMPACT_SCALE : 1;
+		int shownWidth = (int) Math.ceil(width * scale);
+		int shownHeight = (int) Math.ceil(height * scale);
+		Point at = place(bank.getBounds(), shownWidth, shownHeight);
 
+		AffineTransform transform = graphics.getTransform();
+		graphics.translate(at.x, at.y);
+		graphics.scale(scale, scale);
 		graphics.setColor(ComponentConstants.STANDARD_BACKGROUND_COLOR);
-		graphics.fillRect(x, y, width, height);
+		graphics.fillRect(0, 0, width, height);
 		graphics.setColor(Color.BLACK);
-		graphics.drawRect(x, y, width - 1, height - 1);
+		graphics.drawRect(0, 0, width - 1, height - 1);
 
-		graphics.drawImage(icon, x + PADDING, y + (height - icon.getHeight()) / 2, null);
-		int textX = x + PADDING + icon.getWidth() + GAP;
-		int textY = y + (height + metrics.getAscent()) / 2 - 2;
+		graphics.drawImage(icon, PADDING, (height - icon.getHeight()) / 2, null);
+		int textX = PADDING + icon.getWidth() + GAP;
+		int textY = (height + metrics.getAscent()) / 2 - 2;
 		graphics.setColor(Color.BLACK);
 		graphics.drawString(text, textX + 2, textY + 2);
 		graphics.setColor(left <= WARN_MILLIS ? Color.RED : Color.WHITE);
 		graphics.drawString(text, textX, textY);
-		return new Dimension(width, height);
+		graphics.setTransform(transform);
+		return new Dimension(shownWidth, shownHeight);
+	}
+
+	/** Where the timer's top left goes, kept on screen. */
+	private Point place(Rectangle bank, int width, int height)
+	{
+		int x;
+		int y;
+		Rectangle chat;
+		Rectangle map;
+		switch (config.peekTimerPosition())
+		{
+			case ABOVE_CHAT:
+				// With the chatbox closed, the bottom left of the screen.
+				chat = shown(InterfaceID.Chatbox.UNIVERSE);
+				x = chat == null ? GAP : chat.x + GAP;
+				y = (chat == null ? client.getCanvasHeight() : chat.y) - height - GAP;
+				break;
+			case BY_MINIMAP:
+				// Left of the minimap and its orbs, in whichever layout is on; else the top right.
+				map = shown(InterfaceID.Toplevel.MAPCONTAINER, InterfaceID.ToplevelOsrsStretch.MAP_CONTAINER,
+					InterfaceID.ToplevelPreEoc.MAP_CONTAINER);
+				x = (map == null ? client.getCanvasWidth() : map.x) - width - GAP;
+				y = map == null ? GAP : map.y + GAP;
+				break;
+			case BELOW:
+				x = bank.x + (bank.width - width) / 2;
+				y = bank.y + bank.height + GAP;
+				break;
+			case LEFT:
+				x = bank.x - width - GAP;
+				y = bank.y + (bank.height - height) / 2;
+				break;
+			case RIGHT:
+				x = bank.x + bank.width + GAP;
+				y = bank.y + (bank.height - height) / 2;
+				break;
+			default:
+				x = bank.x + (bank.width - width) / 2;
+				y = bank.y - height - GAP;
+				break;
+		}
+		x = Math.max(0, Math.min(x, client.getCanvasWidth() - width));
+		y = Math.max(0, Math.min(y, client.getCanvasHeight() - height));
+		return new Point(x, y);
 	}
 
 	private Widget openBank()
 	{
-		for (int id : new int[]{InterfaceID.Bankmain.UNIVERSE, InterfaceID.BankDepositbox.UNIVERSE})
+		return widget(InterfaceID.Bankmain.UNIVERSE, InterfaceID.BankDepositbox.UNIVERSE);
+	}
+
+	/** The first of these widgets that's showing, or null. */
+	private Widget widget(int... ids)
+	{
+		for (int id : ids)
 		{
 			Widget widget = client.getWidget(id);
 			if (widget != null && !widget.isHidden())
@@ -129,5 +189,12 @@ class PeekTimer extends Overlay
 			}
 		}
 		return null;
+	}
+
+	/** Where the first of these widgets that's showing is on screen, or null. */
+	private Rectangle shown(int... ids)
+	{
+		Widget widget = widget(ids);
+		return widget == null ? null : widget.getBounds();
 	}
 }

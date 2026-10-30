@@ -32,6 +32,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.List;
@@ -106,14 +107,16 @@ class ModifierWidget extends Overlay
 	private final SpriteManager spriteManager;
 	private final TooltipManager tooltipManager;
 	private final Icons icons;
+	private final BankStandingConfig config;
 	private final Font font = FontManager.getRunescapeSmallFont();
 
 	private volatile List<Shown> shown = Collections.emptyList();
 
 	@Inject
 	ModifierWidget(Client client, ItemManager itemManager, SpriteManager spriteManager,
-		TooltipManager tooltipManager, Icons icons)
+		TooltipManager tooltipManager, Icons icons, BankStandingConfig config)
 	{
+		this.config = config;
 		this.client = client;
 		this.itemManager = itemManager;
 		this.spriteManager = spriteManager;
@@ -138,6 +141,9 @@ class ModifierWidget extends Overlay
 		{
 			return null;
 		}
+		double scale = config.compactOverlays() ? BankStandingConfig.COMPACT_SCALE : 1;
+		AffineTransform transform = graphics.getTransform();
+		graphics.scale(scale, scale);
 		graphics.setFont(font);
 		FontMetrics metrics = graphics.getFontMetrics();
 		Rectangle bounds = getBounds();
@@ -205,7 +211,8 @@ class ModifierWidget extends Overlay
 			hover(bounds, mouse, x, "All together</br>" + effect);
 			x += BOX + GAP;
 		}
-		return new Dimension(x - GAP, BOX);
+		graphics.setTransform(transform);
+		return new Dimension((int) Math.ceil((x - GAP) * scale), (int) Math.ceil(BOX * scale));
 	}
 
 	/** Seconds under a minute, minutes after that. */
@@ -225,9 +232,12 @@ class ModifierWidget extends Overlay
 		graphics.drawString(text, tx, ty);
 	}
 
+	/** {@code x} is in the unscaled box layout; the bounds are on screen. */
 	private void hover(Rectangle bounds, Point mouse, int x, String text)
 	{
-		if (bounds != null && mouse != null && new Rectangle(bounds.x + x, bounds.y, BOX, BOX)
+		double scale = config.compactOverlays() ? BankStandingConfig.COMPACT_SCALE : 1;
+		int size = (int) Math.ceil(BOX * scale);
+		if (bounds != null && mouse != null && new Rectangle(bounds.x + (int) (x * scale), bounds.y, size, size)
 			.contains(mouse.getX(), mouse.getY()))
 		{
 			tooltipManager.add(new Tooltip(text));
