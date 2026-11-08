@@ -25,12 +25,18 @@
 package nz.tate.bankstanding.core;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * What the side panel shows, worked out from saved progress. Results only: nothing here
@@ -43,12 +49,187 @@ public final class StatsView
 		public final String name;
 		public final String time;
 		public final String xp;
+		/** Time here as a share of the top bank's, 0 to 1, for the row's bar. */
+		public final double share;
+		/** 1 for the most-stood bank. */
+		public final int rank;
+		/** The collection log region it's listed under, or null for an unlisted bank. */
+		public final String region;
+		/** Time here as a percent of all bank time, like "42%", or "<1%". */
+		public final String percent;
+		/** "12 visits", or null before visits were counted. */
+		public final String visits;
+		/** When you first stood here, or null if not known. */
+		public final String firstStood;
 
-		BankRow(String name, String time, String xp)
+		BankRow(String name, String time, String xp, double share, int rank, String region, String percent,
+			String visits, String firstStood)
 		{
 			this.name = name;
 			this.time = time;
 			this.xp = xp;
+			this.share = share;
+			this.rank = rank;
+			this.region = region;
+			this.percent = percent;
+			this.visits = visits;
+			this.firstStood = firstStood;
+		}
+	}
+
+	/** One bank stood at on a day, for the calendar's day details. */
+	public static final class DayBank
+	{
+		public final String name;
+		public final String time;
+		/** Time here as a share of that day's top bank, 0 to 1. */
+		public final double share;
+
+		DayBank(String name, String time, double share)
+		{
+			this.name = name;
+			this.time = time;
+			this.share = share;
+		}
+	}
+
+	/** How many shades the days-stood calendar uses for days stood, lightest first. */
+	public static final int CALENDAR_SHADES = 4;
+	/** The least standing for each shade above the first: 30 minutes, 1 hour, 3 hours. */
+	private static final long[] SHADE_TICKS = {3000, 6000, 18000};
+
+	/**
+	 * Every day stood and, for the last year, how long, for the side panel's month calendar.
+	 * A copy, so the panel can page through months while the game keeps saving.
+	 */
+	public static final class Days
+	{
+		public final LocalDate today;
+		/** The earliest month with any standing, or this month if there's none. */
+		public final YearMonth first;
+		private final Map<String, Long> ticks;
+		private final Set<String> stood;
+		private final Map<String, Map<String, Long>> banks;
+		private final Map<String, String> bankNames = new HashMap<>();
+
+		Days(Progress p, LocalDate today)
+		{
+			this.today = today;
+			banks = new HashMap<>();
+			for (Map.Entry<String, Map<String, Long>> day : p.dayBanks.entrySet())
+			{
+				banks.put(day.getKey(), new HashMap<>(day.getValue()));
+			}
+			for (Map.Entry<String, BankRecord> bank : p.banks.entrySet())
+			{
+				bankNames.put(bank.getKey(), BankNames.displayName(bank.getKey(), bank.getValue()));
+			}
+			ticks = new HashMap<>(p.dayTicks);
+			if (p.todayDate != null)
+			{
+				ticks.merge(p.todayDate, p.todayTicks, Math::max);
+			}
+			stood = new HashSet<>(p.daysStood);
+			for (Map.Entry<String, Long> entry : ticks.entrySet())
+			{
+				if (entry.getValue() > 0)
+				{
+					stood.add(entry.getKey());
+				}
+			}
+			YearMonth earliest = YearMonth.from(today);
+			for (String day : stood)
+			{
+				try
+				{
+					YearMonth month = YearMonth.from(LocalDate.parse(day));
+					if (month.isBefore(earliest))
+					{
+						earliest = month;
+					}
+				}
+				catch (DateTimeParseException e)
+				{
+					// Not a date: skip it.
+				}
+			}
+			first = earliest;
+		}
+
+		public boolean stood(LocalDate day)
+		{
+			return !day.isAfter(today) && stood.contains(day.toString());
+		}
+
+		/** Standing ticks that day, or 0 when not stood or not known (days from before they were kept). */
+		public long ticks(LocalDate day)
+		{
+			return day.isAfter(today) ? 0 : ticks.getOrDefault(day.toString(), 0L);
+		}
+
+		/** 0 for not stood, else 1 (a short stand, or time not known) to {@link #CALENDAR_SHADES} (3 hours or more). */
+		public int shade(LocalDate day)
+		{
+			if (!stood(day))
+			{
+				return 0;
+			}
+			int shade = 1;
+			for (long least : SHADE_TICKS)
+			{
+				if (ticks(day) >= least)
+				{
+					shade++;
+				}
+			}
+			return shade;
+		}
+
+		/**
+		 * The banks stood at on a day, most time first, or an empty list when that wasn't
+		 * recorded (days from before 1.8) or the day wasn't stood.
+		 */
+		public List<DayBank> banks(LocalDate day)
+		{
+			List<DayBank> list = new ArrayList<>();
+			Map<String, Long> stoodAt = day.isAfter(today) ? null : banks.get(day.toString());
+			if (stoodAt == null || stoodAt.isEmpty())
+			{
+				return list;
+			}
+			long top = 0;
+			for (long time : stoodAt.values())
+			{
+				top = Math.max(top, time);
+			}
+			List<Map.Entry<String, Long>> entries = new ArrayList<>(stoodAt.entrySet());
+			entries.sort(Map.Entry.<String, Long>comparingByValue().reversed());
+			for (Map.Entry<String, Long> entry : entries)
+			{
+				String name = bankNames.getOrDefault(entry.getKey(), entry.getKey());
+				list.add(new DayBank(name, duration(entry.getValue()), top > 0 ? (double) entry.getValue() / top : 0));
+			}
+			return list;
+		}
+
+		public int daysStoodIn(YearMonth month)
+		{
+			int days = 0;
+			for (int d = 1; d <= month.lengthOfMonth(); d++)
+			{
+				days += stood(month.atDay(d)) ? 1 : 0;
+			}
+			return days;
+		}
+
+		public long ticksIn(YearMonth month)
+		{
+			long total = 0;
+			for (int d = 1; d <= month.lengthOfMonth(); d++)
+			{
+				total += ticks(month.atDay(d));
+			}
+			return total;
 		}
 	}
 
@@ -67,6 +248,9 @@ public final class StatsView
 	public final String sessionTime;
 	public final String xpPerHour;
 	public final String todayTime;
+	/** This session's XP after each minute of standing, starting from 0. */
+	public final long[] sessionXpSamples;
+	public final Days days;
 
 	/** Personal records as label and value pairs, in the order shown. */
 	public final List<String[]> records = new ArrayList<>();
@@ -77,6 +261,8 @@ public final class StatsView
 		sessionTime = duration(session.ticks);
 		xpPerHour = number(session.xpPerHour());
 		todayTime = duration(today.equals(progress.todayDate) ? progress.todayTicks : 0);
+		sessionXpSamples = session.xpSamples.stream().mapToLong(Long::longValue).toArray();
+		days = new Days(progress, LocalDate.parse(today));
 
 		level = progress.level();
 		title = Unlocks.title(level);
@@ -102,11 +288,20 @@ public final class StatsView
 		List<Map.Entry<String, BankRecord>> entries = new ArrayList<>(progress.banks.entrySet());
 		entries.sort(Comparator.comparingLong((Map.Entry<String, BankRecord> e) -> e.getValue().ticks).reversed());
 		banks = new ArrayList<>();
+		long top = entries.isEmpty() ? 0 : entries.get(0).getValue().ticks;
+		long all = 0;
+		for (Map.Entry<String, BankRecord> entry : entries)
+		{
+			all += entry.getValue().ticks;
+		}
 		for (Map.Entry<String, BankRecord> entry : entries)
 		{
 			BankRecord record = entry.getValue();
 			banks.add(new BankRow(BankNames.displayName(entry.getKey(), record),
-				duration(record.ticks), number(record.xp)));
+				duration(record.ticks), number(record.xp), top > 0 ? (double) record.ticks / top : 0,
+				banks.size() + 1, BankRegions.regionOf(entry.getKey()), percent(record.ticks, all),
+				record.visits > 0 ? number(record.visits) + (record.visits == 1 ? " visit" : " visits") : null,
+				record.firstAt > 0 ? date(record.firstAt) : null));
 		}
 	}
 
@@ -133,6 +328,17 @@ public final class StatsView
 			long days = (milestone.at - r.firstSeen) / 86_400_000L;
 			records.add(new String[]{label, date(milestone.at) + " (" + days + (days == 1 ? " day)" : " days)")});
 		}
+	}
+
+	/** A part of a whole as a whole percent, with "<1%" for anything smaller but not nothing. */
+	static String percent(long part, long whole)
+	{
+		if (whole <= 0)
+		{
+			return "0%";
+		}
+		long percent = Math.round(part * 100.0 / whole);
+		return percent == 0 && part > 0 ? "<1%" : percent + "%";
 	}
 
 	public static String date(long epochMillis)

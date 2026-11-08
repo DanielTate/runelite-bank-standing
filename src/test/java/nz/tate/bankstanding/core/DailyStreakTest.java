@@ -69,4 +69,32 @@ public class DailyStreakTest
 		stand(p, MON.plusDays(2), DailyStreak.TICKS_PER_DAY_NEEDED);
 		assertEquals(1, DailyStreak.current(p, MON.plusDays(2)));
 	}
+
+	@Test
+	public void keepsEachDaysStandingForAYear()
+	{
+		Progress p = new Progress();
+		java.time.LocalDate day = java.time.LocalDate.of(2026, 1, 1);
+		DailyStreak.standingTick(p, day);
+		DailyStreak.standingTick(p, day);
+		org.junit.Assert.assertEquals(Long.valueOf(2), p.dayTicks.get("2026-01-01"));
+		DailyStreak.standingTick(p, day.plusDays(DailyStreak.DAY_TICKS_KEPT - 1));
+		org.junit.Assert.assertTrue(p.dayTicks.containsKey("2026-01-01"));
+		DailyStreak.standingTick(p, day.plusDays(DailyStreak.DAY_TICKS_KEPT));
+		org.junit.Assert.assertFalse(p.dayTicks.containsKey("2026-01-01"));
+	}
+
+	@Test
+	public void keepsEachDaysBanksForAYear()
+	{
+		Progress p = new Progress();
+		java.time.LocalDate day = java.time.LocalDate.of(2026, 1, 1);
+		DailyStreak.standingTick(p, day, "ge");
+		DailyStreak.standingTick(p, day, "ge");
+		DailyStreak.standingTick(p, day, "varrock-west");
+		org.junit.Assert.assertEquals(Long.valueOf(2), p.dayBanks.get("2026-01-01").get("ge"));
+		org.junit.Assert.assertEquals(Long.valueOf(1), p.dayBanks.get("2026-01-01").get("varrock-west"));
+		DailyStreak.standingTick(p, day.plusDays(DailyStreak.DAY_TICKS_KEPT), "ge");
+		org.junit.Assert.assertFalse(p.dayBanks.containsKey("2026-01-01"));
+	}
 }

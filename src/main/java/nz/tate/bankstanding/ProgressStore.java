@@ -153,6 +153,24 @@ class ProgressStore
 		}
 	}
 
+	/**
+	 * Dev only: this becomes the account's only save. Loading keeps the copy with the most XP,
+	 * so a reset has to take away every other copy, and the first save too.
+	 */
+	void replaceAll(Progress progress)
+	{
+		if (profileKey == null)
+		{
+			return;
+		}
+		for (String copy : copies())
+		{
+			configManager.unsetConfiguration(BankStandingConfig.GROUP, profile(), copy);
+		}
+		configManager.unsetRSProfileConfiguration(BankStandingConfig.GROUP, KEY);
+		save(progress);
+	}
+
 	private String profile()
 	{
 		return ConfigManager.RSPROFILE_GROUP + "." + profileKey;

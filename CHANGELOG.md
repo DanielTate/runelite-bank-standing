@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.8
+
+### Side panel
+- A fresh look: each section has its own card, your level is shown large at the top, and
+  progress to the next level is a slim gold bar. Long names like "Standing today" are no
+  longer cut off.
+- **This session** now has a graph of your XP, one point for each minute you stand. Hover
+  over it to see your XP at that point.
+- **Days stood** is a calendar. Each day you stood at a bank is shaded gold: the longer you
+  stood, the brighter it is. Use the arrows to flick back through the months, and hover over
+  a day to see how long you stood, or click it to see which banks you stood at and for how
+  long. The heading shows the month's days and total time. Days from before 1.8 show in the
+  dimmest shade, because how long you stood on them wasn't recorded.
+- **Records** shows your total standing, longest stand, best day and best XP per hour as
+  tiles, with your start date and milestones underneath.
+- **Banks** is now a leaderboard. Each bank shows its rank, with gold, silver and bronze for
+  your top three, plus its region, its share of your bank time, a bar against your most-stood
+  bank, and your XP and visits there. Hover over a bank to see when you first stood there.
+  It shows your top 3 banks, with **Show all** to see the rest.
+- The link to this changelog is now at the top, under your title.
+
+### Fixes
+- The Blast Furnace bank is now named Blast Furnace, not "Bank near Zanaris". Time you've
+  already stood there moves across.
+- The deposit box inside the Tombs of Amascut raid counts as Tombs of Amascut. Time stood
+  there, which showed as "Bank near Chambers of Xeric", moves across.
+- Standing by the deposit box and hopper at the Motherlode Mine now counts as the Motherlode
+  Mine, not "Bank near Motherlode Mine".
+- Lletya's bank counts as Lletya wherever the game puts you in it. Time stood at the other
+  copy, which showed as an unnamed bank, moves across.
+- The collection log's Max hit entry now says it counts from level 19. Before that, a max hit
+  still shows its gold splat but isn't added to the log, which looked like the log had missed it.
+
 ## 1.7.1
 
 - The Tombs of Amascut lobby bank is now named Tombs of Amascut, not "Bank near Guardians

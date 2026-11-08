@@ -60,6 +60,15 @@ public class MomentsTest
 	}
 
 	@Test
+	public void maxHitLogLevelIsTheFirstLevelWithAMaxOfTen()
+	{
+		int level = Moments.maxHitLogLevel();
+		assertEquals(19, level);
+		assertEquals(Moments.MAX_HIT_LOG_MIN_MAX_HIT, XpRoller.baseMaxHit(level));
+		assertTrue(XpRoller.baseMaxHit(level - 1) < Moments.MAX_HIT_LOG_MIN_MAX_HIT);
+	}
+
+	@Test
 	public void backToBackNeedsTwoMaxHitsInARowAtTenOrMore()
 	{
 		Progress p = new Progress();

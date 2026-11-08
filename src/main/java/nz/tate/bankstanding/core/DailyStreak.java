@@ -30,6 +30,8 @@ import java.time.LocalDate;
 public final class DailyStreak
 {
 	static final long TICKS_PER_DAY_NEEDED = 3000;
+	/** How many days of per-day standing time the save keeps. */
+	static final int DAY_TICKS_KEPT = 366;
 
 	private DailyStreak()
 	{
@@ -38,13 +40,27 @@ public final class DailyStreak
 	/** Call once per standing tick. */
 	public static void standingTick(Progress p, LocalDate today)
 	{
+		standingTick(p, today, null);
+	}
+
+	/** Call once per standing tick, with the bank stood at (or null), for the calendar's day details. */
+	public static void standingTick(Progress p, LocalDate today, String bankKey)
+	{
 		String day = today.toString();
 		if (!day.equals(p.todayDate))
 		{
 			p.todayDate = day;
 			p.todayTicks = 0;
+			String oldest = today.minusDays(DAY_TICKS_KEPT - 1).toString();
+			p.dayTicks.keySet().removeIf(kept -> kept.compareTo(oldest) < 0);
+			p.dayBanks.keySet().removeIf(kept -> kept.compareTo(oldest) < 0);
 		}
 		p.todayTicks++;
+		p.dayTicks.merge(day, 1L, Long::sum);
+		if (bankKey != null)
+		{
+			p.dayBanks.computeIfAbsent(day, k -> new java.util.TreeMap<>()).merge(bankKey, 1L, Long::sum);
+		}
 		if (p.todayTicks == TICKS_PER_DAY_NEEDED)
 		{
 			boolean continues = today.minusDays(1).toString().equals(p.streakDate);

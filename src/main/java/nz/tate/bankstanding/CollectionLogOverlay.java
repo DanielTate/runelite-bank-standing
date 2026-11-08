@@ -689,7 +689,9 @@ class CollectionLogOverlay extends GameWindow
 			for (Moments.Splat splat : Moments.Splat.values())
 			{
 				Long at = progress.moments.get(splat.key);
-				Slot slot = new Slot(splat.title, at != null, -1, false, at == null ? "Not seen yet" : first(at), 0);
+				String detail = at != null ? first(at) : splat == Moments.Splat.MAX_HIT
+					? "Not seen yet</br>Counts from level " + Moments.maxHitLogLevel() : "Not seen yet";
+				Slot slot = new Slot(splat.title, at != null, -1, false, detail, 0);
 				slot.image = hitsplats.icon(splat);
 				splats.slots.add(slot);
 			}

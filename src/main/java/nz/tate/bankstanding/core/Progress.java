@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 /** Everything saved for one account. Field names are permanent: they are the save format. */
@@ -69,6 +70,10 @@ public final class Progress
 	public long lastSitRoll;
 	/** Every local date (ISO) with some standing, for the calendar moments. */
 	public Set<String> daysStood = new TreeSet<>();
+	/** Standing ticks on each local date (ISO), for the side panel's days-stood grid. Kept for a year. */
+	public Map<String, Long> dayTicks = new TreeMap<>();
+	/** Standing ticks at each bank (by key) on each local date (ISO), for the calendar's day details. Kept for a year. */
+	public Map<String, Map<String, Long>> dayBanks = new TreeMap<>();
 	/** When standing on a fire last paid out a boosted roll, in epoch milliseconds. */
 	public long lastFireRoll;
 	/** Things done on {@link #notesDate} (an ISO date) that count toward the one-day moments. */
@@ -210,6 +215,18 @@ public final class Progress
 		journalRead.addAll(other.journalRead);
 		journalSince = earliest(journalSince, other.journalSince);
 		daysStood.addAll(other.daysStood);
+		for (Map.Entry<String, Long> entry : other.dayTicks.entrySet())
+		{
+			dayTicks.merge(entry.getKey(), entry.getValue(), Math::max);
+		}
+		for (Map.Entry<String, Map<String, Long>> day : other.dayBanks.entrySet())
+		{
+			Map<String, Long> ours = dayBanks.computeIfAbsent(day.getKey(), k -> new TreeMap<>());
+			for (Map.Entry<String, Long> bank : day.getValue().entrySet())
+			{
+				ours.merge(bank.getKey(), bank.getValue(), Math::max);
+			}
+		}
 		if (other.notesDate != null && other.notesDate.equals(notesDate))
 		{
 			notes.addAll(other.notes);

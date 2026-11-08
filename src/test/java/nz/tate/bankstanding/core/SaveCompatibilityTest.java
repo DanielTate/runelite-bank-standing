@@ -84,6 +84,9 @@ public class SaveCompatibilityTest
 		devNex.ticks = 19000;
 		devNex.visits = 3;
 		dev.banks.put("nex", devNex);
+		dev.dayTicks.put("2026-10-20", 900L);
+		dev.dayTicks.put("2026-10-21", 40L);
+		dev.dayBanks.put("2026-10-20", new java.util.TreeMap<>(java.util.Map.of("nex", 900L)));
 
 		Progress stale = new Progress();
 		stale.xp = 13576;
@@ -99,6 +102,8 @@ public class SaveCompatibilityTest
 		BankRecord ge = new BankRecord();
 		ge.ticks = 3458;
 		stale.banks.put("ge", ge);
+		stale.dayTicks.put("2026-10-20", 300L);
+		stale.dayBanks.put("2026-10-20", new java.util.TreeMap<>(java.util.Map.of("nex", 200L, "ge", 100L)));
 
 		Progress merged = Progress.merge(java.util.Arrays.asList(dev, stale));
 		assertSame(stale, merged);
@@ -113,6 +118,10 @@ public class SaveCompatibilityTest
 		assertEquals(21291, merged.banks.get("nex").ticks);
 		assertEquals(3, merged.banks.get("nex").visits);
 		assertEquals(3458, merged.banks.get("ge").ticks);
+		assertEquals(Long.valueOf(900), merged.dayTicks.get("2026-10-20"));
+		assertEquals(Long.valueOf(40), merged.dayTicks.get("2026-10-21"));
+		assertEquals(Long.valueOf(900), merged.dayBanks.get("2026-10-20").get("nex"));
+		assertEquals(Long.valueOf(100), merged.dayBanks.get("2026-10-20").get("ge"));
 		assertNull(Progress.merge(java.util.Collections.emptyList()));
 	}
 
