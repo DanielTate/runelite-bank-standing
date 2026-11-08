@@ -71,6 +71,8 @@ public final class BankNames
 		area("keldagrim", "Keldagrim", 2838, 10210),
 		area("rogues-den", "Rogues' Den", 3042, 4972),
 		area("lletya", "Lletya", 2352, 3162),
+		// A second copy of Lletya elsewhere on the map, which the game uses at times: the same bank.
+		area("lletya", "Lletya", 2800, 6108),
 		area("tzhaar", "TzHaar City", 2446, 5179),
 		area("nardah", "Nardah", 3427, 2891),
 		area("mos-le-harmless", "Mos Le'Harmless", 3681, 2982),
@@ -90,8 +92,10 @@ public final class BankNames
 		area("falador-pvp", "Falador PvP Chest", 2970, 3342),
 		area("edgeville-pvp", "Edgeville PvP Chest", 3094, 3469),
 		area("camelot-pvp", "Camelot PvP Chest", 2757, 3478),
-		area("blast-furnace", "Blast Furnace", 2931, 10195),
+		area("blast-furnace", "Blast Furnace", 1948, 4957),
 		area("motherlode", "Motherlode Mine", 3759, 5666),
+		// The mine is bigger than one bank's reach: this covers the deposit box and hopper side.
+		area("motherlode", "Motherlode Mine", 3752, 5680),
 		area("ge", "Grand Exchange", 3165, 3490),
 		area("crafting-guild", "Crafting Guild", 2936, 3280),
 		area("barbarian-outpost", "Barbarian Outpost", 2537, 3574),
@@ -142,6 +146,8 @@ public final class BankNames
 		area("guardians-of-the-rift", "Guardians of the Rift", 3619, 9473),
 		area("giants-foundry", "Giants' Foundry", 3462, 9588),
 		area("tombs-of-amascut", "Tombs of Amascut", 3354, 9120),
+		// The deposit box inside the raid counts as the Tombs too.
+		area("tombs-of-amascut", "Tombs of Amascut", 3548, 5153),
 		area("chambers-of-xeric", "Chambers of Xeric", 3303, 5199),
 		area("daimons-crater", "Daimon's Crater", 3426, 4064),
 		area("cam-torum", "Cam Torum", 1456, 9568),

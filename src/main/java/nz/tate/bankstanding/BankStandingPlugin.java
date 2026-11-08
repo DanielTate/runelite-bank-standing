@@ -963,13 +963,13 @@ public class BankStandingPlugin extends Plugin
 			bank.firstAt = System.currentTimeMillis();
 		}
 		bank.ticks++;
-		session.ticks++;
+		session.standingTick();
 		dirty = true;
 		if (++ticksSinceSave >= SAVE_EVERY_TICKS)
 		{
 			save();
 		}
-		DailyStreak.standingTick(progress, today());
+		DailyStreak.standingTick(progress, today(), bankKey);
 		progress.records.standingTick(progress, session, System.currentTimeMillis());
 		if (progress.records.standTicks() == 1)
 		{
@@ -1742,8 +1742,8 @@ public class BankStandingPlugin extends Plugin
 				progress = new Progress();
 				progress.records.begin(progress, System.currentTimeMillis());
 				session = new Session();
-				dirty = true;
-				save();
+				store.replaceAll(progress);
+				dirty = false;
 				refreshPanel();
 			}
 		});
@@ -1765,7 +1765,14 @@ public class BankStandingPlugin extends Plugin
 			progress.xp = Math.max(0, Math.min(Experience.MAX_XP, dev.setXp));
 			progress.records.edited = true;
 		}
-		store.save(progress);
+		if (dev.resetProgress)
+		{
+			store.replaceAll(progress);
+		}
+		else
+		{
+			store.save(progress);
+		}
 	}
 
 	private void announceLevel(int level)

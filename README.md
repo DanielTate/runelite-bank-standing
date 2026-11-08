@@ -23,7 +23,9 @@ social skill.
 ## Your progress
 
 Open the **Bank Standing** side panel to see your level, XP, XP per hour, today's standing
-time, your records, and how long you've spent at each bank.
+time and a graph of this session's XP. A calendar shows the days you stood, shaded by how
+long; click a day to see which banks you stood at. Your records sit underneath, then a
+leaderboard of your banks.
 
 ![The Bank Standing side panel](https://raw.githubusercontent.com/DanielTate/runelite-bank-standing/main/docs/images/side-panel.png)
 

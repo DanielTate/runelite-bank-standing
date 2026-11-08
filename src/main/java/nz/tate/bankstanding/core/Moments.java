@@ -48,6 +48,17 @@ public final class Moments
 	static final int BACK_TO_BACK_MIN_MAX_HIT = 10;
 	/** Below this a max hit is too easy to count for the log: at a max of 2 it's every other drop. */
 	static final int MAX_HIT_LOG_MIN_MAX_HIT = 10;
+
+	/** The first level whose max hit counts for the log, so the log can say so. */
+	public static int maxHitLogLevel()
+	{
+		int level = 1;
+		while (level < Experience.MAX_LEVEL && XpRoller.baseMaxHit(level) < MAX_HIT_LOG_MIN_MAX_HIT)
+		{
+			level++;
+		}
+		return level;
+	}
 	static final long STATUE_TICKS = Records.TICKS_PER_HOUR;
 	static final long OUT_OF_FAITH_TICKS = Records.TICKS_PER_HOUR;
 	static final long OVERTIME_TICKS = 12 * Records.TICKS_PER_HOUR;

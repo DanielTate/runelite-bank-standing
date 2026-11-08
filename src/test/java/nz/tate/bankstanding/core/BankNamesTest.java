@@ -50,6 +50,12 @@ public class BankNamesTest
 	}
 
 	@Test
+	public void namesTheBlastFurnaceBank()
+	{
+		assertEquals("blast-furnace", BankNames.keyFor(1948, 4957));
+	}
+
+	@Test
 	public void unknownBanksFallBackToTheirRegionAndCoordinates()
 	{
 		assertEquals("region-" + ((1000 >> 6) << 8 | (1000 >> 6)), BankNames.keyFor(1000, 1000));
@@ -72,5 +78,57 @@ public class BankNamesTest
 		assertEquals(50, progress.banks.get("nex").ticks);
 		assertEquals(5, progress.banks.get("region-3855").ticks);
 		assertEquals(2, progress.banks.size());
+	}
+
+	@Test
+	public void lletyasSecondCopyCountsAsLletya()
+	{
+		Progress progress = new Progress();
+		progress.bank("lletya", 2352, 3164).ticks = 45;
+		progress.bank("region-11103", 2800, 6108).ticks = 619;
+
+		progress.renameBanks();
+
+		assertEquals(664, progress.banks.get("lletya").ticks);
+		assertEquals(1, progress.banks.size());
+		assertEquals("Lletya", BankNames.displayName("lletya", progress.banks.get("lletya")));
+	}
+
+	@Test
+	public void theTombsDepositBoxCountsAsTheTombs()
+	{
+		Progress progress = new Progress();
+		progress.bank("tombs-of-amascut", 3354, 9120).ticks = 9441;
+		progress.bank("region-14160", 3548, 5153).ticks = 163;
+
+		progress.renameBanks();
+
+		assertEquals(9604, progress.banks.get("tombs-of-amascut").ticks);
+		assertEquals(1, progress.banks.size());
+	}
+
+	@Test
+	public void motherlodesDepositBoxSideCountsAsMotherlode()
+	{
+		Progress progress = new Progress();
+		progress.bank("motherlode", 3757, 5675).ticks = 7941;
+		progress.bank("region-14936", 3752, 5680).ticks = 19;
+
+		progress.renameBanks();
+
+		assertEquals(7960, progress.banks.get("motherlode").ticks);
+		assertEquals(1, progress.banks.size());
+	}
+
+	@Test
+	public void blastFurnaceTimeMovesOntoItsName()
+	{
+		Progress progress = new Progress();
+		progress.bank("region-7757", 1948, 4957).ticks = 25512;
+
+		progress.renameBanks();
+
+		assertEquals(25512, progress.banks.get("blast-furnace").ticks);
+		assertEquals(1, progress.banks.size());
 	}
 }

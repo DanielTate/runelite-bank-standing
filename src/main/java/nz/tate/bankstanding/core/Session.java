@@ -24,13 +24,30 @@
  */
 package nz.tate.bankstanding.core;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** Standing time and XP since logging in. Not saved. */
 public final class Session
 {
 	static final long TICKS_PER_HOUR = 6000;
+	/** A minute of standing: how often the XP graph takes a reading. */
+	static final long TICKS_PER_SAMPLE = 100;
 
 	public long ticks;
 	public long xp;
+	/** This session's XP after each minute of standing, starting from 0, for the side panel's graph. */
+	final List<Long> xpSamples = new ArrayList<>(List.of(0L));
+
+	/** One tick of standing. */
+	public void standingTick()
+	{
+		ticks++;
+		if (ticks % TICKS_PER_SAMPLE == 0)
+		{
+			xpSamples.add(xp);
+		}
+	}
 
 	/** XP per hour of standing, or 0 before the first minute so early drops don't spike it. */
 	public long xpPerHour()
