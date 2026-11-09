@@ -39,6 +39,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -47,15 +48,50 @@ import nz.tate.bankstanding.core.StatsView;
 /** The side panel's small graphs. Results only, like the rest of the panel. */
 final class PanelGraphs
 {
-	static final Color GOLD = new Color(214, 176, 48);
-	private static final Color GOLD_FILL = new Color(214, 176, 48, 60);
+	static final Color DEFAULT_ACCENT = new Color(214, 176, 48);
+	/** How opaque the shading under the session graph's line is. */
+	private static final int GRAPH_FILL_ALPHA = 60;
+	/** Calendar squares brighter than this take dark text; dimmer ones take light. */
+	private static final int DARK_TEXT_BRIGHTNESS = 100;
 	/** Graphs sit on the panel's darker cards, so their empty parts are a step lighter. */
 	private static final Color EMPTY = new Color(52, 52, 52);
 	private static final Color PLOT = ColorScheme.DARK_GRAY_COLOR;
 	private static final Color GRID = new Color(50, 50, 50);
 
+	/** The chosen accent. Everything reads it while painting, so a repaint is all a change needs. */
+	private static volatile Color accent = DEFAULT_ACCENT;
+
 	private PanelGraphs()
 	{
+	}
+
+	static Color accent()
+	{
+		return accent;
+	}
+
+	static void setAccent(Color colour)
+	{
+		accent = colour != null ? colour : DEFAULT_ACCENT;
+	}
+
+	/** A label in the accent colour. */
+	static final class AccentLabel extends JLabel
+	{
+		AccentLabel()
+		{
+		}
+
+		AccentLabel(String text, int alignment)
+		{
+			super(text, alignment);
+		}
+
+		@Override
+		public Color getForeground()
+		{
+			return accent();
+		}
 	}
 
 	/**
@@ -68,14 +104,14 @@ final class PanelGraphs
 		private static final int RADIUS = 2;
 		private final Color fill;
 		private final Color edge;
-		private final Color accent;
+		private final boolean stripe;
 
-		Rounded(java.awt.LayoutManager layout, Color fill, Color edge, Color accent)
+		Rounded(java.awt.LayoutManager layout, Color fill, Color edge, boolean stripe)
 		{
 			super(layout);
 			this.fill = fill;
 			this.edge = edge;
-			this.accent = accent;
+			this.stripe = stripe;
 			setOpaque(false);
 		}
 
@@ -87,11 +123,11 @@ final class PanelGraphs
 			int arc = RADIUS * 2;
 			g2.setColor(fill);
 			g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
-			if (accent != null)
+			if (stripe)
 			{
 				java.awt.Shape clip = g2.getClip();
 				g2.clip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), arc, arc));
-				g2.setColor(accent);
+				g2.setColor(accent());
 				g2.fillRect(0, 0, 2, getHeight());
 				g2.setClip(clip);
 			}
@@ -165,9 +201,10 @@ final class PanelGraphs
 			ys[n] = getHeight() - PAD;
 			xs[n + 1] = xs[0];
 			ys[n + 1] = getHeight() - PAD;
-			g2.setColor(GOLD_FILL);
+			Color line = accent();
+			g2.setColor(new Color(line.getRed(), line.getGreen(), line.getBlue(), GRAPH_FILL_ALPHA));
 			g2.fillPolygon(new Polygon(xs, ys, n + 2));
-			g2.setColor(GOLD);
+			g2.setColor(line);
 			g2.setStroke(new BasicStroke(1.5f));
 			g2.drawPolyline(xs, ys, n);
 			g2.dispose();
@@ -191,7 +228,7 @@ final class PanelGraphs
 		}
 	}
 
-	/** A slim rounded bar: a gold fill over a darker track. */
+	/** A slim rounded bar: an accent fill, or {@code colour} if given, over a darker track. */
 	private abstract static class Bar extends JComponent
 	{
 		private final int height;
@@ -199,7 +236,7 @@ final class PanelGraphs
 
 		Bar(int height)
 		{
-			this(height, GOLD);
+			this(height, null);
 		}
 
 		Bar(int height, Color colour)
@@ -224,7 +261,7 @@ final class PanelGraphs
 			int width = (int) Math.round(getWidth() * Math.max(0, Math.min(1, fill())));
 			if (width > 0)
 			{
-				g2.setColor(colour);
+				g2.setColor(colour != null ? colour : accent());
 				g2.fillRoundRect(0, 0, Math.max(width, height), height, height, height);
 			}
 			g2.dispose();
@@ -256,6 +293,8 @@ final class PanelGraphs
 
 	private static final Color SILVER = new Color(192, 196, 204);
 	private static final Color BRONZE = new Color(205, 133, 63);
+	/** First place stays gold whatever the accent is. */
+	private static final Color MEDAL_GOLD = DEFAULT_ACCENT;
 
 	/** Gold, silver and bronze for the top three banks; null for the rest. */
 	static Color medal(int rank)
@@ -263,7 +302,7 @@ final class PanelGraphs
 		switch (rank)
 		{
 			case 1:
-				return GOLD;
+				return MEDAL_GOLD;
 			case 2:
 				return SILVER;
 			case 3:
@@ -304,14 +343,14 @@ final class PanelGraphs
 		}
 	}
 
-	/** A bank's time against the top bank's, in its medal colour (gold for the rest). */
+	/** A bank's time against the top bank's, in its medal colour (the accent for the rest). */
 	static final class ShareBar extends Bar
 	{
 		private final double share;
 
 		ShareBar(double share, Color colour)
 		{
-			super(4, colour != null ? colour : GOLD);
+			super(4, colour);
 			this.share = share;
 		}
 
@@ -323,8 +362,8 @@ final class PanelGraphs
 	}
 
 	/**
-	 * Days stood as a month calendar: a square per day, Monday first, shaded from dim to full
-	 * gold by how long you stood, with a Less/More key underneath. Always six rows tall, so the
+	 * Days stood as a month calendar: a square per day, Monday first, shaded from dim to the
+	 * full accent by how long you stood, with a Less/More key underneath. Always six rows tall, so the
 	 * panel doesn't jump as you page through months.
 	 */
 	static final class MonthCalendar extends JComponent
@@ -338,7 +377,6 @@ final class PanelGraphs
 		private static final String[] WEEKDAYS = {"M", "T", "W", "T", "F", "S", "S"};
 		private static final Color FUTURE_TEXT = new Color(70, 70, 70);
 		private static final DateTimeFormatter TOOLTIP_DATE = DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.ENGLISH);
-		private static final Color[] SHADES = shades();
 		private StatsView.Days days;
 		private YearMonth month;
 		/** The day picked for details, or null. */
@@ -425,8 +463,14 @@ final class PanelGraphs
 			return Math.max(0, (getWidth() - (7 * cell() + 6 * GAP)) / 2);
 		}
 
-		/** Empty, then gold at rising strength over the empty colour. */
-		private static Color[] shades()
+		/** Whether a day number on this square should be dark, so it reads on any accent. */
+		static boolean darkTextOn(Color square)
+		{
+			return 0.299 * square.getRed() + 0.587 * square.getGreen() + 0.114 * square.getBlue() > DARK_TEXT_BRIGHTNESS;
+		}
+
+		/** Empty, then the accent at rising strength over the empty colour. */
+		static Color[] shades(Color accent)
 		{
 			double[] strength = {0.3, 0.5, 0.75, 1.0};
 			Color[] shades = new Color[StatsView.CALENDAR_SHADES + 1];
@@ -435,9 +479,9 @@ final class PanelGraphs
 			{
 				double s = strength[i - 1];
 				shades[i] = new Color(
-					(int) Math.round(EMPTY.getRed() + (GOLD.getRed() - EMPTY.getRed()) * s),
-					(int) Math.round(EMPTY.getGreen() + (GOLD.getGreen() - EMPTY.getGreen()) * s),
-					(int) Math.round(EMPTY.getBlue() + (GOLD.getBlue() - EMPTY.getBlue()) * s));
+					(int) Math.round(EMPTY.getRed() + (accent.getRed() - EMPTY.getRed()) * s),
+					(int) Math.round(EMPTY.getGreen() + (accent.getGreen() - EMPTY.getGreen()) * s),
+					(int) Math.round(EMPTY.getBlue() + (accent.getBlue() - EMPTY.getBlue()) * s));
 			}
 			return shades;
 		}
@@ -462,6 +506,7 @@ final class PanelGraphs
 			g2.setFont(FontManager.getRunescapeSmallFont());
 			int cell = cell();
 			int left = left();
+			Color[] shades = shades(accent());
 
 			g2.setColor(ColorScheme.LIGHT_GRAY_COLOR);
 			for (int column = 0; column < 7; column++)
@@ -484,7 +529,7 @@ final class PanelGraphs
 					int shade = days.shade(date);
 					if (!future)
 					{
-						g2.setColor(SHADES[shade]);
+						g2.setColor(shades[shade]);
 						g2.fillRect(x, y, cell, cell);
 					}
 					else
@@ -504,7 +549,7 @@ final class PanelGraphs
 						g2.setColor(ColorScheme.LIGHT_GRAY_COLOR);
 						g2.drawRect(x, y, cell - 1, cell - 1);
 					}
-					g2.setColor(future ? FUTURE_TEXT : shade >= 2 ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+					g2.setColor(future ? FUTURE_TEXT : darkTextOn(shades[shade]) ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 					centre(g2, String.valueOf(date.getDayOfMonth()), x, y, cell, cell);
 				}
 			}
@@ -518,10 +563,10 @@ final class PanelGraphs
 			g2.setColor(ColorScheme.LIGHT_GRAY_COLOR);
 			centre(g2, "More", x, top, metrics.stringWidth("More"), keyCell);
 			x -= 4;
-			for (int shade = SHADES.length - 1; shade >= 0; shade--)
+			for (int shade = shades.length - 1; shade >= 0; shade--)
 			{
 				x -= keyCell;
-				g2.setColor(SHADES[shade]);
+				g2.setColor(shades[shade]);
 				g2.fillRect(x, top, keyCell, keyCell);
 				x -= 2;
 			}

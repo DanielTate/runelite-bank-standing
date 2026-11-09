@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9
+
+- **Sidebar accent colour**: a new setting to change the side panel's gold highlights, bars and
+  graphs to any colour you like. First place on the bank leaderboard stays gold.
+- The three pets are now much easier to get.
+
 ## 1.8
 
 ### Side panel
