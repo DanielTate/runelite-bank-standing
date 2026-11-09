@@ -24,6 +24,7 @@
  */
 package nz.tate.bankstanding;
 
+import java.awt.Color;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -32,6 +33,7 @@ import net.runelite.client.config.ConfigItem;
 public interface BankStandingConfig extends Config
 {
 	String GROUP = "bankstanding";
+	String ACCENT_KEY = "accentColour";
 	/** How much smaller "Compact overlays" draws them. */
 	double COMPACT_SCALE = 0.7;
 
@@ -217,5 +219,15 @@ public interface BankStandingConfig extends Config
 	default boolean compactOverlays()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = ACCENT_KEY,
+		name = "Sidebar accent colour",
+		description = "The colour of the side panel's highlights, bars and graphs. First place on the bank leaderboard stays gold."
+	)
+	default Color accentColour()
+	{
+		return PanelGraphs.DEFAULT_ACCENT;
 	}
 }

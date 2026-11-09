@@ -334,6 +334,7 @@ public class BankStandingPlugin extends Plugin
 		chatCommandManager.registerCommand(ChatCommands.SHORT, this::onChatCommand);
 		chatCommandManager.registerCommand(ChatCommands.LONG, this::onChatCommand);
 
+		PanelGraphs.setAccent(config.accentColour());
 		panel = new BankStandingPanel(icons, this::capeEmote, this::openCollectionLog, this::toggleSkillGuide,
 			config.showSkillTile(),
 			shown -> configManager.setConfiguration(BankStandingConfig.GROUP, "showSkillTile", shown),
@@ -627,6 +628,15 @@ public class BankStandingPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
+		if (BankStandingConfig.GROUP.equals(event.getGroup()) && BankStandingConfig.ACCENT_KEY.equals(event.getKey()))
+		{
+			PanelGraphs.setAccent(config.accentColour());
+			BankStandingPanel shownPanel = panel;
+			if (shownPanel != null)
+			{
+				SwingUtilities.invokeLater(shownPanel::repaint);
+			}
+		}
 		if (BankStandingConfig.GROUP.equals(event.getGroup()) && "showSkillTile".equals(event.getKey()))
 		{
 			boolean shown = config.showSkillTile();

@@ -66,10 +66,9 @@ class BankStandingPanel extends PluginPanel
 	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and "
 		+ "Hochep, and to WyattSociety and GarlikStixx on Twitch.";
 	/** Must match runelite-plugin.properties; a test checks it does. */
-	static final String VERSION = "1.8";
+	static final String VERSION = "1.9";
 	static final String CHANGELOG_URL = "https://github.com/DanielTate/runelite-bank-standing/blob/main/CHANGELOG.md";
 
-	private static final Color GOLD = PanelGraphs.GOLD;
 	private static final Color CARD = ColorScheme.DARKER_GRAY_COLOR;
 	private static final Color DIVIDER = ColorScheme.DARK_GRAY_COLOR;
 	/** A 1px edge around each card, a step lighter than the page, so the cards stand out. */
@@ -80,8 +79,8 @@ class BankStandingPanel extends PluginPanel
 	private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
 
 	private final JLabel status = new JLabel();
-	private final JLabel title = new JLabel();
-	private final JLabel bigLevel = new JLabel("", SwingConstants.RIGHT);
+	private final JLabel title = new PanelGraphs.AccentLabel();
+	private final JLabel bigLevel = new PanelGraphs.AccentLabel("", SwingConstants.RIGHT);
 	private final JLabel bigLevelCaption = new JLabel("Level", SwingConstants.RIGHT);
 	private final JButton capeEmote = new JButton("Cape emote");
 	private final JButton collectionLog = new JButton("Collection log");
@@ -119,7 +118,7 @@ class BankStandingPanel extends PluginPanel
 	private final JLabel banksCount = muted("");
 	private final JPanel bankRows = new JPanel();
 	/** Under the top banks: expands the list to every bank, or folds it back. */
-	private final JLabel moreBanks = new JLabel("", SwingConstants.CENTER);
+	private final JLabel moreBanks = new PanelGraphs.AccentLabel("", SwingConstants.CENTER);
 	private boolean allBanks;
 	private java.util.List<StatsView.BankRow> banks = java.util.Collections.emptyList();
 
@@ -143,7 +142,6 @@ class BankStandingPanel extends PluginPanel
 		JLabel name = new JLabel("Bank Standing");
 		name.setFont(FontManager.getRunescapeBoldFont());
 		name.setForeground(Color.WHITE);
-		title.setForeground(GOLD);
 		status.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		JLabel whatsNew = new JLabel(whatsNewText(changelogUnseen));
 		whatsNew.setFont(FontManager.getRunescapeSmallFont());
@@ -170,7 +168,6 @@ class BankStandingPanel extends PluginPanel
 		identity.add(icon, BorderLayout.WEST);
 		identity.add(names, BorderLayout.CENTER);
 		bigLevel.setFont(FontManager.getRunescapeBoldFont().deriveFont(28f));
-		bigLevel.setForeground(GOLD);
 		bigLevelCaption.setFont(FontManager.getRunescapeSmallFont());
 		bigLevelCaption.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		JPanel levelBox = new JPanel(new BorderLayout());
@@ -255,7 +252,6 @@ class BankStandingPanel extends PluginPanel
 		bankRows.setLayout(new BoxLayout(bankRows, BoxLayout.Y_AXIS));
 		bankRows.setOpaque(false);
 		moreBanks.setFont(FontManager.getRunescapeSmallFont());
-		moreBanks.setForeground(GOLD);
 		moreBanks.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		moreBanks.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(1, 0, 0, 0, DIVIDER), new EmptyBorder(6, 0, 0, 0)));
@@ -366,12 +362,8 @@ class BankStandingPanel extends PluginPanel
 				recordTiles.add(tile(record[0].equals("Best XP per hour") ? "Best XP/hr" : record[0], record[1]));
 				continue;
 			}
-			JLabel value = value();
+			JLabel value = record[0].startsWith("Reached") ? accentValue() : value();
 			value.setText(record[1]);
-			if (record[0].startsWith("Reached"))
-			{
-				value.setForeground(GOLD);
-			}
 			recordRows.add(row(record[0], value));
 		}
 		sessionXp.setText(view.sessionXp);
@@ -450,7 +442,7 @@ class BankStandingPanel extends PluginPanel
 	/** A record as a tile: the value large, its name small underneath. */
 	private static JPanel tile(String name, String value)
 	{
-		JPanel tile = new PanelGraphs.Rounded(new BorderLayout(0, 2), ColorScheme.DARK_GRAY_COLOR, null, GOLD);
+		JPanel tile = new PanelGraphs.Rounded(new BorderLayout(0, 2), ColorScheme.DARK_GRAY_COLOR, null, true);
 		tile.setBorder(new EmptyBorder(6, 9, 6, 4));
 		JLabel big = new JLabel(value);
 		big.setFont(FontManager.getRunescapeBoldFont());
@@ -482,9 +474,8 @@ class BankStandingPanel extends PluginPanel
 		date.setForeground(Color.WHITE);
 		date.setMinimumSize(new Dimension(0, 0));
 		long ticks = days.ticks(day);
-		JLabel total = value();
+		JLabel total = accentValue();
 		total.setText(ticks > 0 ? StatsView.duration(ticks) : "");
-		total.setForeground(GOLD);
 		dayDetail.add(line(date, total));
 		java.util.List<StatsView.DayBank> banks = days.banks(day);
 		if (banks.isEmpty())
@@ -596,7 +587,7 @@ class BankStandingPanel extends PluginPanel
 	/** A section: a darker box with a heading (and something on the right of it), a body, and an optional footer. */
 	private static JPanel card(String heading, JComponent accessory, JComponent body, JComponent footer)
 	{
-		JPanel card = new PanelGraphs.Rounded(new BorderLayout(0, GAP), CARD, CARD_EDGE, null);
+		JPanel card = new PanelGraphs.Rounded(new BorderLayout(0, GAP), CARD, CARD_EDGE, false);
 		card.setBorder(new EmptyBorder(GAP + 1, GAP + 1, GAP + 1, GAP + 1));
 		JPanel top = new JPanel(new BorderLayout(GAP, 0));
 		top.setOpaque(false);
@@ -711,6 +702,13 @@ class BankStandingPanel extends PluginPanel
 	{
 		JLabel label = new JLabel();
 		label.setForeground(Color.WHITE);
+		label.setHorizontalAlignment(JLabel.RIGHT);
+		return label;
+	}
+
+	private static JLabel accentValue()
+	{
+		JLabel label = new PanelGraphs.AccentLabel();
 		label.setHorizontalAlignment(JLabel.RIGHT);
 		return label;
 	}

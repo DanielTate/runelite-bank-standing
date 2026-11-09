@@ -159,9 +159,9 @@ public final class CollectionLog
 		new Drop("party-balloon", "Party balloon", 9937, SEASONAL_RATE, false, Group.SEASONAL, Holiday.BIRTHDAY),
 		new Drop("singed-note", "Singed note", 20718, SEASONAL_RATE, false, Group.SEASONAL,
 			Holiday.FALADOR_MASSACRE),
-		new Drop(BUTTERFLY, "Gold butterfly", 9970, 7_500_000, true, true),
-		new Drop(MONEYBAG, "Pet moneybag", 22533, 10_000_000, false, true),
-		new Drop(RAT, "Bank rat", 28801, 25_000_000, false, true)
+		new Drop(BUTTERFLY, "Gold butterfly", 9970, 1_000_000, true, true),
+		new Drop(MONEYBAG, "Pet moneybag", 22533, 1_500_000, false, true),
+		new Drop(RAT, "Bank rat", 28801, 2_000_000, false, true)
 	));
 
 	/** Rarest first, which is the order drops are rolled in. Hidden drops are left out. */
