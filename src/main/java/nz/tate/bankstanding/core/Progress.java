@@ -81,6 +81,11 @@ public final class Progress
 	public Set<String> notes = new TreeSet<>();
 	/** The day (ISO) of the last normal roll, so the first roll of a day survives a restart. */
 	public String firstRollDate;
+	/** {@link XpWasted}: when counting began (epoch ms), logged-in ticks since then, the ones of those spent standing, and the XP wasted. */
+	public long wastedSince;
+	public long loggedInTicks;
+	public long standingTicksLoggedIn;
+	public double xpWasted;
 
 	public int level()
 	{
@@ -233,6 +238,14 @@ public final class Progress
 		}
 		lastSitRoll = Math.max(lastSitRoll, other.lastSitRoll);
 		lastFireRoll = Math.max(lastFireRoll, other.lastFireRoll);
+		// The copy that has counted the longest, so the share standing stays its own.
+		if (other.loggedInTicks > loggedInTicks)
+		{
+			loggedInTicks = other.loggedInTicks;
+			standingTicksLoggedIn = other.standingTicksLoggedIn;
+			xpWasted = other.xpWasted;
+		}
+		wastedSince = earliest(wastedSince, other.wastedSince);
 	}
 
 	/** The earlier of two times, where 0 means unknown. */

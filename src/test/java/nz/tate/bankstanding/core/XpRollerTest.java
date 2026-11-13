@@ -69,7 +69,7 @@ public class XpRollerTest
 				ones++;
 			}
 		}
-		assertEquals(0.072, ones / (double) n, 0.005);
+		assertEquals(0.054, ones / (double) n, 0.005);
 	}
 
 	@Test
@@ -81,14 +81,37 @@ public class XpRollerTest
 		assertEquals("boost is capped", average(0.22), average(0.5), 0.1);
 	}
 
+	@Test
+	public void bankOfTheDayStacksOnTopOfTheCap()
+	{
+		double base = average(0);
+		assertEquals(base * 1.25, average(0, 1.25, 99), 0.1);
+		assertEquals(base * 1.22 * 1.25, average(0.5, 1.25, 99), 0.15);
+	}
+
+	@Test
+	public void bankOfTheDayStillHelpsAtLowLevels()
+	{
+		// At level 30 (max hit 15) the full 52% rise asks for more than an even spread
+		// gives, so the curve leans toward the max hit to reach it.
+		double base = average(0, 1, 30);
+		assertEquals(base * 1.22 * 1.25, average(0.22, 1.25, 30), 0.1);
+		assertTrue(average(0.22, 1.25, 30) > 8);
+	}
+
 	private double average(double boost)
+	{
+		return average(boost, 1, 99);
+	}
+
+	private double average(double boost, double multiplier, int level)
 	{
 		XpRoller seeded = new XpRoller(new Random(7));
 		long sum = 0;
 		int n = 400_000;
 		for (int i = 0; i < n; i++)
 		{
-			sum += seeded.roll(99, boost, 0);
+			sum += seeded.roll(level, boost, 0, multiplier);
 		}
 		return sum / (double) n;
 	}

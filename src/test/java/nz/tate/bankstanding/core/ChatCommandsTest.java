@@ -165,4 +165,24 @@ public class ChatCommandsTest
 		assertNull(ChatCommands.sharedAnswer("hello !bs - hi"));
 		assertFalse(ChatCommands.SHARED.isEmpty());
 	}
+
+	@Test
+	public void todayNamesTheBankOfTheDay()
+	{
+		ChatCommands.Facts f = facts();
+		f.now = java.time.LocalDate.of(2026, 11, 14).toEpochDay() * 86_400_000L - 2 * 3_600_000L;
+		String name = BankNames.displayName(BankOfTheDay.keyAt(f.now), null);
+		assertEquals("Bank of the day: " + name + " (+25% XP, 2h 00m left)", ChatCommands.answer("!bs today", f));
+	}
+
+	@Test
+	public void wastedGivesTheShareNotStanding()
+	{
+		ChatCommands.Facts f = facts();
+		assertEquals("XP wasted: 0", ChatCommands.answer("!bs wasted", f));
+		f.progress.loggedInTicks = 300;
+		f.progress.standingTicksLoggedIn = 100;
+		f.progress.xpWasted = 1_284_000.7;
+		assertEquals("XP wasted: 1,284,000 (67% of my time not bank standing)", ChatCommands.answer("!bs wasted", f));
+	}
 }

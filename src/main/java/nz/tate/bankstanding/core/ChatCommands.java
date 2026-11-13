@@ -59,6 +59,8 @@ public final class ChatCommands
 		public int[] log;
 		/** How many secrets you've found, of every kind. */
 		public int secrets;
+		/** Now, in epoch milliseconds, for the bank of the day. */
+		public long now;
 	}
 
 	private ChatCommands()
@@ -153,14 +155,45 @@ public final class ChatCommands
 			case "streak":
 				int days = DailyStreak.current(p, f.today);
 				return one("Daily streak: " + days + (days == 1 ? " day" : " days"));
+			case "today":
+				return today(f.now);
+			case "wasted":
+				return wasted(p);
 			case "title":
 				return one(Unlocks.title(p.level()) + " (level " + p.level() + ")");
 			case "help":
-				return one("!bs, then: here, a bank's name, fav, regulars, banks, log, pet, secrets, session, streak, title");
+				return one("!bs, then: here, a bank's name, fav, regulars, banks, log, pet, secrets, session, streak, title, today, wasted");
 			default:
 				String key = findBank(p, rest);
 				return key == null ? new ArrayList<>() : bank(p, key);
 		}
+	}
+
+	/** Today's bank and its bonus, then without how long it has left, then just the bank. */
+	private static List<String> today(long now)
+	{
+		String key = BankOfTheDay.keyAt(now);
+		String name = BankNames.displayName(key, null);
+		List<String> answers = new ArrayList<>();
+		answers.add("Bank of the day: " + name + " (" + BankOfTheDay.BONUS + ", " + BankOfTheDay.timeLeft(now) + " left)");
+		answers.add("Bank of the day: " + name + " (" + BankOfTheDay.BONUS + ")");
+		answers.add("Bank of the day: " + name);
+		return answers;
+	}
+
+	/** XP wasted and the share of time not standing, then just the XP. */
+	private static List<String> wasted(Progress p)
+	{
+		int standing = XpWasted.standingPercent(p);
+		String xp = "XP wasted: " + StatsView.number((long) p.xpWasted);
+		if (standing < 0)
+		{
+			return one(xp);
+		}
+		List<String> answers = new ArrayList<>();
+		answers.add(xp + " (" + (100 - standing) + "% of my time not bank standing)");
+		answers.add(xp);
+		return answers;
 	}
 
 	private static List<String> one(String answer)

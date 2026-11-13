@@ -102,8 +102,12 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.ImageCapture;
+import net.runelite.client.util.ImageUploadStyle;
 import net.runelite.client.util.Text;
 import nz.tate.bankstanding.core.BankNames;
+import nz.tate.bankstanding.core.BankOfTheDay;
+import nz.tate.bankstanding.core.BankRegions;
 import nz.tate.bankstanding.core.BankRecord;
 import nz.tate.bankstanding.core.ChatCommands;
 import nz.tate.bankstanding.core.CollectionLog;
@@ -121,6 +125,7 @@ import nz.tate.bankstanding.core.Spellbook;
 import nz.tate.bankstanding.core.StandContext;
 import nz.tate.bankstanding.core.StandTracker;
 import nz.tate.bankstanding.core.Unlocks;
+import nz.tate.bankstanding.core.XpWasted;
 import nz.tate.bankstanding.core.StatsView;
 import nz.tate.bankstanding.core.XpRoller;
 
@@ -227,6 +232,9 @@ public class BankStandingPlugin extends Plugin
 	private ChatCommandManager chatCommandManager;
 
 	private BankStandingPanel panel;
+
+	@Inject
+	private ImageCapture imageCapture;
 	private NavigationButton navButton;
 	private NavigationButton devButton;
 
@@ -242,6 +250,14 @@ public class BankStandingPlugin extends Plugin
 	private static final int SAVE_EVERY_TICKS = 100;
 	private boolean dirty;
 	private int ticksSinceSave;
+	/** Away from a bank the panel refreshes this often, so XP wasted keeps ticking up. */
+	private static final int WASTED_REFRESH_TICKS = 5;
+	/** And progress saves this often, so XP wasted isn't lost if the client closes. */
+	private static final int AWAY_SAVE_TICKS = 500;
+	private int ticksSinceWastedShown;
+	private int ticksAwaySinceSave;
+	/** The bank of the day last said in chat, so it's said once on login and once when it changes. */
+	private String announcedBankOfDay;
 
 	private boolean devOverridesApplied;
 	private int devDrops;
@@ -340,7 +356,8 @@ public class BankStandingPlugin extends Plugin
 			shown -> configManager.setConfiguration(BankStandingConfig.GROUP, "showSkillTile", shown),
 			!BankStandingPanel.VERSION.equals(configManager.getConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN)),
 			() -> configManager.setConfiguration(BankStandingConfig.GROUP, CHANGELOG_SEEN, BankStandingPanel.VERSION),
-			this::resetSession);
+			this::resetSession,
+			image -> imageCapture.takeScreenshot(image, "Bank Standing", "Bank Standing", true, ImageUploadStyle.CLIPBOARD));
 		navButton = NavigationButton.builder()
 			.tooltip("Bank Standing")
 			.icon(icons.small())
@@ -654,6 +671,16 @@ public class BankStandingPlugin extends Plugin
 				SwingUtilities.invokeLater(() -> shownPanel.setSkillTileShown(shown));
 			}
 		}
+		if (BankStandingConfig.GROUP.equals(event.getGroup()) && "showXpWasted".equals(event.getKey()))
+		{
+			clientThread.invoke(() ->
+			{
+				if (progress != null)
+				{
+					refreshPanel();
+				}
+			});
+		}
 		if (BankStandingConfig.GROUP.equals(event.getGroup()) && "showCape".equals(event.getKey()) && !config.showCape())
 		{
 			clientThread.invoke(() -> capeDisplay.restore(wornCape));
@@ -838,6 +865,7 @@ public class BankStandingPlugin extends Plugin
 		}
 		facts.log = collectionLogOverlay.total(progress);
 		facts.secrets = secretsFound();
+		facts.now = System.currentTimeMillis();
 		return facts;
 	}
 
@@ -921,8 +949,10 @@ public class BankStandingPlugin extends Plugin
 			applyDevOverrides();
 			progress.records.begin(progress, System.currentTimeMillis());
 			session = new Session();
+			announcedBankOfDay = null;
 			refreshPanel();
 		}
+		announceBankOfDay();
 
 		WorldPoint location = player.getWorldLocation();
 		int currentLevel = progress.level();
@@ -930,6 +960,19 @@ public class BankStandingPlugin extends Plugin
 		boolean roll = tracker.tick(location.getX(), location.getY(), location.getPlane(),
 			bankLocator.isNearBank(location, Unlocks.bankRange(currentLevel)), isUsingBank());
 		peekTimer.ticksLeft(tracker.peekTicksLeft());
+		XpWasted.tick(progress, tracker.isStanding(), System.currentTimeMillis());
+		dirty = true;
+		if (!tracker.isStanding() && ++ticksSinceWastedShown >= WASTED_REFRESH_TICKS)
+		{
+			// Standing refreshes the panel with each drop; away from a bank, keep XP wasted ticking.
+			ticksSinceWastedShown = 0;
+			refreshPanel();
+		}
+		if (!tracker.isStanding() && ++ticksAwaySinceSave >= AWAY_SAVE_TICKS)
+		{
+			ticksAwaySinceSave = 0;
+			save();
+		}
 
 		// The cape and the other unlocks only show while bank standing; the dev options show
 		// them anywhere.
@@ -993,7 +1036,8 @@ public class BankStandingPlugin extends Plugin
 		{
 			int level = progress.level();
 			Modifiers.Effect effect = evaluate(bank, location);
-			drop(roller.roll(level, effect.boost, effect.bonusHit), bank, level, null);
+			double daily = bankKey.equals(BankOfTheDay.keyAt(System.currentTimeMillis())) ? BankOfTheDay.XP_MULTIPLIER : 1;
+			drop(roller.roll(level, effect.boost, effect.bonusHit, daily), bank, level, null);
 			progress.rolls++;
 			Set<Moments.Odd> changed = EnumSet.noneOf(Moments.Odd.class);
 			Set<String> outfits = new HashSet<>();
@@ -1099,6 +1143,11 @@ public class BankStandingPlugin extends Plugin
 		if (CollectionLog.collect(progress, drop, System.currentTimeMillis()))
 		{
 			collected("New item: ", drop.name, drop.icon, drop.gold);
+		}
+		else if (drop.pet)
+		{
+			// The game's line for a pet you already have, counted in the log all the same.
+			chat("<col=ef1020>You have a funny feeling like you would have been followed...</col>");
 		}
 		else
 		{
@@ -1220,8 +1269,32 @@ public class BankStandingPlugin extends Plugin
 			shown.add(ModifierWidget.Shown.buff(name, pet ? "Slightly better rolls" : "+1 max hit", dressed.icon, -1, 0,
 				pet ? 0 : 1, pet));
 		}
-		cooldowns(shown, System.currentTimeMillis());
+		long now = System.currentTimeMillis();
+		if (bankKey.equals(BankOfTheDay.keyAt(now)))
+		{
+			shown.add(ModifierWidget.Shown.buff("Bank of the day", BankOfTheDay.BONUS + " here today", ItemID.COINS_10000, -1,
+				now + BankOfTheDay.millisUntilChange(now), 0, true));
+		}
+		cooldowns(shown, now);
 		return shown;
+	}
+
+	/** Says in chat which bank is the bank of the day: on login, and when it changes at UTC midnight. */
+	private void announceBankOfDay()
+	{
+		long now = System.currentTimeMillis();
+		String key = BankOfTheDay.keyAt(now);
+		if (key.equals(announcedBankOfDay))
+		{
+			return;
+		}
+		boolean changed = announcedBankOfDay != null;
+		announcedBankOfDay = key;
+		String region = BankRegions.regionOf(key);
+		chat((changed ? "A new bank of the day: " : "Today's bank of the day: ") + "<col=ef1020>"
+			+ BankNames.displayName(key, null) + "</col>" + (region == null ? "" : " (" + region + ")") + ", "
+			+ BankOfTheDay.BONUS + " for the next " + BankOfTheDay.timeLeft(now));
+		refreshPanel();
 	}
 
 	/** Sit, and standing on a fire once found, each pay out once an hour: show the wait. */
@@ -1536,7 +1609,8 @@ public class BankStandingPlugin extends Plugin
 
 	private void refreshPanel()
 	{
-		StatsView view = new StatsView(progress, session, today().toString());
+		StatsView view = new StatsView(progress, session, today().toString(), System.currentTimeMillis());
+		view.showXpWasted = config.showXpWasted();
 		BankStandingPanel shown = panel;
 		SwingUtilities.invokeLater(() -> shown.show(view));
 	}
@@ -1727,6 +1801,51 @@ public class BankStandingPlugin extends Plugin
 				save();
 				refreshPanel();
 			}
+		});
+	}
+
+	/** Dev panel: the bank you're at becomes the bank of the day, until reset or restart. */
+	void devBankOfDayHere()
+	{
+		clientThread.invoke(() ->
+		{
+			Player player = client.getLocalPlayer();
+			if (player != null)
+			{
+				WorldPoint location = mapLocation(player);
+				devBankOfDay(BankNames.keyFor(location.getX(), location.getY()));
+			}
+		});
+	}
+
+	void devBankOfDay(String key)
+	{
+		clientThread.invoke(() ->
+		{
+			BankOfTheDay.devOverride(key);
+			if (progress != null)
+			{
+				announceBankOfDay();
+			}
+		});
+	}
+
+	/** Dev panel: an hour of logged-in time away from a bank, all at once. */
+	void devWasteHour()
+	{
+		clientThread.invoke(() ->
+		{
+			if (progress == null)
+			{
+				return;
+			}
+			for (int i = 0; i < Session.TICKS_PER_HOUR; i++)
+			{
+				XpWasted.tick(progress, false, System.currentTimeMillis());
+			}
+			dirty = true;
+			save();
+			refreshPanel();
 		});
 	}
 

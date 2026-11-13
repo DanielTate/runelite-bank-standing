@@ -44,6 +44,7 @@ import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.ui.overlay.components.TooltipComponent;
 import nz.tate.bankstanding.core.BankArea;
 import nz.tate.bankstanding.core.BankNames;
+import nz.tate.bankstanding.core.BankOfTheDay;
 import nz.tate.bankstanding.core.BankRegions;
 import nz.tate.bankstanding.core.CollectionLog;
 import nz.tate.bankstanding.core.Companions;
@@ -56,6 +57,7 @@ import nz.tate.bankstanding.core.Moments;
 import nz.tate.bankstanding.core.Progress;
 import nz.tate.bankstanding.core.Records;
 import nz.tate.bankstanding.core.Spellbook;
+import nz.tate.bankstanding.core.StackSize;
 import nz.tate.bankstanding.core.StatsView;
 import nz.tate.bankstanding.core.Unlocks;
 
@@ -103,7 +105,10 @@ class CollectionLogOverlay extends GameWindow
 	private static final Color RED = new Color(0xff, 0x00, 0x00);
 	private static final Color YELLOW = new Color(0xff, 0xff, 0x00);
 	private static final Color GREEN = new Color(0x0d, 0xc1, 0x0d);
+	/** Stack size colours, as the game's: yellow, then white from 100K, then green from 10M. */
 	private static final Color COUNT = new Color(0xff, 0xff, 0x00);
+	private static final Color COUNT_THOUSANDS = new Color(0xff, 0xff, 0xff);
+	private static final Color COUNT_MILLIONS = new Color(0x00, 0xff, 0x80);
 	private static final Color SEPARATOR = new Color(0x58, 0x50, 0x40);
 	private static final Color SELECTED_ROW = new Color(0x5a, 0x4f, 0x3e);
 	private static final Color BAR_BACK = new Color(0x2b, 0x25, 0x1d);
@@ -148,6 +153,8 @@ class CollectionLogOverlay extends GameWindow
 		String pet;
 		/** A pet put away, drawn faded. */
 		boolean away;
+		/** A line of text drawn in this colour instead of white or grey, or null. */
+		Color colour;
 
 		Slot(String name, boolean done, int icon, boolean gold, String detail, int count)
 		{
@@ -578,7 +585,8 @@ class CollectionLogOverlay extends GameWindow
 				}
 				else
 				{
-					art.small.drawShadowed(graphics, fit(slot.name, columnWidth - 4), slotX, slotY + 2, slot.done ? WHITE : GREY);
+					art.small.drawShadowed(graphics, fit(slot.name, columnWidth - 4), slotX, slotY + 2,
+						slot.colour != null ? slot.colour : slot.done ? WHITE : GREY);
 				}
 				if (hover.contains(mouse.getX(), mouse.getY()))
 				{
@@ -617,8 +625,13 @@ class CollectionLogOverlay extends GameWindow
 		graphics.setComposite(before);
 		if (slot.count > 1)
 		{
-			art.small.drawShadowed(graphics, String.valueOf(slot.count), x, y, COUNT);
+			art.small.drawShadowed(graphics, StackSize.format(slot.count), x, y, stackColour(slot.count));
 		}
+	}
+
+	private static Color stackColour(int count)
+	{
+		return count >= 10_000_000 ? COUNT_MILLIONS : count >= 100_000 ? COUNT_THOUSANDS : COUNT;
 	}
 
 	private String fit(String text, int width)
@@ -657,7 +670,8 @@ class CollectionLogOverlay extends GameWindow
 						each.slots.add(new Slot(SECRET, false, SECRET_ICON, false, "Not found yet", 0));
 						continue;
 					}
-					String detail = obtained == null ? "Not obtained yet" : "Obtained: " + format.format(obtained.count)
+					String detail = obtained == null ? "Not obtained yet" + (drop.rare() ? "</br>Rolls so far: "
+						+ format.format(progress.rolls) : "") : "Obtained: " + format.format(obtained.count)
 						+ "</br>First: " + StatsView.date(obtained.firstAt) + ", after " + format.format(obtained.firstRolls) + " rolls";
 					if (obtained == null && drop.holiday != null)
 					{
@@ -699,6 +713,7 @@ class CollectionLogOverlay extends GameWindow
 		}
 		else if (tab == BANKS)
 		{
+			String today = BankOfTheDay.keyAt(System.currentTimeMillis());
 			for (String region : BankRegions.names())
 			{
 				Entry banks = new Entry(region);
@@ -707,7 +722,16 @@ class CollectionLogOverlay extends GameWindow
 					boolean visited = progress.banks.containsKey(key);
 					String detail = visited ? "Stood here for " + StatsView.duration(progress.banks.get(key).ticks)
 						: "Not visited yet";
-					banks.slots.add(new Slot(name(key), visited, -1, false, detail, 0));
+					if (key.equals(today))
+					{
+						detail += "</br>Bank of the day: " + BankOfTheDay.BONUS;
+					}
+					Slot slot = new Slot(name(key), visited, -1, false, detail, 0);
+					if (key.equals(today))
+					{
+						slot.colour = YELLOW;
+					}
+					banks.slots.add(slot);
 				}
 				entries.add(banks);
 			}

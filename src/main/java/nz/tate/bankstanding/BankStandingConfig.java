@@ -182,6 +182,16 @@ public interface BankStandingConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "showXpWasted",
+		name = "Show XP wasted",
+		description = "Show the XP wasted card in the side panel: the Bank Standing XP you'd have earned if you'd spent your other logged-in time at a bank."
+	)
+	default boolean showXpWasted()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "chatMessages",
 		name = "Chat messages",
 		description = "Say in chat when you level up or find something new for the collection log."

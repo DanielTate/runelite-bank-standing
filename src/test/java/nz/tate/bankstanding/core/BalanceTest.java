@@ -28,7 +28,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 /**
- * Pins the headline promise: about 220 days of idle time to 99, 180 with every bonus,
+ * Pins the headline promise: about 185 days of idle time to 99, 150 with every bonus,
  * computed from the expected roll at every level rather than by simulation.
  */
 public class BalanceTest
@@ -36,21 +36,21 @@ public class BalanceTest
 	private static final double SECONDS_PER_ROLL = XpRoller.ROLL_INTERVAL_TICKS * 0.6;
 
 	@Test
-	public void noModifiersTakesAbout220Days()
+	public void noModifiersTakesAbout184Days()
 	{
-		assertEquals(220, daysTo99(0), 3);
+		assertEquals(184, daysTo99(0), 3);
 	}
 
 	@Test
-	public void typicalModifiersTakeAbout200Days()
+	public void typicalModifiersTakeAbout167Days()
 	{
-		assertEquals(200, daysTo99(0.10), 3);
+		assertEquals(167, daysTo99(0.10), 3);
 	}
 
 	@Test
-	public void everythingStackedTakesAbout180Days()
+	public void everythingStackedTakesAbout151Days()
 	{
-		assertEquals(180, daysTo99(XpRoller.MAX_BOOST), 3);
+		assertEquals(151, daysTo99(XpRoller.MAX_BOOST), 3);
 	}
 
 	private static double daysTo99(double boost)

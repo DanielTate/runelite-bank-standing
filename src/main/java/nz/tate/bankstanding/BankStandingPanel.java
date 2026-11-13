@@ -32,6 +32,7 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -52,6 +53,7 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.LinkBrowser;
+import nz.tate.bankstanding.core.BankOfTheDay;
 import nz.tate.bankstanding.core.Experience;
 import nz.tate.bankstanding.core.StatsView;
 
@@ -66,7 +68,7 @@ class BankStandingPanel extends PluginPanel
 	private static final String CREDITS = "Thanks to the MERC clan, Shalli, FkXP, someusert8, Cnorthor, Zerek, Dennis and "
 		+ "Hochep, and to WyattSociety and GarlikStixx on Twitch.";
 	/** Must match runelite-plugin.properties; a test checks it does. */
-	static final String VERSION = "1.9";
+	static final String VERSION = "1.10";
 	static final String CHANGELOG_URL = "https://github.com/DanielTate/runelite-bank-standing/blob/main/CHANGELOG.md";
 
 	private static final Color CARD = ColorScheme.DARKER_GRAY_COLOR;
@@ -86,6 +88,21 @@ class BankStandingPanel extends PluginPanel
 	private final JButton collectionLog = new JButton("Collection log");
 	private final JButton skillGuide = new JButton("Skill guide");
 	private final JCheckBox showSkillTile = new JCheckBox("Show skill tile");
+	private final JButton shareImage = new JButton("Copy as image");
+	/** Whatever wants the panel's picture: copied and saved by the plugin. */
+	private final Consumer<BufferedImage> onShareImage;
+	/** The header and the cards, in order, for the picture; the buttons are left out. */
+	private final java.util.List<JComponent> pictured = new java.util.ArrayList<>();
+	private final JPanel bankOfDayCard;
+	private final JLabel bankOfDay = new PanelGraphs.AccentLabel();
+	private final JLabel bankOfDayRegion = small("");
+	private final JLabel bankOfDayLeft = small("");
+	private final JPanel wastedCard;
+	private final JLabel standingShare = new PanelGraphs.AccentLabel();
+	private final JLabel wastedShare = small("");
+	private final PanelGraphs.SplitBar wastedBar = new PanelGraphs.SplitBar();
+	private final JLabel xpWasted = new PanelGraphs.AccentLabel();
+	private final JLabel wastedSince = small("");
 	private final JPanel progressCard;
 	private final JLabel totalXp = value();
 	private final JLabel toNext = value();
@@ -129,8 +146,9 @@ class BankStandingPanel extends PluginPanel
 	 */
 	BankStandingPanel(Icons icons, Runnable onCapeEmote, Runnable onCollectionLog, Runnable onSkillGuide,
 		boolean skillTileShown, Consumer<Boolean> onShowSkillTile, boolean changelogUnseen, Runnable onChangelogSeen,
-		Runnable onResetSession)
+		Runnable onResetSession, Consumer<BufferedImage> onShareImage)
 	{
+		this.onShareImage = onShareImage;
 		setLayout(new BorderLayout(0, GAP));
 		setBorder(new EmptyBorder(10, 10, 10, 10));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -179,7 +197,7 @@ class BankStandingPanel extends PluginPanel
 		header.add(identity, BorderLayout.CENTER);
 		header.add(levelBox, BorderLayout.EAST);
 
-		for (JButton button : new JButton[]{capeEmote, collectionLog, skillGuide})
+		for (JButton button : new JButton[]{capeEmote, collectionLog, skillGuide, shareImage})
 		{
 			button.setFocusPainted(false);
 			button.setMargin(new java.awt.Insets(4, 2, 4, 2));
@@ -187,6 +205,8 @@ class BankStandingPanel extends PluginPanel
 		capeEmote.addActionListener(e -> onCapeEmote.run());
 		collectionLog.addActionListener(e -> onCollectionLog.run());
 		skillGuide.addActionListener(e -> onSkillGuide.run());
+		shareImage.setToolTipText("Copy a picture of this panel to share, and save it in your screenshots folder");
+		shareImage.addActionListener(e -> shareImage());
 		showSkillTile.setOpaque(false);
 		showSkillTile.setFocusPainted(false);
 		showSkillTile.setSelected(skillTileShown);
@@ -198,7 +218,17 @@ class BankStandingPanel extends PluginPanel
 		JPanel actions = column(4);
 		actions.add(pair);
 		actions.add(stretch(capeEmote));
+		actions.add(stretch(shareImage));
 		actions.add(showSkillTile);
+
+		// Bank of the day: the bank large, its region and when it changes under it.
+		bankOfDay.setFont(FontManager.getRunescapeBoldFont());
+		JPanel bankOfDayBody = column(2);
+		bankOfDayBody.add(bankOfDay);
+		bankOfDayBody.add(line(bankOfDayRegion, bankOfDayLeft));
+		JLabel bonus = small(BankOfTheDay.BONUS);
+		bankOfDayCard = card("Bank of the day", bonus, bankOfDayBody, null);
+		bankOfDayCard.setToolTipText("Every player has the same bank. It changes at midnight UTC.");
 
 		// Progress: XP rows, then the bar with the next level and percent above it.
 		JPanel progressRows = rows();
@@ -249,6 +279,18 @@ class BankStandingPanel extends PluginPanel
 		recordTiles.setOpaque(false);
 		recordsCard = card("Records", null, recordTiles, recordRows);
 
+		// XP wasted: the green/red split with percentages, then the big number.
+		standingShare.setFont(FontManager.getRunescapeSmallFont());
+		xpWasted.setFont(FontManager.getRunescapeBoldFont().deriveFont(24f));
+		JPanel wastedBody = column(4);
+		wastedBody.add(wastedBar);
+		wastedBody.add(line(standingShare, wastedShare));
+		wastedBody.add(xpWasted);
+		wastedBody.add(wastedSince);
+		JLabel efficiency = small("Efficiency");
+		wastedCard = card("XP wasted", efficiency, wastedBody, null);
+		wastedCard.setToolTipText("The Bank Standing XP you'd have earned if you'd spent your other logged-in time at a bank");
+
 		bankRows.setLayout(new BoxLayout(bankRows, BoxLayout.Y_AXIS));
 		bankRows.setOpaque(false);
 		moreBanks.setFont(FontManager.getRunescapeSmallFont());
@@ -266,13 +308,24 @@ class BankStandingPanel extends PluginPanel
 		});
 		banksCard = card("Banks", banksCount, bankRows, moreBanks);
 
+		pictured.add(header);
+		pictured.add(bankOfDayCard);
+		pictured.add(progressCard);
+		pictured.add(sessionCard);
+		pictured.add(daysCard);
+		pictured.add(recordsCard);
+		pictured.add(wastedCard);
+		pictured.add(banksCard);
+
 		JPanel sections = column(GAP);
 		sections.add(header);
 		sections.add(actions);
+		sections.add(bankOfDayCard);
 		sections.add(progressCard);
 		sections.add(sessionCard);
 		sections.add(daysCard);
 		sections.add(recordsCard);
+		sections.add(wastedCard);
 		sections.add(banksCard);
 		add(sections, BorderLayout.NORTH);
 
@@ -309,6 +362,63 @@ class BankStandingPanel extends PluginPanel
 			: "<html>v" + VERSION + " changelog</html>";
 	}
 
+	/** Twice the size, so it stays sharp when shared. */
+	private static final int PICTURE_SCALE = 2;
+
+	/**
+	 * The header and every card that's showing, stacked as they are on screen, with a small
+	 * caption at the bottom, and hands it on to be copied and saved.
+	 */
+	private void shareImage()
+	{
+		int width = 0;
+		int height = GAP;
+		java.util.List<JComponent> shown = new java.util.ArrayList<>();
+		for (JComponent part : pictured)
+		{
+			if (part.isVisible() && part.getHeight() > 0)
+			{
+				shown.add(part);
+				width = Math.max(width, part.getWidth());
+				height += part.getHeight() + GAP;
+			}
+		}
+		if (shown.isEmpty())
+		{
+			return;
+		}
+		JLabel caption = small("Bank Standing \u00B7 " + LocalDate.now().format(DAY));
+		Dimension captionSize = caption.getPreferredSize();
+		caption.setSize(captionSize);
+		height += captionSize.height + GAP;
+		width += 2 * GAP;
+
+		BufferedImage image = new BufferedImage(width * PICTURE_SCALE, height * PICTURE_SCALE, BufferedImage.TYPE_INT_RGB);
+		java.awt.Graphics2D g = image.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		g.scale(PICTURE_SCALE, PICTURE_SCALE);
+		g.setColor(ColorScheme.DARK_GRAY_COLOR);
+		g.fillRect(0, 0, width, height);
+		int y = GAP;
+		for (JComponent part : shown)
+		{
+			java.awt.Graphics2D at = (java.awt.Graphics2D) g.create(GAP, y, part.getWidth(), part.getHeight());
+			part.printAll(at);
+			at.dispose();
+			y += part.getHeight() + GAP;
+		}
+		java.awt.Graphics2D at = (java.awt.Graphics2D) g.create(width - GAP - captionSize.width, y, captionSize.width, captionSize.height);
+		caption.print(at);
+		at.dispose();
+		g.dispose();
+
+		onShareImage.accept(image);
+		shareImage.setText("Copied!");
+		javax.swing.Timer reset = new javax.swing.Timer(2000, e -> shareImage.setText("Copy as image"));
+		reset.setRepeats(false);
+		reset.start();
+	}
+
 	/** Keeps the checkbox in step when the setting changes from the config panel. */
 	void setSkillTileShown(boolean shown)
 	{
@@ -325,6 +435,9 @@ class BankStandingPanel extends PluginPanel
 		capeEmote.setVisible(false);
 		collectionLog.setVisible(false);
 		skillGuide.setVisible(false);
+		shareImage.setVisible(false);
+		bankOfDayCard.setVisible(false);
+		wastedCard.setVisible(false);
 		progressCard.setVisible(false);
 		sessionCard.setVisible(false);
 		daysCard.setVisible(false);
@@ -346,6 +459,17 @@ class BankStandingPanel extends PluginPanel
 		capeEmote.setVisible(view.level >= Experience.MAX_LEVEL);
 		collectionLog.setVisible(true);
 		skillGuide.setVisible(true);
+		shareImage.setVisible(true);
+		bankOfDayCard.setVisible(true);
+		bankOfDay.setText(view.bankOfDay);
+		bankOfDayRegion.setText(view.bankOfDayRegion == null ? "" : view.bankOfDayRegion);
+		bankOfDayLeft.setText("Changes in " + view.bankOfDayLeft);
+		wastedCard.setVisible(view.showXpWasted);
+		wastedBar.setStanding(view.standingPercent);
+		standingShare.setText(view.standingPercent < 0 ? "Standing" : view.standingPercent + "% standing");
+		wastedShare.setText(view.standingPercent < 0 ? "Wasted" : 100 - view.standingPercent + "% wasted");
+		xpWasted.setText(view.xpWasted);
+		wastedSince.setText(view.wastedSince == null ? "" : "Since " + view.wastedSince);
 		progressCard.setVisible(true);
 		sessionCard.setVisible(true);
 		daysCard.setVisible(true);

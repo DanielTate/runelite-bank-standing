@@ -39,8 +39,8 @@ import java.util.Set;
  *
  * <p>Every modifier is small. "Gear" ones raise the max hit and lift the average a little;
  * the rest only lift the average. All of it together is capped at
- * {@link XpRoller#MAX_BOOST}, so a fully kitted player is about 22% faster (99 in about 180
- * days instead of 220).
+ * {@link XpRoller#MAX_BOOST}, so a fully kitted player is about 22% faster (99 in about 150
+ * days instead of 185).
  */
 public final class Modifiers
 {
