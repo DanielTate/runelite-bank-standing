@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.10
+
+- **Bank of the day**: each day one bank gives 25% more XP, on top of your other bonuses.
+  Everyone has the same bank, and it changes at midnight UTC. It's at the top of the side
+  panel, in chat when you log in, in the active modifiers while you stand there, and picked
+  out in the collection log's Banks tab. `!bs today` shares it.
+- **XP wasted**: a new side panel card shows the Bank Standing XP you'd have earned if you'd
+  spent the rest of your logged-in time at a bank, and how your time splits between standing
+  and not. It counts from when you update. `!bs wasted` shares it, and **Show XP wasted** in
+  the settings hides it.
+- **Copy as image**: a new side panel button copies a picture of your panel, ready to paste
+  into Discord, and saves it in your RuneLite screenshots folder under Bank Standing.
+- Big item counts in the collection log are shortened like the game's stacks (100K, 10M,
+  1.2B) and coloured the same way, so they fit in the slot.
+- Rares, outfit pieces and pets you haven't had yet show how many rolls you've had so far.
+- Getting a pet you already have gives you a funny feeling.
+- The **This session** graph shows your XP each minute as bars, with a line at your average,
+  so big drops and bonus minutes stand out. Before, it was your total, which always looked
+  like a straight line.
+
 ## 1.9
 
 - **Sidebar accent colour**: a new setting to change the side panel's gold highlights, bars and

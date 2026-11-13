@@ -23,12 +23,27 @@ social skill.
 ## Your progress
 
 Open the **Bank Standing** side panel to see your level, XP, XP per hour, today's standing
-time and a graph of this session's XP. A calendar shows the days you stood, shaded by how
-long; click a day to see which banks you stood at. Your records sit underneath, then a
-leaderboard of your banks. Prefer a colour other than gold? Change **Sidebar accent colour**
-in the settings.
+time and a graph of your XP each minute this session. A calendar shows the days you stood,
+shaded by how long; click a day to see which banks you stood at. Your records sit
+underneath, then a leaderboard of your banks. To show it off, click **Copy as image**: a
+picture of the panel goes to your clipboard and your screenshots folder. Prefer a colour
+other than gold? Change **Sidebar accent colour** in the settings.
 
 ![The Bank Standing side panel](https://raw.githubusercontent.com/DanielTate/runelite-bank-standing/main/docs/images/side-panel.png)
+
+## Bank of the day
+
+Each day one bank is the bank of the day, and XP comes 25% faster there, on top of any other
+bonuses. Every player has the same bank, and it changes at midnight UTC. It's at the top of
+the side panel, said in chat when you log in, and picked out in the collection log's Banks
+tab. Type `!bs today` to share it.
+
+## XP wasted
+
+The side panel's **XP wasted** card shows how much Bank Standing XP you'd have earned if
+you'd spent the rest of your logged-in time at a bank, with a bar of how your time splits
+between standing and everything else. `!bs wasted` owns up to it in chat. Don't want to
+know? Turn off **Show XP wasted** in the settings.
 
 ## The skill guide
 
@@ -55,7 +70,7 @@ by right-clicking the skill tile.
 
 Type `!bs` in any chat to show off your level, XP and time stood. Add a word for more:
 `here`, a bank's name (like `!bs varrock west`), `fav`, `regulars`, `banks`, `log`, `pet`,
-`secrets`, `session`, `streak` or `title`. `!bs help` lists them.
+`secrets`, `session`, `streak`, `title`, `today` or `wasted`. `!bs help` lists them.
 
 When you press Enter, the plugin swaps `!bs` in your chatbox for the answer, like
 `!bs - Bank Standing level 87 (...)`. Press Enter again to send it, and other players see it

@@ -131,7 +131,7 @@ public final class CollectionLog
 	public static final String RAT = "bank-rat";
 	public static final String BUTTERFLY = "gold-butterfly";
 
-	/** In log order within each group. About 5.3 million rolls reach 99. */
+	/** In log order within each group. About 4.4 million rolls reach 99. */
 	public static final List<Drop> DROPS = Collections.unmodifiableList(Arrays.asList(
 		new Drop("lost-bank-pin", "Lost bank PIN", 970, 50_000, false, false),
 		new Drop("bankers-quill", "Banker's quill", 21260, 250_000, false, false),
@@ -159,9 +159,9 @@ public final class CollectionLog
 		new Drop("party-balloon", "Party balloon", 9937, SEASONAL_RATE, false, Group.SEASONAL, Holiday.BIRTHDAY),
 		new Drop("singed-note", "Singed note", 20718, SEASONAL_RATE, false, Group.SEASONAL,
 			Holiday.FALADOR_MASSACRE),
-		new Drop(BUTTERFLY, "Gold butterfly", 9970, 1_000_000, true, true),
-		new Drop(MONEYBAG, "Pet moneybag", 22533, 1_500_000, false, true),
-		new Drop(RAT, "Bank rat", 28801, 2_000_000, false, true)
+		new Drop(BUTTERFLY, "Gold butterfly", 9970, 650_000, true, true),
+		new Drop(MONEYBAG, "Pet moneybag", 22533, 1_000_000, false, true),
+		new Drop(RAT, "Bank rat", 28801, 1_300_000, false, true)
 	));
 
 	/** Rarest first, which is the order drops are rolled in. Hidden drops are left out. */

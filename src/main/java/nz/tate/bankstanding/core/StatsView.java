@@ -255,8 +255,33 @@ public final class StatsView
 	/** Personal records as label and value pairs, in the order shown. */
 	public final List<String[]> records = new ArrayList<>();
 
+	/** Today's bank of the day, its region (or null) and how long until the next one. */
+	public final String bankOfDay;
+	public final String bankOfDayRegion;
+	public final String bankOfDayLeft;
+
+	/** XP wasted, the share of logged-in time spent standing (-1 before any) and since when. */
+	public final String xpWasted;
+	public final int standingPercent;
+	public final String wastedSince;
+	/** Whether the XP wasted card shows; set by the plugin from its setting. */
+	public boolean showXpWasted = true;
+
 	public StatsView(Progress progress, Session session, String today)
 	{
+		this(progress, session, today, System.currentTimeMillis());
+	}
+
+	public StatsView(Progress progress, Session session, String today, long now)
+	{
+		String dayKey = BankOfTheDay.keyAt(now);
+		bankOfDay = BankNames.displayName(dayKey, null);
+		bankOfDayRegion = BankRegions.regionOf(dayKey);
+		bankOfDayLeft = BankOfTheDay.timeLeft(now);
+		xpWasted = number((long) progress.xpWasted);
+		standingPercent = XpWasted.standingPercent(progress);
+		wastedSince = progress.wastedSince > 0 ? date(progress.wastedSince) : null;
+
 		sessionXp = number(session.xp);
 		sessionTime = duration(session.ticks);
 		xpPerHour = number(session.xpPerHour());

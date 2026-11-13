@@ -32,8 +32,8 @@ import java.util.Random;
  * <p>Drops run from 1 to the max hit, which rises by one every two levels (50 at 99), on a
  * geometric curve: each value is {@link #BASE_RATIO} times as likely as the one below it, so
  * small drops are the most common and a max hit comes up a couple of times an hour at 99.
- * With one roll every 6 ticks and the 5x XP table this lands 99 at about 220 days of idle
- * time, or about 180 with every bonus, which {@code BalanceTest} pins.
+ * With one roll every 6 ticks and the 5x XP table this lands 99 at about 185 days of idle
+ * time, or about 150 with every bonus, which {@code BalanceTest} pins.
  *
  * <p>Modifiers come in as a {@code boost}: a fraction (capped at {@link #MAX_BOOST}) by which
  * the average roll should rise. The roller solves for the ratio that gives exactly that
@@ -44,7 +44,7 @@ import java.util.Random;
 public final class XpRoller
 {
 	public static final int ROLL_INTERVAL_TICKS = 6;
-	public static final double BASE_RATIO = 0.93;
+	public static final double BASE_RATIO = 0.95;
 	public static final double MAX_BOOST = 0.22;
 	public static final int MAX_BONUS_HIT = 3;
 	public static final int HIT_PER_BONUS = 4;
@@ -52,6 +52,8 @@ public final class XpRoller
 
 	/** Ratio used for the chat keyword bonus roll, which leans toward the high end. */
 	public static final double KEYWORD_RATIO = 0.98;
+	/** The most the curve can lean toward the max hit, for very high targets at low levels. */
+	static final double MAX_RATIO = 2;
 
 	private final Random random;
 
@@ -75,8 +77,17 @@ public final class XpRoller
 
 	public int roll(int level, double boost, int bonusHit)
 	{
+		return roll(level, boost, bonusHit, 1);
+	}
+
+	/**
+	 * Like {@link #roll(int, double, int)}, with the average also multiplied by
+	 * {@code multiplier} on top of the capped boost, as the bank of the day does.
+	 */
+	public int roll(int level, double boost, int bonusHit, double multiplier)
+	{
 		int max = maxHit(level, bonusHit);
-		double target = meanRoll(baseMaxHit(level), BASE_RATIO) * (1 + clampBoost(boost));
+		double target = meanRoll(baseMaxHit(level), BASE_RATIO) * (1 + clampBoost(boost)) * Math.max(1, multiplier);
 		return sample(max, ratioForMean(max, target));
 	}
 
@@ -130,11 +141,15 @@ public final class XpRoller
 		return weighted / total;
 	}
 
-	/** The ratio whose average roll over 1..max is closest to {@code target}. */
+	/**
+	 * The ratio whose average roll over 1..max is closest to {@code target}. Above 1 the
+	 * curve leans toward the max, for targets past the middle of the range; it never goes
+	 * past {@link #MAX_RATIO}.
+	 */
 	static double ratioForMean(int max, double target)
 	{
 		double lo = 0;
-		double hi = 1;
+		double hi = MAX_RATIO;
 		for (int i = 0; i < 40; i++)
 		{
 			double mid = (lo + hi) / 2;

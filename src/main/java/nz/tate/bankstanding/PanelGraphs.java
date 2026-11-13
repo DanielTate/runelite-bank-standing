@@ -30,7 +30,6 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
@@ -49,8 +48,6 @@ import nz.tate.bankstanding.core.StatsView;
 final class PanelGraphs
 {
 	static final Color DEFAULT_ACCENT = new Color(214, 176, 48);
-	/** How opaque the shading under the session graph's line is. */
-	private static final int GRAPH_FILL_ALPHA = 60;
 	/** Calendar squares brighter than this take dark text; dimmer ones take light. */
 	private static final int DARK_TEXT_BRIGHTNESS = 100;
 	/** Graphs sit on the panel's darker cards, so their empty parts are a step lighter. */
@@ -140,11 +137,17 @@ final class PanelGraphs
 		}
 	}
 
-	/** This session's XP, one point per minute of standing. */
+	/**
+	 * This session's XP each minute of standing, as bars, with a line at the average. Taken
+	 * from the running total sampled each minute. A long session puts several minutes in
+	 * each bar, at their average, so the bars never get thinner than {@link #MIN_BAR}.
+	 */
 	static final class SessionXp extends JComponent
 	{
 		private static final int HEIGHT = 56;
 		private static final int PAD = 4;
+		/** Narrowest bar, in pixels, with a 1px gap after it. */
+		private static final int MIN_BAR = 3;
 		private long[] samples = new long[0];
 
 		SessionXp()
@@ -157,6 +160,42 @@ final class PanelGraphs
 		{
 			this.samples = samples;
 			repaint();
+		}
+
+		private int minutes()
+		{
+			return Math.max(0, samples.length - 1);
+		}
+
+		/** How many minutes each bar holds. */
+		private int perBar()
+		{
+			int fit = Math.max(1, (getWidth() - 2 * PAD) / MIN_BAR);
+			return Math.max(1, (minutes() + fit - 1) / fit);
+		}
+
+		private int bars()
+		{
+			return (minutes() + perBar() - 1) / perBar();
+		}
+
+		/** Bar i covers the minutes from {@code from(i)} up to {@code to(i)}, clamped to the session. */
+		private int from(int bar)
+		{
+			return bar * perBar();
+		}
+
+		private int to(int bar)
+		{
+			return Math.min(minutes(), (bar + 1) * perBar());
+		}
+
+		/** Bar i's XP per minute. */
+		private double perMinute(int bar)
+		{
+			int from = from(bar);
+			int to = to(bar);
+			return to > from ? (double) (samples[to] - samples[from]) / (to - from) : 0;
 		}
 
 		@Override
@@ -172,7 +211,7 @@ final class PanelGraphs
 				int y = PAD + (getHeight() - 2 * PAD) * line / 4;
 				g2.drawLine(PAD, y, getWidth() - PAD, y);
 			}
-			if (samples.length < 2)
+			if (minutes() < 1)
 			{
 				g2.setFont(FontManager.getRunescapeSmallFont());
 				g2.setColor(ColorScheme.LIGHT_GRAY_COLOR);
@@ -184,47 +223,55 @@ final class PanelGraphs
 				return;
 			}
 
-			long max = Math.max(1, samples[samples.length - 1]);
-			for (long sample : samples)
+			int bars = bars();
+			double max = 1;
+			for (int i = 0; i < bars; i++)
 			{
-				max = Math.max(max, sample);
+				max = Math.max(max, perMinute(i));
 			}
-			int n = samples.length;
-			int[] xs = new int[n + 2];
-			int[] ys = new int[n + 2];
-			for (int i = 0; i < n; i++)
+			int plot = getHeight() - 2 * PAD;
+			int bottom = getHeight() - PAD;
+			Color accent = accent();
+			g2.setColor(accent);
+			for (int i = 0; i < bars; i++)
 			{
-				xs[i] = x(i);
-				ys[i] = PAD + (int) Math.round((getHeight() - 2 * PAD) * (1 - (double) samples[i] / max));
+				int left = barLeft(i, bars);
+				int width = Math.max(1, barLeft(i + 1, bars) - left - 1);
+				int height = (int) Math.round(plot * perMinute(i) / max);
+				if (height > 0)
+				{
+					g2.fillRect(left, bottom - height, width, height);
+				}
 			}
-			xs[n] = xs[n - 1];
-			ys[n] = getHeight() - PAD;
-			xs[n + 1] = xs[0];
-			ys[n + 1] = getHeight() - PAD;
-			Color line = accent();
-			g2.setColor(new Color(line.getRed(), line.getGreen(), line.getBlue(), GRAPH_FILL_ALPHA));
-			g2.fillPolygon(new Polygon(xs, ys, n + 2));
-			g2.setColor(line);
-			g2.setStroke(new BasicStroke(1.5f));
-			g2.drawPolyline(xs, ys, n);
+			double average = (double) samples[minutes()] / minutes();
+			int y = bottom - (int) Math.round(plot * average / max);
+			g2.setColor(new Color(255, 255, 255, 140));
+			g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 1f, new float[]{3f, 3f}, 0f));
+			g2.drawLine(PAD, y, getWidth() - PAD, y);
 			g2.dispose();
 		}
 
-		private int x(int i)
+		/** Where bar i starts; the bars share the width evenly, up to a bar per minute. */
+		private int barLeft(int i, int bars)
 		{
-			return PAD + (int) Math.round((getWidth() - 2 * PAD) * (double) i / (samples.length - 1));
+			return PAD + (int) Math.round((getWidth() - 2 * PAD) * (double) i / bars);
 		}
 
 		@Override
 		public String getToolTipText(MouseEvent e)
 		{
-			if (samples.length < 2)
+			if (minutes() < 1)
 			{
 				return null;
 			}
+			int bars = bars();
 			double at = (double) (e.getX() - PAD) / Math.max(1, getWidth() - 2 * PAD);
-			int i = (int) Math.round(Math.max(0, Math.min(1, at)) * (samples.length - 1));
-			return String.format(Locale.ENGLISH, "%s in: %,d xp", StatsView.duration(i * 100L), samples[i]);
+			int i = Math.max(0, Math.min(bars - 1, (int) (at * bars)));
+			long average = Math.round((double) samples[minutes()] / minutes());
+			String when = perBar() == 1 ? "Minute " + (i + 1)
+				: "Minutes " + (from(i) + 1) + "-" + to(i);
+			return String.format(Locale.ENGLISH, "<html>%s: %,d xp a minute<br>Session average: %,d</html>",
+				when, Math.round(perMinute(i)), average);
 		}
 	}
 
@@ -288,6 +335,46 @@ final class PanelGraphs
 		double fill()
 		{
 			return percent / 100.0;
+		}
+	}
+
+	/** Standing in the accent, then wasted in a dim grey, side by side; all track before there's any time. */
+	static final class SplitBar extends JComponent
+	{
+		static final Color WASTED = new Color(96, 96, 96);
+		private static final int HEIGHT = 10;
+		/** 0 to 100, or -1 for nothing yet. */
+		private int standing = -1;
+
+		SplitBar()
+		{
+			setPreferredSize(new Dimension(0, HEIGHT));
+			setMinimumSize(new Dimension(0, HEIGHT));
+			setMaximumSize(new Dimension(Integer.MAX_VALUE, HEIGHT));
+		}
+
+		void setStanding(int percent)
+		{
+			standing = percent;
+			repaint();
+		}
+
+		@Override
+		protected void paintComponent(Graphics g)
+		{
+			Graphics2D g2 = (Graphics2D) g.create();
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			int width = getWidth();
+			g2.setColor(standing < 0 ? EMPTY : WASTED);
+			g2.fillRoundRect(0, 0, width, HEIGHT, HEIGHT, HEIGHT);
+			if (standing > 0)
+			{
+				int green = (int) Math.round(width * standing / 100.0);
+				g2.setClip(0, 0, green, HEIGHT);
+				g2.setColor(accent());
+				g2.fillRoundRect(0, 0, width, HEIGHT, HEIGHT, HEIGHT);
+			}
+			g2.dispose();
 		}
 	}
 

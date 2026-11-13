@@ -229,6 +229,12 @@ class DevPanel extends PluginPanel
 			button("Reset progress", plugin::devReset),
 			button("Check records", plugin::devCheckRecords)));
 
+		body.add(heading("Bank of the day"));
+		body.add(buttons(
+			button("Make it this bank", plugin::devBankOfDayHere),
+			button("Back to the real one", () -> plugin.devBankOfDay(null)),
+			button("Waste 1 hour", plugin::devWasteHour)));
+
 		JSpinner multiplier = new JSpinner(new SpinnerNumberModel(dev.xpMultiplier, 1, 1000, 1));
 		multiplier.addChangeListener(e -> dev.xpMultiplier = (Integer) multiplier.getValue());
 		body.add(row(new JLabel("XP multiplier"), multiplier));

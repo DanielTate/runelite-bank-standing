@@ -30,7 +30,7 @@ import java.util.List;
 /** Standing time and XP since logging in. Not saved. */
 public final class Session
 {
-	static final long TICKS_PER_HOUR = 6000;
+	public static final long TICKS_PER_HOUR = 6000;
 	/** A minute of standing: how often the XP graph takes a reading. */
 	static final long TICKS_PER_SAMPLE = 100;
 
